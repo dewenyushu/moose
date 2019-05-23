@@ -689,6 +689,12 @@ public:
 
   void projectSolution();
 
+  void projectInitialConditionOnElemRange(ConstElemRange & elem_range);
+
+  void projectInitialConditionOnNodeRange(ConstBndNodeRange & bnd_node_range);
+
+  void projectInitialConditionOnCustomRange(ConstElemRange & elem_range, ConstBndNodeRange & bnd_node_range);
+
   // Materials /////
   virtual void addMaterial(const std::string & kernel_name,
                            const std::string & name,
@@ -1377,11 +1383,11 @@ public:
   ///@{
   /**
    * Return a reference to the material property storage
-   * @return A const reference to the material property storage
+   * @return A writable reference to the material property storage
    */
-  const MaterialPropertyStorage & getMaterialPropertyStorage() { return _material_props; }
-  const MaterialPropertyStorage & getBndMaterialPropertyStorage() { return _bnd_material_props; }
-  const MaterialPropertyStorage & getNeighborMaterialPropertyStorage()
+  MaterialPropertyStorage & getMaterialPropertyStorage() { return _material_props; }
+  MaterialPropertyStorage & getBndMaterialPropertyStorage() { return _bnd_material_props; }
+  MaterialPropertyStorage & getNeighborMaterialPropertyStorage()
   {
     return _neighbor_material_props;
   }
@@ -1457,6 +1463,12 @@ public:
    * to be notified when the mesh changes.
    */
   void notifyWhenMeshChanges(MeshChangedInterface * mci);
+
+  /**
+   * Initialize stateful properties for elements in a specific \p elem_range
+   */
+  void initElementStatefulProps(ConstElemRange & elem_range);
+
 
   /**
    * Method called to perform a series of sanity checks before a simulation is run. This method

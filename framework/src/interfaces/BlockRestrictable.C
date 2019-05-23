@@ -149,7 +149,11 @@ BlockRestrictable::initializeBlockRestrictable(const MooseObject * moose_object)
       msg << "the following block ids do not exist on the mesh:";
       for (const auto & id : diff)
         msg << " " << id;
-      moose_object->paramError("block", msg.str());
+      // produce a warning instead of an error
+      // in many cases this would be a mistake, so we would like to warn the user.
+      // however, sometimes we can have a variable defined in an empty block
+      // which will be expanded later
+      moose_object->paramWarning("block", msg.str());
     }
   }
 }
