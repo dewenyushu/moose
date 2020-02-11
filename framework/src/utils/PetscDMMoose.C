@@ -716,6 +716,7 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
           }
         }
 
+        std::vector<dof_id_type> evindices;
         // Include all nodes on the contact surfaces
         if (dmm->_contact_names->size() && dmm->_include_all_contact_nodes)
         {
@@ -727,7 +728,6 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
             bc_id_set.insert(it.first.second); // slave
           }
           // loop over boundary elements
-          std::vector<dof_id_type> evindices;
           ConstBndElemRange & range = *dmm->_nl->_fe_problem.mesh().getBoundaryElementRange();
           for (const auto & belem : range)
           {

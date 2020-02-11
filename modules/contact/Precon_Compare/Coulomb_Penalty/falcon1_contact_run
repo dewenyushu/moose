@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -M dewen.yushu@inl.gov
+#PBS -m be
+#PBS -N penalty_fr
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#PBS -l place=scatter:excl
+#PBS -l walltime=06:00:00
+#PBS -P neams
+
+# A simple script to run contact problems with different preconditioners and refinement levels
+
+JOB_NUM=${PBS_JOBID%%\.*}
+
+cd $PBS_O_WORKDIR
+
+module purge
+module load pbs
+module load use.moose PETSc/3.10.5-GCC
+
+
+for FileBase in FS superLU boomeramg LU ILU
+do
+
+SOURCEDIR="./"
+DESTDIR="${SOURCEDIR}${FileBase}/"
+
+if [ ! -d "$DESTDIR" ]
+then
+mkdir ${DESTDIR}
+fi
+
+
+INPUT="${SOURCEDIR}${FileBase}.i"
+
+
+for Refine in {1..6}
+do
+OUTPUT="${DESTDIR}/${FileBase}_Refine_${Refine}.log"
+echo "Running contact-opt -i $INPUT refine=${Refine}"
+ ./../../contact-opt -i $INPUT refine=${Refine}>${OUTPUT}
+done
+
+done
