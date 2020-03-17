@@ -150,7 +150,7 @@ refine = 1
   type = Transient
   solve_type = 'PJFNK'
 
-  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew -snes_fd'
 
   # petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   # petsc_options_value = 'lu NONZERO   1e-15'
@@ -180,9 +180,9 @@ refine = 1
     type = Console
     max_rows = 5
   [../]
-  [./csv]
-    type = CSV
-  [../]
+  # [./csv]
+  #   type = CSV
+  # [../]
   # [dof_map]
   #   type = DOFMap
   #   execute_on = 'initial'

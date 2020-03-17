@@ -160,6 +160,8 @@ refine = 1
   type = Transient
   solve_type = 'NEWTON'
 
+  petsc_options = '-snes_fd'
+
   dt = 0.1
   dtmin = 1e-4
   end_time = 2
@@ -175,9 +177,9 @@ refine = 1
 
 [Outputs]
   file_base = ./FS/contact_sliding_FS_refine_${refine}_out
-  [./exodus]
-    type = Exodus
-  [../]
+  # [./exodus]
+  #   type = Exodus
+  # [../]
   [./console]
     type = Console
     max_rows = 5

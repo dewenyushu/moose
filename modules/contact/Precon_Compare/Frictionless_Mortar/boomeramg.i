@@ -144,7 +144,7 @@ refine = 1
   type = Transient
   solve_type = 'NEWTON'
 
-  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew -snes_fd'
 
   petsc_options_iname = '-pc_type   -pc_hypre_type'
   petsc_options_value = 'hypre  boomeramg'
@@ -164,20 +164,20 @@ refine = 1
 
 [Outputs]
   file_base = ./LU/contact_sliding_LU_refine_${refine}_out
-  [./exodus]
-    type = Exodus
-  [../]
+  # [./exodus]
+  #   type = Exodus
+  # [../]
   [./console]
     type = Console
     max_rows = 5
   [../]
-  [./csv]
-    type = CSV
-  [../]
-  [dof_map]
-    type = DOFMap
-    execute_on = 'initial'
-  []
+  # [./csv]
+  #   type = CSV
+  # [../]
+  # [dof_map]
+  #   type = DOFMap
+  #   execute_on = 'initial'
+  # []
   [./pgragh]
     type = PerfGraphOutput
     execute_on = FINAL

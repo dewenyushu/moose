@@ -165,6 +165,8 @@ refine = 1
   type = Transient
   solve_type = 'NEWTON'
 
+  petsc_options = '-snes_fd'
+
   dt = 0.1
   dtmin = 1e-4
   end_time = 2

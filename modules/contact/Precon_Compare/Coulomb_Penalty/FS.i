@@ -166,6 +166,8 @@ refine = 1
   type = Transient
   solve_type = 'PJFNK'
 
+  petsc_options = '-snes_fd'
+
   dt = 0.1
   dtmin = 1e-4
   end_time = 2
@@ -188,9 +190,9 @@ refine = 1
     type = Console
     max_rows = 5
   [../]
-  [./csv]
-    type = CSV
-  [../]
+  # [./csv]
+  #   type = CSV
+  # [../]
   [./pgragh]
     type = PerfGraphOutput
     execute_on = FINAL
