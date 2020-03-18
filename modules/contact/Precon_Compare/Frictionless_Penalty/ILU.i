@@ -1,9 +1,8 @@
 offset = 0.001
-
 vy = 0.15
-vx = 0.02
 
 refine = 1
+
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -37,11 +36,11 @@ refine = 1
 [Functions]
   [./horizontal_movement]
     type = ParsedFunction
-    value = 'if(t<0.1,${vx}*t-${offset},${vx}-${offset})'
+    value = '0.002-0.003*exp(-4.05*t)'
   [../]
   [./vertical_movement]
     type = ParsedFunction
-    value = 'if(t<0.1,${offset},${vy}*(t-0.1)+${offset})'
+    value = '${vy}*t+${offset}'
   [../]
 []
 
@@ -138,8 +137,8 @@ refine = 1
 []
 
 [Preconditioning]
-  [./smp]
-    type = SMP
+  [./FDP]
+    type = FDP
     full = true
   [../]
 []
@@ -153,7 +152,7 @@ refine = 1
   petsc_options_iname = '-pc_type -pc_factor_levels  -pc_factor_shift_type -pc_factor_shift_amount'
   petsc_options_value = 'ilu  1 NONZERO   1e-15'
 
-  dt = 0.1
+  dt = 0.05
   dtmin = 1e-4
   end_time = 2
 

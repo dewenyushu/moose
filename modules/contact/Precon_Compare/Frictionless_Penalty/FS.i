@@ -1,7 +1,5 @@
 offset = 0.001
-
 vy = 0.15
-vx = 0.02
 
 refine = 1
 
@@ -30,11 +28,11 @@ refine = 1
  [Functions]
    [./horizontal_movement]
      type = ParsedFunction
-     value = 'if(t<0.1,${vx}*t-${offset},${vx}-${offset})'
+     value = '0.002-0.003*exp(-4.05*t)'
    [../]
    [./vertical_movement]
      type = ParsedFunction
-     value = 'if(t<0.1,${offset},${vy}*(t-0.1)+${offset})'
+     value = '${vy}*t+${offset}'
    [../]
  []
 
@@ -166,17 +164,17 @@ refine = 1
 
   petsc_options = '-snes_fd'
 
-  dt = 0.1
+  dt = 0.05
   dtmin = 1e-4
   end_time = 2
 
-  # l_tol = 1e-8
+  l_tol = 1e-8
   l_max_its = 100
 
   # nl_rel_tol = 1e-6
-  # nl_abs_tol = 1e-8
+  nl_abs_tol = 1e-8
   nl_max_its = 30
-  nl_rel_tol = 1e-6
+  nl_rel_tol = 1e-4
 []
 
 [Outputs]
