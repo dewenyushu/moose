@@ -1,10 +1,16 @@
+radius= 1.0
+height=60.0
+
+nz=600
+ring_num=10
+sector=8
+
 refine=0
-height=20
-nz=20
-ring_num=2
-sector=4
+
+Job=1
 
 end_time= 540
+
 order = FIRST
 
 [GlobalParams]
@@ -23,7 +29,7 @@ order = FIRST
   [./c1]
     type = ConcentricCircleMeshGenerator
     num_sectors = ${sector}
-    radii = '0.5'
+    radii = '${radius}'
     rings = '${ring_num}'
     has_outer_square = false
     preserve_volumes = off
@@ -46,7 +52,7 @@ order = FIRST
   [./cylinder1_translate]
     type = TransformGenerator
     transform = TRANSLATE
-    vector_value = '-0.5 0 0'
+    vector_value = '-${radius} 0 0'
     input = cylinder1
   [../]
   [./cylinder1_id]
@@ -58,7 +64,7 @@ order = FIRST
   [./c2]
     type = ConcentricCircleMeshGenerator
     num_sectors = ${sector}
-    radii = '0.5'
+    radii = '${radius}'
     rings = '${ring_num}'
     has_outer_square = false
     preserve_volumes = off
@@ -81,7 +87,7 @@ order = FIRST
   [./cylinder2_translate]
     type = TransformGenerator
     transform = TRANSLATE
-    vector_value = '0.5 0 0'
+    vector_value = '${radius} 0 0'
     input = cylinder2
   [../]
   [./cylinder2_id]
@@ -97,12 +103,12 @@ order = FIRST
   [./block_sidesets]
     type = SideSetsFromPointsGenerator
     input = combined
-    points = '-0.5 0 0
-              -0.5 0 ${height}
-              0.5 0 0
-              0.5 0 ${height}
-              1.0 0 5
-              -1.0 0 5'
+    points = '-${radius} 0 0
+              -${radius} 0 ${height}
+              ${radius} 0 0
+              ${radius} 0 ${height}
+              ${radius} ${radius} 5
+              -${radius} ${radius} 5'
     new_boundary = '20 30 50 60 40 10'
   [../]
   uniform_refine =${refine}
@@ -340,7 +346,7 @@ order = FIRST
 []
 
 [Outputs]
-  file_base = ./output/torque_2wires_height${height}_${end_time}deg_out
+  file_base = ./output/torque_2wires_height${height}_radii${radius}_${end_time}deg_job${Job}_out
   interval = 4
   [./exodus]
         type = Exodus
