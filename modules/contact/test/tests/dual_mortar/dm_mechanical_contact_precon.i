@@ -158,9 +158,16 @@ vy = 0.1
 []
 
 [Preconditioning]
-  [./SMP]
-    type = SMP
+  [./dmp]
+    type = DMP
     full = true
+    variable = 'leftright_normal_lm'
+    coupled_variable = 'disp_x'
+    secondary_subdomain = 1
+    secondary_boundary = 11
+    primary_subdomain = 2
+    primary_boundary = 23
+    preconditioner = 'AMG'
   [../]
 []
 
@@ -168,18 +175,15 @@ vy = 0.1
   type = Transient
   solve_type = 'NEWTON'
 
-  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew -snes_fd'
-
-  petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
-  petsc_options_value = 'lu NONZERO   1e-15'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_view'
 
   dt = 0.2
-  dtmin = 1e-4
+  dtmin = 0.2
   end_time = 0.2
 
-  l_max_its = 100
+  l_max_its = 20
 
-  nl_max_its = 30
+  nl_max_its = 8
   nl_rel_tol = 1e-6
   snesmf_reuse_base = false
 []

@@ -408,6 +408,7 @@ public:
    * (local nodes, boundary elems, etc.).
    */
   ConstElemRange * getActiveLocalElementRange();
+  ConstElemRange * getActiveElementRange();
   NodeRange * getActiveNodeRange();
   SemiLocalNodeRange * getActiveSemiLocalNodeRange() const;
   ConstNodeRange * getLocalNodeRange();
@@ -1152,6 +1153,7 @@ protected:
    * to get rebuilt all the time (which takes time).
    */
   std::unique_ptr<ConstElemRange> _active_local_elem_range;
+  std::unique_ptr<ConstElemRange> _active_elem_range;
 
   std::unique_ptr<SemiLocalNodeRange> _active_semilocal_node_range;
   std::unique_ptr<NodeRange> _active_node_range;
