@@ -1,9 +1,5 @@
-offset = 0.0202
-
-vy = 0.15
-vx = 0.040
-
-refine = 1
+offset = 0.001
+vy = 0.1
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -68,18 +64,17 @@ refine = 1
     incremental = true
     add_variables = true
     block = '1 2'
-    scaling = 1e-6
   [../]
 []
 
 [Functions]
   [./horizontal_movement]
     type = ParsedFunction
-    value = 'if(t<1.0,${vx}*t-${offset},${vx}-${offset})'
+    value = '0.002-0.003*exp(-4.05*t)'
   [../]
   [./vertical_movement]
     type = ParsedFunction
-    value = 'if(t<1.0,${offset},${vy}*(t-1.0)+${offset})'
+    value = '${vy}*t+${offset}'
   [../]
 []
 
@@ -140,13 +135,10 @@ refine = 1
     secondary = '11'
     primary = '23'
 
-    model = coulomb
-    formulation = mortar
+    use_dual = true
 
-    friction_coefficient = 0.2
-    c_tangential = 1e3
-    normal_lm_scaling = 1e-3
-    tangential_lm_scaling = 1e-3
+    formulation = mortar
+    model = frictionless
   [../]
 []
 
@@ -160,40 +152,90 @@ refine = 1
   [./disp_x]
     block = 1
     variable = disp_x
-    value = -${offset}
+    value = ${offset}
     type = ConstantIC
   [../]
 []
 
 [Preconditioning]
-  [./smp]
-    type = SMP
+  [./vcp]
+    type = VCP
     full = true
+    variable = 'leftright_normal_lm'
+    coupled_variable = 'disp_x'
+    preconditioner = 'AMG'
+    is_diagonal = false
+    adaptive_condensation = true
   [../]
 []
 
 [Executioner]
   type = Transient
+  solve_type = 'NEWTON'
 
-petsc_options = '-snes_converged_reason -ksp_converged_reason -pc_svd_monitor -snes_ksp_ew -pc_svd_monitor'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_view'
 
-  petsc_options_iname = '-pc_type -mat_mffd_err'
-  petsc_options_value = 'svd      1e-5'
+  dt = 0.2
+  dtmin = 0.2
+  end_time = 0.2
 
-  dt = 0.1
-  dtmin = 0.1
-  num_steps = 7
-  end_time = 4
-  line_search = none
+  l_max_its = 20
+
+  nl_max_its = 8
+  nl_rel_tol = 1e-6
   snesmf_reuse_base = false
 []
 
-[Debug]
-  show_var_residual_norms = true
+[Outputs]
+  file_base = ./dm_contact_gmesh_out
+  [./comp]
+    type = CSV
+    show = 'contact normal_lm avg_disp_x avg_disp_y max_disp_x max_disp_y min_disp_x min_disp_y'
+  [../]
 []
 
-[Outputs]
-  [./exodus]
-    type = Exodus
+
+[Postprocessors]
+  [./contact]
+    type = ContactDOFSetSize
+    variable = leftright_normal_lm
+    subdomain = leftright_secondary_subdomain
+  []
+  [./normal_lm]
+    type = ElementAverageValue
+    variable = leftright_normal_lm
+    block = leftright_secondary_subdomain
+  [../]
+  [./avg_disp_x]
+    type = ElementAverageValue
+    variable = disp_x
+    block = '1 2'
+  [../]
+  [./avg_disp_y]
+    type = ElementAverageValue
+    variable = disp_y
+    block = '1 2'
+  [../]
+  [./max_disp_x]
+    type = ElementExtremeValue
+    variable = disp_x
+    block = '1 2'
+  [../]
+  [./max_disp_y]
+    type = ElementExtremeValue
+    variable = disp_y
+    block = '1 2'
+  [../]
+  [./min_disp_x]
+    type = ElementExtremeValue
+    variable = disp_x
+    block = '1 2'
+    value_type = min
+  [../]
+  [./min_disp_y]
+    type = ElementExtremeValue
+    variable = disp_y
+    block = '1 2'
+    value_type = min
   [../]
 []
