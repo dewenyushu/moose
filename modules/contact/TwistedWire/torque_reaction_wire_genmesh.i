@@ -9,7 +9,7 @@ refine=0
 
 Job=1
 
-end_time= 540
+end_time= 720
 
 order = FIRST
 
@@ -321,7 +321,7 @@ order = FIRST
   type = Transient
   solve_type = 'PJFNK'
 
-  petsc_options = '-snes_ksp_ew'
+  petsc_options = '-snes_ksp_ew -log_view'
   petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_factor_mat_solver_package'
   petsc_options_value = '200 lu superlu_dist'
 
@@ -335,7 +335,7 @@ order = FIRST
 
   start_time = 0.0
   dt = 2.0
-  dtmin = 0.1
+  dtmin = 0.01
 
   end_time = ${end_time}
 
@@ -346,11 +346,11 @@ order = FIRST
 []
 
 [Outputs]
-  file_base = ./output/torque_2wires_height${height}_radii${radius}_${end_time}deg_job${Job}_out
+  file_base = ./stroing_scaling_output/torque_2wires_height${height}_radii${radius}_${end_time}deg_job${Job}_out
   interval = 4
-  [./exodus]
-        type = Exodus
-  [../]
+  # [./exodus]
+  #       type = Exodus
+  # [../]
   [./console]
         type = Console
         max_rows = 5

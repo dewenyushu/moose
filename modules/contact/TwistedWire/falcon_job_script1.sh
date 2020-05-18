@@ -4,7 +4,7 @@
 #PBS -N Twist1
 #PBS -l select=1:ncpus=36:mpiprocs=36
 #PBS -l place=scatter:excl
-#PBS -l walltime=10:00:00
+#PBS -l walltime=50:00:00
 #PBS -P neams
 
 # A simple script to run contact problems with different preconditioners and refinement levels
@@ -19,20 +19,15 @@ module load use.moose PETSc/3.10.5-GCC
 
 
 SOURCEDIR="./"
-DESTDIR="${SOURCEDIR}output/"
+DESTDIR="${SOURCEDIR}stroing_scaling_output/36cores/"
 
 if [ ! -d "$DESTDIR" ]
 then
 mkdir ${DESTDIR}
 fi
 
-NZ=20
-Ring_Num=2
-Sector=4
-
 INPUT="${SOURCEDIR}torque_reaction_wire_genmesh.i"
 
+OUTPUT="${DESTDIR}/36cores.log"
 
-OUTPUT="${DESTDIR}/nz${NZ}_ring_num${Ring_Num}_sector${Sector}.log"
-
-mpiexec ./../contact-opt -i $INPUT nz=${NZ} ring_num=${Ring_Num} sector=${Sector} Job=1 >${OUTPUT}
+mpiexec ./../contact-opt -i $INPUT Job=1 >${OUTPUT}
