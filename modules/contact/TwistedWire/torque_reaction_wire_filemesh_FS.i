@@ -1,20 +1,18 @@
 radius= 0.5
 height=5.0
-
-nz=2
-ring_num=2
-sector=4
+#
+# nz=2
+# ring_num=2
+# sector=4
 
 refine=0
 
 Job=1
 
-end_time= 1
-
-order = FIRST
+end_time=1
 
 [GlobalParams]
-  order = ${order}
+  order = FIRST
   family = LAGRANGE
   displacements = 'disp_x disp_y disp_z'
   volumetric_locking_correction = true
@@ -23,115 +21,28 @@ order = FIRST
 [Mesh]
   patch_update_strategy = iteration
   patch_size = 10
-  partitioner = centroid
-  centroid_partitioner_direction = z
 
-  [./c1]
-    type = ConcentricCircleMeshGenerator
-    num_sectors = ${sector}
-    radii = '${radius}'
-    rings = '${ring_num}'
-    has_outer_square = false
-    preserve_volumes = off
-    smoothing_max_it = 3
+  [file]
+    type = FileMeshGenerator
+    file = two_wires_mesh_4blocks.e
   []
-  [./c1_rename]
-    type = RenameBoundaryGenerator
-    input = c1
-    old_boundary_name = 'outer'
-    new_boundary_name = '10'
+  [slave]
+    type = LowerDBlockFromSidesetGenerator
+    sidesets = '40'
+    new_block_id = 200
+    new_block_name = 'slave_lower'
+    input = file
   []
-  [./cylinder1]
-    input = c1_rename
-    type = MeshExtruderGenerator
-    num_layers = ${nz}
-    extrusion_vector = '0 0 ${height}'
-    bottom_sideset = '20'
-    top_sideset = '30'
-  [../]
-  [./cylinder1_translate]
-    type = TransformGenerator
-    transform = TRANSLATE
-    vector_value = '-${radius} 0 0'
-    input = cylinder1
-  [../]
-  [./cylinder1_id]
-    type = SubdomainIDGenerator
-    input = cylinder1_translate
-    subdomain_id = 1
-  [../]
+  [master]
+    type = LowerDBlockFromSidesetGenerator
+    sidesets = '10'
+    new_block_id = 100
+    new_block_name = 'master_lower'
+    input = slave
+  []
 
-  [./c2]
-    type = ConcentricCircleMeshGenerator
-    num_sectors = ${sector}
-    radii = '${radius}'
-    rings = '${ring_num}'
-    has_outer_square = false
-    preserve_volumes = off
-    smoothing_max_it = 3
-  []
-  [./c2_rename]
-    type = RenameBoundaryGenerator
-    input = c2
-    old_boundary_name = 'outer'
-    new_boundary_name = '40'
-  []
-  [./cylinder2]
-    input = c2_rename
-    type = MeshExtruderGenerator
-    num_layers = ${nz}
-    extrusion_vector = '0 0 ${height}'
-    bottom_sideset = '50'
-    top_sideset = '60'
-  [../]
-  [./cylinder2_translate]
-    type = TransformGenerator
-    transform = TRANSLATE
-    vector_value = '${radius} 0 0'
-    input = cylinder2
-  [../]
-  [./cylinder2_id]
-    type = SubdomainIDGenerator
-    input = cylinder2_translate
-    subdomain_id = 2
-  [../]
-
-  [./combined]
-    type = MeshCollectionGenerator
-    inputs = 'cylinder1_id cylinder2_id'
-  [../]
-  [./block_sidesets]
-    type = SideSetsFromPointsGenerator
-    input = combined
-    points = '-${radius} 0 0
-              -${radius} 0 ${height}
-              ${radius} 0 0
-              ${radius} 0 ${height}
-              ${radius} ${radius} 5
-              -${radius} ${radius} 5'
-    new_boundary = '20 30 50 60 40 10'
-  [../]
   uniform_refine =${refine}
 []
-
-# [Variables]
-#   [./disp_x]
-#   [../]
-#   [./disp_y]
-#   [../]
-#   [./disp_z]
-#   [../]
-#
-# []
-
-[Preconditioning]
-  [./SMP]
-    type = SMP
-    full = true
-  [../]
-[]
-
-
 
 [AuxVariables]
   [./saved_x]
@@ -165,7 +76,7 @@ order = FIRST
   [./action]
     strain = FINITE
     add_variables = true
-    block = '1 2'
+    block = '1 2 100 200'
     use_automatic_differentiation = false
   [../]
 []
@@ -291,14 +202,14 @@ order = FIRST
   [./elasticity_tensor]   #Silicone_Rubber
     type = ComputeIsotropicElasticityTensor
     # type = ADComputeIsotropicElasticityTensor
-    block = '1 2'
+    block = '1 2 100 200'
     youngs_modulus = 128E9
     poissons_ratio = 0.36
   [../]
   [./elastic_stress]
     type = ComputeFiniteStrainElasticStress
     # type = ADComputeFiniteStrainElasticStress
-    block = '1 2'
+    block = '1 2 100 200'
   [../]
 []
 
@@ -306,8 +217,8 @@ order = FIRST
   [./contact]
     mesh = block_sidesets
     formulation = kinematic
-    master = 10
-    slave = 40
+    master = '10'
+    slave = '40'
     model = coulomb
     penalty = 1E7
     tangential_tolerance = .01
@@ -316,13 +227,51 @@ order = FIRST
   [../]
 []
 
+[Preconditioning]
+   [./FSP]
+     type = FSP
+     # It is the starting point of splitting
+     topsplit = 'contact_interior' # 'contact_interior' should match the following block name
+     [./contact_interior]
+       splitting          = 'contact interior'
+       splitting_type     = multiplicative
+     [../]
+     [./interior]
+       type = ContactSplit
+       vars = 'disp_x disp_y'
+       uncontact_master   = '10'
+       uncontact_slave    = '40'
+       # contact_displaced = '20'
+       blocks              = '1 2'
+       include_all_contact_nodes = 1
+
+       # petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
+       # petsc_options_value = '  preonly hypre  boomeramg'
+       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       petsc_options_value = '  preonly lu NONZERO 1e-15'
+      [../]
+      [./contact]
+       type = ContactSplit
+       vars = 'disp_x disp_y'
+       contact_master   = '10'
+       contact_slave    = '40'
+       # contact_displaced = '20'
+       include_all_contact_nodes = 1
+       blocks = '200'
+
+
+       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       petsc_options_value = '  preonly lu NONZERO 1e-15'
+     [../]
+   [../]
+ []
+
+
+
 [Executioner]
 
   type = Transient
   solve_type = 'PJFNK'
-
-  petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = '200 lu superlu_dist'
 
   line_search = 'none'
 
@@ -343,6 +292,42 @@ order = FIRST
     scale = 0.5
   [../]
 []
+
+# [Preconditioning]
+#   [./SMP]
+#     type = SMP
+#     full = true
+#   [../]
+# []
+#
+# [Executioner]
+#
+#   type = Transient
+#   solve_type = 'PJFNK'
+#
+#   petsc_options = '-snes_ksp_ew -log_view'
+#   petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_factor_mat_solver_package'
+#   petsc_options_value = '200 lu superlu_dist'
+#
+#   line_search = 'none'
+#
+#   l_max_its = 7000
+#   nl_max_its = 100
+#   nl_abs_tol = 0.9E-8
+#   nl_rel_tol = 0.9E-7
+#   l_tol = 0.9E-3
+#
+#   start_time = 0.0
+#   dt = 0.25
+#   dtmin = 0.01
+#
+#   end_time = ${end_time}
+#
+#   [./Predictor]
+#     type = SimplePredictor
+#     scale = 0.5
+#   [../]
+# []
 
 [Outputs]
   file_base = ./stroing_scaling_output/torque_2wires_height${height}_radii${radius}_${end_time}deg_job${Job}_out

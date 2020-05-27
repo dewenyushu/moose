@@ -321,8 +321,8 @@ order = FIRST
   type = Transient
   solve_type = 'PJFNK'
 
-  petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = '200 lu superlu_dist'
+  petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_hypre_type -pc_hypre_boomeramg_max_iter -pc_hypre_boomeramg_strong_threshold'
+  petsc_options_value = '200 hypre boomeramg 8 0.7'
 
   line_search = 'none'
 

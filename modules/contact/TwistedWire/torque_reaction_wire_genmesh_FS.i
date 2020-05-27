@@ -9,7 +9,7 @@ refine=0
 
 Job=1
 
-end_time= 1
+end_time= 5
 
 order = FIRST
 
@@ -113,25 +113,6 @@ order = FIRST
   [../]
   uniform_refine =${refine}
 []
-
-# [Variables]
-#   [./disp_x]
-#   [../]
-#   [./disp_y]
-#   [../]
-#   [./disp_z]
-#   [../]
-#
-# []
-
-[Preconditioning]
-  [./SMP]
-    type = SMP
-    full = true
-  [../]
-[]
-
-
 
 [AuxVariables]
   [./saved_x]
@@ -316,13 +297,49 @@ order = FIRST
   [../]
 []
 
+[Preconditioning]
+   [./FSP]
+     type = FSP
+     # It is the starting point of splitting
+     topsplit = 'contact_interior' # 'contact_interior' should match the following block name
+     [./contact_interior]
+       splitting          = 'contact interior'
+       splitting_type     = multiplicative
+     [../]
+     [./interior]
+       type = ContactSplit
+       vars = 'disp_x disp_y'
+       uncontact_master   = '10'
+       uncontact_slave    = '40'
+       # contact_displaced = '20'
+       blocks              = '1 2'
+       include_all_contact_nodes = 1
+
+       # petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
+       # petsc_options_value = '  preonly hypre  boomeramg'
+       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       petsc_options_value = '  preonly lu NONZERO 1e-15'
+      [../]
+      [./contact]
+       type = ContactSplit
+       vars = 'disp_x disp_y'
+       contact_master   = '10'
+       contact_slave    = '40'
+       # contact_displaced = '20'
+       include_all_contact_nodes = 1
+       blocks = '20'
+
+
+       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       petsc_options_value = '  preonly lu NONZERO 1e-15'
+     [../]
+   [../]
+ []
+
 [Executioner]
 
   type = Transient
   solve_type = 'PJFNK'
-
-  petsc_options_iname = '-ksp_gmres_restart -pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = '200 lu superlu_dist'
 
   line_search = 'none'
 
