@@ -6,9 +6,11 @@ refine = 0
 # []
 
 [Mesh]
+  second_order = true
   [./original_file_mesh]
     type = FileMeshGenerator
     file = ddm_mortar_non_conform_2blocks.e
+    # file = ddm_mortar_2blocks_fine_slave.e
   [../]
   [slave]
     input = original_file_mesh
@@ -33,6 +35,10 @@ refine = 0
     # value = x*x+y*y
     value = sin(2*pi*x)*sin(2*pi*y)
   [../]
+  [./exact_sln_lambda]
+    type = ParsedFunction
+    value = -2*pi*sin(2*pi*y)
+  [../]
   [./ffn]
     type = ParsedFunction
     # value = -4
@@ -42,16 +48,16 @@ refine = 0
 
 [Variables]
   [./u]
-    order = FIRST
+    order = SECOND
     family = LAGRANGE
     block = '1 2'
   [../]
 
   [./lm]
-    order = FIRST
+    order = SECOND
     family = LAGRANGE
     block = slave_lower
-    use_dual = true
+    use_dual = false
   [../]
 []
 
@@ -89,13 +95,25 @@ refine = 0
 []
 
 [Postprocessors]
-  [./l2_error]
+  [./l2_u]
     type = ElementL2Error
     variable = u
     function = exact_sln
     block = '1 2'
     execute_on = 'initial timestep_end'
   [../]
+  [./l2_lm]
+    type = ElementL2Error
+    variable = lm
+    function = exact_sln_lambda
+    block = '100'
+    execute_on = 'initial timestep_end'
+  [../]
+  [h]
+     type = AverageElementSize
+     execute_on = 'initial timestep_end'
+     block = '1 2'
+  []
 []
 
 [Preconditioning]
@@ -125,9 +143,13 @@ refine = 0
     file_base = DDM_LU_exodus_ref${refine}
     type = Exodus
   [../]
-  [dof_map]
-    file_base = DDM_LU_dofmap_ref${refine}
-    type = DOFMap
-    execute_on = 'initial'
-  []
+  # [dof_map]
+  #   file_base = DDM_LU_dofmap_ref${refine}
+  #   type = DOFMap
+  #   execute_on = 'initial'
+  # []
+  # [./csv]
+  #   file_base = DDM_LU_exodus_ref${refine}
+  #   type = CSV
+  # [../]
 []
