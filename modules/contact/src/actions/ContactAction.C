@@ -107,6 +107,8 @@ ContactAction::validParams()
       "normal_lm_scaling", 1., "Scaling factor to apply to the normal LM variable");
   params.addParam<Real>(
       "tangential_lm_scaling", 1., "Scaling factor to apply to the tangential LM variable");
+  params.addParam<bool>(
+      "use_dual", false, "Whether to use the dual Mortar approach");
 
   params.addClassDescription("Sets up all objects needed for mechanical contact enforcement");
 
@@ -120,7 +122,8 @@ ContactAction::ContactAction(const InputParameters & params)
     _model(getParam<MooseEnum>("model")),
     _formulation(getParam<MooseEnum>("formulation")),
     _system(getParam<MooseEnum>("system")),
-    _mesh_gen_name(getParam<MeshGeneratorName>("mesh"))
+    _mesh_gen_name(getParam<MeshGeneratorName>("mesh")),
+    _use_dual(getParam<bool>("use_dual"))
 {
 
   if (_formulation == "tangential_penalty")
@@ -144,6 +147,9 @@ ContactAction::ContactAction(const InputParameters & params)
     if (_model == "glued")
       paramError("model", "The 'mortar' formulation does not support glued contact (yet)");
   }
+  else if (_use_dual)
+      paramError("use_dual",
+                 "The 'use_dual' option can only be used with the 'mortar' formulation");
 
   if (_formulation != "ranfs")
     if (getParam<bool>("ping_pong_protection"))
@@ -321,6 +327,7 @@ ContactAction::addMortarContact()
                                                       const Real scaling_factor) //
     {
       InputParameters params = _factory.getValidParams("MooseVariableBase");
+      params.set<bool>("use_dual")=_use_dual;
 
       mooseAssert(_problem->systemBaseNonlinear().hasVariable(displacements[0]),
                   "Displacement variable is missing");
@@ -348,11 +355,20 @@ ContactAction::addMortarContact()
       _problem->addVariable(var_type, variable_name, params);
     };
 
-    // Set the family/order same as primal for normal contact and one order lower for tangential.
+    // Normal contact: same family/order as primal.
+    // Tangential contact:
+    //    For standard Mortar: same family, one order lower.
+    //    For dual Mortar: same family, equal order as primal.
     addLagrangeMultiplier(normal_lagrange_multiplier_name, 0, getParam<Real>("normal_lm_scaling"));
     if (_model == "coulomb")
-      addLagrangeMultiplier(
+    {
+      if (_use_dual)
+        addLagrangeMultiplier(
+          tangential_lagrange_multiplier_name, 0, getParam<Real>("tangential_lm_scaling"));
+      else
+        addLagrangeMultiplier(
           tangential_lagrange_multiplier_name, 1, getParam<Real>("tangential_lm_scaling"));
+    }
   }
 
   if (_current_task == "add_constraint")

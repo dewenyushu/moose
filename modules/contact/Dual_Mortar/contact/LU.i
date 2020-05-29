@@ -112,13 +112,12 @@ refine = 1
     slave = 10
     master = 20
 
-    dual_mortar = true
+    use_dual = true
 
-    model = coulomb
     formulation = mortar
-    system = constraint
+    model = frictionless
 
-    friction_coefficient = 0.2
+    # friction_coefficient = 0.2
   [../]
 []
 
