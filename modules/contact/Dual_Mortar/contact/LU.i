@@ -1,7 +1,7 @@
 offset = 0.001
-vy = 0.15
+vy = 0.1
 
-refine = 1
+refine = 0
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -11,7 +11,8 @@ refine = 1
 [Mesh]
   [./original_file_mesh]
     type = FileMeshGenerator
-    file = long_short_blocks.e
+    # file = long_short_blocks.e
+    file = two_blocks_non-match.e
   [../]
   uniform_refine =  ${refine}
 []
@@ -152,12 +153,12 @@ refine = 1
   petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   petsc_options_value = 'lu NONZERO   1e-15'
 
-  # petsc_options_iname = '-pc_type -pc_factor_mat_solver_type -pc_factor_shift_type -pc_factor_shift_amount'
-  # petsc_options_value = ' lu superlu_dist NONZERO 1e-15'
+  # petsc_options_iname = '-pc_type -ksp_view_mat'
+  # petsc_options_value = 'svd ascii:dual_matrix_ref${refine}.m:ascii_matlab'
 
-  dt = 0.05
+  dt = 0.1
   dtmin = 1e-4
-  end_time = 0.1
+  end_time = 0.2
 
   # l_tol = 1e-8
   l_max_its = 100
@@ -169,10 +170,10 @@ refine = 1
 []
 
 [Outputs]
-  file_base = ./LU/contact_sliding_LU_refine_${refine}_out
-  # [./exodus]
-  #   type = Exodus
-  # [../]
+  file_base = ./contact_sliding_LU_refine_${refine}_out
+  [./exodus]
+    type = Exodus
+  [../]
   [./console]
     type = Console
     max_rows = 5
