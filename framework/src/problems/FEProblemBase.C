@@ -4902,6 +4902,13 @@ FEProblemBase::solve()
 
   possiblyRebuildGeomSearchPatches();
 
+
+  // set up DM which is required if use a field split preconditioner
+  // We need to setup DM every "solve()" because libMesh destroy SNES after solve()
+  // Do not worry, DM setup is very cheap
+  if (_nl->haveFieldSplitPreconditioner())
+    Moose::PetscSupport::petscSetupDM(*_nl);
+
   // reset flag so that linear solver does not use
   // the old converged reason "DIVERGED_NANORINF", when
   // we throw  an exception and stop solve

@@ -9,7 +9,7 @@ refine=0
 
 Job=1
 
-end_time= 5
+end_time= 1
 
 order = FIRST
 
@@ -147,7 +147,7 @@ order = FIRST
     strain = FINITE
     add_variables = true
     block = '1 2'
-    use_automatic_differentiation = false
+    use_automatic_differentiation = true
   [../]
 []
 
@@ -270,15 +270,15 @@ order = FIRST
 
 [Materials]
   [./elasticity_tensor]   #Silicone_Rubber
-    type = ComputeIsotropicElasticityTensor
-    # type = ADComputeIsotropicElasticityTensor
+    # type = ComputeIsotropicElasticityTensor
+    type = ADComputeIsotropicElasticityTensor
     block = '1 2'
     youngs_modulus = 128E9
     poissons_ratio = 0.36
   [../]
   [./elastic_stress]
-    type = ComputeFiniteStrainElasticStress
-    # type = ADComputeFiniteStrainElasticStress
+    # type = ComputeFiniteStrainElasticStress
+    type = ADComputeFiniteStrainElasticStress
     block = '1 2'
   [../]
 []
@@ -343,8 +343,12 @@ order = FIRST
 
   line_search = 'none'
 
-  l_max_its = 7000
-  nl_max_its = 100
+  petsc_options=' -snes_monitor -ksp_monitor'
+
+  automatic_scaling = false
+
+  l_max_its = 100
+  nl_max_its = 30
   nl_abs_tol = 0.9E-8
   nl_rel_tol = 0.9E-7
   l_tol = 0.9E-3
