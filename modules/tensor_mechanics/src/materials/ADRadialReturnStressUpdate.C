@@ -78,6 +78,7 @@ ADRadialReturnStressUpdate::updateState(ADRankTwoTensor & strain_increment,
   // Set the value of 3 * shear modulus for use as a reference residual value
   _three_shear_modulus = 3.0 * ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
 
+  /// Initialize stress strain before inner loop NR... TODO: initilize state variables, too...
   computeStressInitialize(effective_trial_stress, elasticity_tensor);
 
   // Use Newton iteration to determine the scalar effective inelastic strain increment
