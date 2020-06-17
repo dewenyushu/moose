@@ -94,7 +94,7 @@ protected:
    * @param scalar     Inelastic strain magnitude obtained in an inner NR loop
    */
    virtual void updateInternalStateVariables(const ADReal & /*effective_trial_stress*/,
-                                         const ADReal & /*scalar*/) {}
+                                         const ADReal & /*scalar*/, const ADReal & /*scalar_increment*/) {}
 
   /**
    * Finalize internal state variables for a model for a given iteration.

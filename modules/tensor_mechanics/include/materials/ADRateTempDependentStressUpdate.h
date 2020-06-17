@@ -40,11 +40,14 @@ protected:
                          const ADReal & scalar = 0.0);
 
   virtual void updateInternalStateVariables(const ADReal & effective_trial_stress,
-                                            const ADReal & scalar) override;
+                                            const ADReal & scalar=0.0,
+                                            const ADReal & scalar_increment=0.0) override;
 
   virtual void initQpStatefulProperties() override;
   virtual void propagateQpStatefulProperties() override;
   virtual void computeStressFinalize(const ADRankTwoTensor & plastic_strain_increment) override;
+
+  // Real computeReferenceResidual(const ADReal & effective_trial_stress, const ADReal & scalar_effective_inelastic_strain) override;
 
   /// Temperature variable value
   const ADVariableValue * _temperature;
@@ -91,7 +94,7 @@ protected:
   ADReal _phi;
 
   /// Isotropic harderning internal state variable
-  ADReal _r;
+  ADReal _r, _r_old, _dr;
 
   /// Temperature dependent yield stress
   ADReal _Y;

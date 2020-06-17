@@ -167,8 +167,6 @@ ADSingleVariableReturnMappingSolution::internalSolve(const ADReal effective_tria
 
   _initial_residual = _residual = computeResidual(effective_trial_stress, scalar);
 
-  // std::cout<< _residual.value()<<std::endl;
-
   ADReal residual_old = _residual;
   Real init_resid_sign = MathUtils::sign(MetaPhysicL::raw_value(_residual));
   Real reference_residual = computeReferenceResidual(effective_trial_stress, scalar);
@@ -191,7 +189,7 @@ ADSingleVariableReturnMappingSolution::internalSolve(const ADReal effective_tria
 
     /// Inner NR loop needs to update other internal state variables for cases when
     /// the flow rule is a function of these variables
-    updateInternalStateVariables(effective_trial_stress, scalar);
+    updateInternalStateVariables(effective_trial_stress, scalar, scalar_increment);
 
     if (_check_range)
       checkPermissibleRange(scalar,
