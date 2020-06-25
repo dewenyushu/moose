@@ -88,13 +88,14 @@ protected:
 
 
   /// Components for computing the derivatives
-  ADReal _C1, _C2;
+  ADMaterialProperty<Real> & _C1, & _C2;
 
   /// Flow rule function
-  ADReal _phi;
+  // ADReal _phi;
+  ADMaterialProperty<Real> & _plastic_strain_rate;
 
-  /// Isotropic harderning internal state variable
-  ADReal _r, _r_old, _dr;
+  /// Increment of isotropic harderning internal state variable
+  // ADReal _dr;
 
   /// Temperature dependent yield stress
   ADReal _Y;
@@ -105,6 +106,9 @@ protected:
   /// Derivative of temperature dependent shear modulus
   ADReal _dG;
 
+  /// Isotropic harderning internal state variable
+  ADMaterialProperty<Real> & _r;
+  const MaterialProperty<Real> & _r_old;
 
   /// Plastic strain material property
   ADMaterialProperty<RankTwoTensor> & _plastic_strain;

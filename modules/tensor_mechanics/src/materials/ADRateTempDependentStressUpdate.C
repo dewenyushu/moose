@@ -61,13 +61,14 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
     _Rd1(getParam<Real>("Rd1")),
     _Rd2(getParam<Real>("Rd2")),
     _hxi(getParam<Real>("hxi")),
+    _C1(declareADProperty<Real>(_base_name + "C1")),
+    _C2(declareADProperty<Real>(_base_name + "C2")),
+    _plastic_strain_rate(declareADProperty<Real>(_base_name + "plastic_strain_rate")),
+    _r(declareADProperty<Real>(_base_name + "hardening_variable")),
+    _r_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
     _plastic_strain(declareADProperty<RankTwoTensor>(_base_name + "plastic_strain")),
     _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "plastic_strain"))
 {
-  /// initilize _r
-  // @ t=0, _r=exp(_dG/_G*t)->_r=1.0
-  _r_old=_r=1.0;
-  _dr=0.0;
 }
 
 void
@@ -80,13 +81,12 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
   _G = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
   _dG = 0.0; // looks pretty flat
 
-  if (_qp==1)
-    std::cout<<"Before Initialize: r="<<_r.value()<<", r_old= "<<_r_old.value()<<", dr= "<<_dr.value()<<" sigma_trial = "<<effective_trial_stress.value()<<std::endl;
+  _r[_qp] = _r_old[_qp];
 
   updateInternalStateVariables(effective_trial_stress);
 
-  if (_qp==1)
-    std::cout<<"After Initialize: r="<<_r.value()<<", r_old= "<<_r_old.value()<<", dr= "<<_dr.value()<<" sigma_trial = "<<effective_trial_stress.value()<<std::endl;
+  // if (_qp==1)
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Initialize: r="<<_r[_qp].value()<<", sigma_trial = "<<effective_trial_stress.value()<<std::endl;
 
 }
 
@@ -95,7 +95,7 @@ ADRateTempDependentStressUpdate::computeResidual(const ADReal & effective_trial_
                                              const ADReal & scalar)
 {
   computeFlowRule(effective_trial_stress, scalar);
-  return _phi * _dt - scalar - _C1*_C2*_r*_dG/_G*_dt;
+  return _plastic_strain_rate[_qp] * _dt - scalar - _C1[_qp]*_C2[_qp]*_r[_qp]*_dG/_G*_dt;
 }
 
 ADReal
@@ -104,7 +104,7 @@ ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_tria
 {
   computeFlowRule(effective_trial_stress, scalar);
   const ADReal theta = (*_temperature)[_qp];
-  const ADReal creep_rate_derivative = _C1*(-3.0*_G/(_r + _Y)) - _C1*_C2*(_Hmu*_G*(1.0+_hxi/_r) -_Rd1*std::exp(-_Rd2/theta)*_r);
+  const ADReal creep_rate_derivative = _C1[_qp]*(-3.0*_G/(_r[_qp] + _Y)) - _C1[_qp]*_C2[_qp]*(_Hmu*_G*(1.0+_hxi/_r[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_r[_qp]);
   return creep_rate_derivative * _dt - 1.0;
 }
 
@@ -114,21 +114,19 @@ ADRateTempDependentStressUpdate::computeFlowRule(const ADReal & effective_trial_
 {
   const ADReal theta = (*_temperature)[_qp];
   const ADReal stress_delta = effective_trial_stress - 3.0 * _G * scalar;
-  const ADReal ratio = stress_delta/(_r + _Y);
+  const ADReal ratio = stress_delta/(_r[_qp] + _Y);
 
   if (ratio>1.0)
   {
-    _phi = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
-    _C1 = (_n1+_n2/theta)*_phi*std::cosh(ratio-1.0)/std::sinh(ratio-1.0);
-    _C2 = (3.0*_G*scalar-effective_trial_stress)/(_r + _Y)/(_r + _Y);
-
-    // std::cout<<"stress_delta: "<<stress_delta.value()<<" Y:"<<_Y.value()<<" ratio: "<<ratio.value()<<", stress_delta: "<<stress_delta.value()<<", phi: "<<_phi.value()<<"; C1: "<<_C1.value()<<"; C2: "<<_C2.value()<<"; r: "<<_r.value()<<std::endl;
+    _plastic_strain_rate[_qp] = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
+    _C1[_qp] = (_n1+_n2/theta)*_plastic_strain_rate[_qp]*std::cosh(ratio-1.0)/std::sinh(ratio-1.0);
+    _C2[_qp] = (3.0*_G*scalar-effective_trial_stress)/(_r[_qp] + _Y)/(_r[_qp] + _Y);
   }
   else
   {
-    _phi= 0.0;
-    _C1=0.0;
-    _C2=0.0;
+    _plastic_strain_rate[_qp]= 0.0;
+    _C1[_qp]=0.0;
+    _C2[_qp]=0.0;
   }
 }
 
@@ -137,6 +135,12 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
 {
   _plastic_strain[_qp].zero();
 
+  /// initilize _r
+  // @ t=0, _r=exp(_dG/_G*t)->_r=1.0
+
+  if(_r[_qp]<1e-10)
+    _r[_qp]=1.0;
+
   ADRadialReturnStressUpdate::initQpStatefulProperties();
 }
 
@@ -144,6 +148,7 @@ void
 ADRateTempDependentStressUpdate::propagateQpStatefulProperties()
 {
   _plastic_strain[_qp] = _plastic_strain_old[_qp];
+  _r[_qp]=_r_old[_qp];
 
   propagateQpStatefulPropertiesRadialReturn();
 }
@@ -152,18 +157,10 @@ void
 ADRateTempDependentStressUpdate::computeStressFinalize(
     const ADRankTwoTensor & plastic_strain_increment)
 {
-  if (_qp==1)
-    std::cout<<"Before Finalize: r="<<_r.value()<<", r_old= "<<_r_old.value()<<", dr= "<<_dr.value()<<std::endl;
-
   _plastic_strain[_qp] = _plastic_strain_old[_qp] + plastic_strain_increment;
-  _r_old = _r;
-  _dr=0.0;
 
-  if (_qp==1)
-    std::cout<<"After Finalize: r="<<_r.value()<<", r_old= "<<_r_old.value()<<", dr= "<<_dr.value()<<std::endl;
-  // _plastic_strain[_qp] = _plastic_strain[_qp] + plastic_strain_increment;
-  // if (_qp==0)
-  //   std::cout<<_plastic_strain[_qp].L2norm().value()<<" "<<_plastic_strain_old[_qp].L2norm()<<" "<<plastic_strain_increment.L2norm().value()<<std::endl;
+  // if (_qp==1)
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Finalize: r="<<_r[_qp].value()<<std::endl;
 }
 
 void
@@ -172,23 +169,13 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
                                           const ADReal & scalar,
                                           const ADReal & /*scalar_increment*/)
 {
-  /// Do not update _r for now...
-  _r =_r_old=1.0;
-  // const ADReal theta = (*_temperature)[_qp];
-  // _dr = _r_old*(_dG/_G)+(_Hmu*_G*(1.0+_hxi/_r_old)-_Rd1*std::exp(-_Rd2/theta)*_r_old)*scalar;
-  // _r=_r_old+_dr;
-  if (_qp==1)
-    std::cout<<"\tUpdate: r="<<_r.value()<<", r_old= "<<_r_old.value()<<", dr= "<<_dr.value()<<", Dp= "<<scalar.value()<<std::endl;
+  const ADReal theta = (*_temperature)[_qp];
+
+  ADReal dr= _r_old[_qp]*(_dG/_G)+(_Hmu*_G*(1.0+_hxi/ _r_old[_qp])-_Rd1*std::exp(-_Rd2/theta)* _r_old[_qp])*scalar;
+  _r[_qp]=_r_old[_qp]+dr;
+
+  // if (_qp==1)
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], Update: r="<<_r[_qp].value()<<", dr= "<<dr.value()<<", Dp= "<<scalar.value()<<std::endl;
 
   computeFlowRule(effective_trial_stress, scalar);
 }
-
-// Real
-// ADRateTempDependentStressUpdate::computeReferenceResidual(
-//                                         const ADReal & effective_trial_stress,
-//                                         const ADReal & scalar)
-// {
-//   computeFlowRule(effective_trial_stress, scalar);
-//   return MetaPhysicL::raw_value(_phi*_dt) -
-//          MetaPhysicL::raw_value(scalar);
-// }
