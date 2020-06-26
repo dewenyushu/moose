@@ -61,11 +61,8 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
     _Rd1(getParam<Real>("Rd1")),
     _Rd2(getParam<Real>("Rd2")),
     _hxi(getParam<Real>("hxi")),
-    _C1(declareADProperty<Real>(_base_name + "C1")),
-    _C2(declareADProperty<Real>(_base_name + "C2")),
-    _plastic_strain_rate(declareADProperty<Real>(_base_name + "plastic_strain_rate")),
-    _r(declareADProperty<Real>(_base_name + "hardening_variable")),
-    _r_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
+    _hardening_variable(declareADProperty<Real>(_base_name + "hardening_variable")),
+    _hardening_variable_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
     _plastic_strain(declareADProperty<RankTwoTensor>(_base_name + "plastic_strain")),
     _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "plastic_strain"))
 {
@@ -75,18 +72,21 @@ void
 ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effective_trial_stress,
                                                      const ADRankFourTensor & elasticity_tensor)
 {
-  _Y = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - (*_temperature)[_qp])))/(_Y4 + std::exp(-_Y1/(*_temperature)[_qp]));
+  _yield_stress = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - (*_temperature)[_qp])))/(_Y4 + std::exp(-_Y1/(*_temperature)[_qp]));
 
   /// TODO: update temperature dependent shear modulus when temperature changes
-  _G = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
-  _dG = 0.0; // looks pretty flat
+  _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
+  _shear_modulus_derivative = -0.1e9; // needs to change
 
-  _r[_qp] = _r_old[_qp];
+  // if (_qp==1)
+  //   std::cout<<"E: "<<ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor).value()<<"\nG: "<<ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor).value()<<"\nmu: "<<ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor).value()<<std::endl;
+
+  _hardening_variable[_qp] = _hardening_variable_old[_qp];
 
   updateInternalStateVariables(effective_trial_stress);
 
   // if (_qp==1)
-  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Initialize: r="<<_r[_qp].value()<<", sigma_trial = "<<effective_trial_stress.value()<<std::endl;
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Initialize: r="<<_hardening_variable[_qp].value()<<", sigma_trial = "<<effective_trial_stress.value()<<std::endl;
 
 }
 
@@ -94,39 +94,39 @@ ADReal
 ADRateTempDependentStressUpdate::computeResidual(const ADReal & effective_trial_stress,
                                              const ADReal & scalar)
 {
-  computeFlowRule(effective_trial_stress, scalar);
-  return _plastic_strain_rate[_qp] * _dt - scalar - _C1[_qp]*_C2[_qp]*_r[_qp]*_dG/_G*_dt;
+  computePlasticStrainRate(effective_trial_stress, scalar);
+  return _plastic_strain_rate * _dt - scalar - _C1*_C2*_hardening_variable[_qp]*_shear_modulus_derivative/_shear_modulus*_dt;
 }
 
 ADReal
 ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_trial_stress,
                                                const ADReal &  scalar )
 {
-  computeFlowRule(effective_trial_stress, scalar);
+  computePlasticStrainRate(effective_trial_stress, scalar);
   const ADReal theta = (*_temperature)[_qp];
-  const ADReal creep_rate_derivative = _C1[_qp]*(-3.0*_G/(_r[_qp] + _Y)) - _C1[_qp]*_C2[_qp]*(_Hmu*_G*(1.0+_hxi/_r[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_r[_qp]);
+  const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_hxi/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
   return creep_rate_derivative * _dt - 1.0;
 }
 
 void
-ADRateTempDependentStressUpdate::computeFlowRule(const ADReal & effective_trial_stress,
+ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effective_trial_stress,
                                                       const ADReal & scalar)
 {
   const ADReal theta = (*_temperature)[_qp];
-  const ADReal stress_delta = effective_trial_stress - 3.0 * _G * scalar;
-  const ADReal ratio = stress_delta/(_r[_qp] + _Y);
+  const ADReal stress_delta = effective_trial_stress - 3.0 * _shear_modulus * scalar;
+  const ADReal ratio = stress_delta/(_hardening_variable[_qp] + _yield_stress);
 
   if (ratio>1.0)
   {
-    _plastic_strain_rate[_qp] = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
-    _C1[_qp] = (_n1+_n2/theta)*_plastic_strain_rate[_qp]*std::cosh(ratio-1.0)/std::sinh(ratio-1.0);
-    _C2[_qp] = (3.0*_G*scalar-effective_trial_stress)/(_r[_qp] + _Y)/(_r[_qp] + _Y);
+    _plastic_strain_rate = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
+    _C1 = (_n1+_n2/theta)*_plastic_strain_rate*std::cosh(ratio-1.0)/std::sinh(ratio-1.0);
+    _C2 = (3.0*_shear_modulus*scalar-effective_trial_stress)/(_hardening_variable[_qp] + _yield_stress)/(_hardening_variable[_qp] + _yield_stress);
   }
   else
   {
-    _plastic_strain_rate[_qp]= 0.0;
-    _C1[_qp]=0.0;
-    _C2[_qp]=0.0;
+    _plastic_strain_rate= 0.0;
+    _C1=0.0;
+    _C2=0.0;
   }
 }
 
@@ -135,11 +135,11 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
 {
   _plastic_strain[_qp].zero();
 
-  /// initilize _r
-  // @ t=0, _r=exp(_dG/_G*t)->_r=1.0
+  /// initilize _hardening_variable
+  // @ t=0, _hardening_variable=exp(_shear_modulus_derivative/_shear_modulus*t)->_hardening_variable=1.0
 
-  if(_r[_qp]<1e-10)
-    _r[_qp]=1.0;
+  if(_hardening_variable[_qp]<1e-10)
+    _hardening_variable[_qp]=1.0;
 
   ADRadialReturnStressUpdate::initQpStatefulProperties();
 }
@@ -148,7 +148,7 @@ void
 ADRateTempDependentStressUpdate::propagateQpStatefulProperties()
 {
   _plastic_strain[_qp] = _plastic_strain_old[_qp];
-  _r[_qp]=_r_old[_qp];
+  _hardening_variable[_qp]=_hardening_variable_old[_qp];
 
   propagateQpStatefulPropertiesRadialReturn();
 }
@@ -160,7 +160,7 @@ ADRateTempDependentStressUpdate::computeStressFinalize(
   _plastic_strain[_qp] = _plastic_strain_old[_qp] + plastic_strain_increment;
 
   // if (_qp==1)
-  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Finalize: r="<<_r[_qp].value()<<std::endl;
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Finalize: r="<<_hardening_variable[_qp].value()<<std::endl;
 }
 
 void
@@ -171,11 +171,12 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
 {
   const ADReal theta = (*_temperature)[_qp];
 
-  ADReal dr= _r_old[_qp]*(_dG/_G)+(_Hmu*_G*(1.0+_hxi/ _r_old[_qp])-_Rd1*std::exp(-_Rd2/theta)* _r_old[_qp])*scalar;
-  _r[_qp]=_r_old[_qp]+dr;
+  /// Compute increment of isotropic harderning internal state variable
+  ADReal hardening_variable_increment= _hardening_variable_old[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu*_shear_modulus*(1.0+_hxi/ _hardening_variable_old[_qp])-_Rd1*std::exp(-_Rd2/theta)* _hardening_variable_old[_qp])*scalar;
+  _hardening_variable[_qp]=_hardening_variable_old[_qp]+hardening_variable_increment;
 
   // if (_qp==1)
-  //   std::cout<<"\t\t[qp= "<< _qp<<"], Update: r="<<_r[_qp].value()<<", dr= "<<dr.value()<<", Dp= "<<scalar.value()<<std::endl;
+  //   std::cout<<"\t\t[qp= "<< _qp<<"], Update: r="<<_hardening_variable[_qp].value()<<", dr= "<<dr.value()<<", Dp= "<<scalar.value()<<std::endl;
 
-  computeFlowRule(effective_trial_stress, scalar);
+  computePlasticStrainRate(effective_trial_stress, scalar);
 }

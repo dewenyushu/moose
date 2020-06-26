@@ -36,7 +36,7 @@ protected:
   virtual ADReal computeDerivative(const ADReal & effective_trial_stress,
                                    const ADReal & scalar) override;
 
-  void computeFlowRule(const ADReal & effective_trial_stress,
+  void computePlasticStrainRate(const ADReal & effective_trial_stress,
                          const ADReal & scalar = 0.0);
 
   virtual void updateInternalStateVariables(const ADReal & effective_trial_stress,
@@ -56,7 +56,7 @@ protected:
   const Real _start_time;
 
   ///
-  /// Rate and temperature dependent plasticity model parameters
+  /// Plasticity model parameters
   ///
 
   /// Rate independent yield constant [Pa]
@@ -86,29 +86,24 @@ protected:
   /// Misorientation variable hardening constant [m/(s Pa)]
   const Real _hxi;
 
-
   /// Components for computing the derivatives
-  ADMaterialProperty<Real> & _C1, & _C2;
+  ADReal _C1, _C2;
 
-  /// Flow rule function
-  // ADReal _phi;
-  ADMaterialProperty<Real> & _plastic_strain_rate;
-
-  /// Increment of isotropic harderning internal state variable
-  // ADReal _dr;
+  /// Plastic strain rate (flow rule function)
+  ADReal _plastic_strain_rate;
 
   /// Temperature dependent yield stress
-  ADReal _Y;
+  ADReal _yield_stress;
 
   /// Temperature dependent shear modulus
-  ADReal _G;
+  ADReal _shear_modulus;
 
   /// Derivative of temperature dependent shear modulus
-  ADReal _dG;
+  ADReal _shear_modulus_derivative;
 
   /// Isotropic harderning internal state variable
-  ADMaterialProperty<Real> & _r;
-  const MaterialProperty<Real> & _r_old;
+  ADMaterialProperty<Real> & _hardening_variable;
+  const MaterialProperty<Real> & _hardening_variable_old;
 
   /// Plastic strain material property
   ADMaterialProperty<RankTwoTensor> & _plastic_strain;
