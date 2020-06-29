@@ -39,6 +39,8 @@ protected:
   void computePlasticStrainRate(const ADReal & effective_trial_stress,
                          const ADReal & scalar = 0.0);
 
+  void computeMisorientationVariable();
+
   virtual void updateInternalStateVariables(const ADReal & effective_trial_stress,
                                             const ADReal & scalar=0.0,
                                             const ADReal & scalar_increment=0.0) override;
@@ -86,8 +88,14 @@ protected:
   /// Misorientation variable hardening constant [m/(s Pa)]
   const Real _hxi;
 
+  /// Misorientation variable hardening exponent [-]
+  const Real _r;
+
   /// Components for computing the derivatives
   ADReal _C1, _C2;
+
+  /// Misorientation variable
+  ADReal _xi_bar;
 
   /// Plastic strain rate (flow rule function)
   ADReal _plastic_strain_rate;

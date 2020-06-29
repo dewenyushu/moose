@@ -41,6 +41,9 @@ ADRateTempDependentStressUpdate::validParams()
   params.addParam<Real>("Rd1", 8.565e02, "Isotropic dynamic recovery constant [Pa]");
   params.addParam<Real>("Rd2", 5.419e03, "Isotropic dynamic recovery temperature dependence [K]");
   params.addParam<Real>("hxi", 1.670e-03, " Misorientation variable hardening constant [m/(s Pa)]");
+  params.addParam<Real>("r", 1.0, " Misorientation variable hardening exponent [-]");
+  // params.addParam<MaterialPropertyName>("shear_modulus",
+  //                                               "Name of material defining the Shear Modulus");
   return params;
 }
 
@@ -61,6 +64,7 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
     _Rd1(getParam<Real>("Rd1")),
     _Rd2(getParam<Real>("Rd2")),
     _hxi(getParam<Real>("hxi")),
+    _r(getParam<Real>("r")),
     _hardening_variable(declareADProperty<Real>(_base_name + "hardening_variable")),
     _hardening_variable_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
     _plastic_strain(declareADProperty<RankTwoTensor>(_base_name + "plastic_strain")),
@@ -76,10 +80,14 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
 
   /// TODO: update temperature dependent shear modulus when temperature changes
   _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
-  _shear_modulus_derivative = -0.1e9; // needs to change
+  _shear_modulus_derivative = -1e7; // needs to change
 
   // if (_qp==1)
   //   std::cout<<"E: "<<ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor).value()<<"\nG: "<<ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor).value()<<"\nmu: "<<ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor).value()<<std::endl;
+
+  // if (_qp==1)
+  //   std::cout<<"dE: "<<ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor).derivatives()<<"\ndG: "<<ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor).derivatives()<<"\ndmu: "<<ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor).derivatives()<<std::endl;
+
 
   _hardening_variable[_qp] = _hardening_variable_old[_qp];
 
@@ -103,8 +111,10 @@ ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_tria
                                                const ADReal &  scalar )
 {
   computePlasticStrainRate(effective_trial_stress, scalar);
+  computeMisorientationVariable();
+
   const ADReal theta = (*_temperature)[_qp];
-  const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_hxi/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
+  const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_xi_bar/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
   return creep_rate_derivative * _dt - 1.0;
 }
 
@@ -128,6 +138,12 @@ ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effecti
     _C1=0.0;
     _C2=0.0;
   }
+}
+
+void
+ADRateTempDependentStressUpdate::computeMisorientationVariable()
+{
+  _xi_bar = _hxi*std::pow(_hardening_variable[_qp], _r);
 }
 
 void
@@ -171,8 +187,10 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
 {
   const ADReal theta = (*_temperature)[_qp];
 
+  computeMisorientationVariable();
+
   /// Compute increment of isotropic harderning internal state variable
-  ADReal hardening_variable_increment= _hardening_variable_old[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu*_shear_modulus*(1.0+_hxi/ _hardening_variable_old[_qp])-_Rd1*std::exp(-_Rd2/theta)* _hardening_variable_old[_qp])*scalar;
+  ADReal hardening_variable_increment= _hardening_variable_old[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu*_shear_modulus*(1.0+_xi_bar/_hardening_variable[_qp])-_Rd1*std::exp(-_Rd2/theta)* _hardening_variable_old[_qp])*scalar;
   _hardening_variable[_qp]=_hardening_variable_old[_qp]+hardening_variable_increment;
 
   // if (_qp==1)
