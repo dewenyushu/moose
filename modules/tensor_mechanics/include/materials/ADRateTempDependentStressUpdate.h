@@ -10,6 +10,7 @@
 #pragma once
 
 #include "ADRadialReturnStressUpdate.h"
+#include "LinearInterpolation.h"
 
 /**
  * This class uses the stress update material in a radial return isotropic creep
@@ -40,6 +41,7 @@ protected:
                          const ADReal & scalar = 0.0);
 
   void computeMisorientationVariable();
+  void computeShearStressDerivative(const ADRankFourTensor & elasticity_tensor);
 
   virtual void updateInternalStateVariables(const ADReal & effective_trial_stress,
                                             const ADReal & scalar=0.0,
@@ -106,8 +108,11 @@ protected:
   /// Temperature dependent shear modulus
   ADReal _shear_modulus;
 
-  /// Derivative of temperature dependent shear modulus
+  /// Derivative of shear modulus w.r.t. temperature
   ADReal _shear_modulus_derivative;
+
+  /// LinearInterpolation objects for Young's modulus and Poisson's ratio
+  std::unique_ptr<LinearInterpolation> _data_youngs_modulus, _data_poissons_ratio;
 
   /// Isotropic harderning internal state variable
   ADMaterialProperty<Real> & _hardening_variable;

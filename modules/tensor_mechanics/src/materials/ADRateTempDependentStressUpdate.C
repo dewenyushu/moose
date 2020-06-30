@@ -26,6 +26,12 @@ ADRateTempDependentStressUpdate::validParams()
   params.addCoupledVar("temperature", "Coupled temperature");
   params.addParam<Real>("start_time", 0.0, "Start time (if not zero)");
 
+  // temperature dependent Young's modulus and Poisson's ratio
+  params.addParam<std::vector<Real>>("Ex", "The temperature values");
+  params.addParam<std::vector<Real>>("Ey", "The Young's modulus values");
+  params.addParam<std::vector<Real>>("nux", "The temperature values");
+  params.addParam<std::vector<Real>>("nuy", "The Poisson's ratio values");
+
   // Rate dependent plasticity parameters
   // Default values are from the paper by Michael E. Stender, et. al, 2018.
   params.addParam<Real>("Y0", 5.264e09, "Rate independent yield constant [Pa]");
@@ -70,6 +76,17 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
     _plastic_strain(declareADProperty<RankTwoTensor>(_base_name + "plastic_strain")),
     _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "plastic_strain"))
 {
+  std::vector<Real> Ex, Ey, nux, nuy;
+  if (!(parameters.isParamValid("Ex")&& parameters.isParamValid("Ey")&& parameters.isParamValid("nux") && parameters.isParamValid("nuy")))
+    mooseError("Both 'x' and 'y' data must be specified for the Young's modulus and the Poisson's ratio. ");
+
+  Ex = getParam<std::vector<Real>>("Ex");
+  Ey = getParam<std::vector<Real>>("Ey");
+  nux = getParam<std::vector<Real>>("nux");
+  nuy = getParam<std::vector<Real>>("nuy");
+
+  _data_youngs_modulus=libmesh_make_unique<LinearInterpolation>(Ex, Ey, false);
+  _data_poissons_ratio=libmesh_make_unique<LinearInterpolation>(nux, nuy, false);
 }
 
 void
@@ -78,24 +95,13 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
 {
   _yield_stress = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - (*_temperature)[_qp])))/(_Y4 + std::exp(-_Y1/(*_temperature)[_qp]));
 
-  /// TODO: update temperature dependent shear modulus when temperature changes
   _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
-  _shear_modulus_derivative = -1e7; // needs to change
 
-  // if (_qp==1)
-  //   std::cout<<"E: "<<ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor).value()<<"\nG: "<<ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor).value()<<"\nmu: "<<ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor).value()<<std::endl;
-
-  // if (_qp==1)
-  //   std::cout<<"dE: "<<ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor).derivatives()<<"\ndG: "<<ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor).derivatives()<<"\ndmu: "<<ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor).derivatives()<<std::endl;
-
+  computeShearStressDerivative(elasticity_tensor);
 
   _hardening_variable[_qp] = _hardening_variable_old[_qp];
 
   updateInternalStateVariables(effective_trial_stress);
-
-  // if (_qp==1)
-  //   std::cout<<"\t\t[qp= "<< _qp<<"], After Initialize: r="<<_hardening_variable[_qp].value()<<", sigma_trial = "<<effective_trial_stress.value()<<std::endl;
-
 }
 
 ADReal
@@ -144,6 +150,20 @@ void
 ADRateTempDependentStressUpdate::computeMisorientationVariable()
 {
   _xi_bar = _hxi*std::pow(_hardening_variable[_qp], _r);
+}
+
+void
+ADRateTempDependentStressUpdate::computeShearStressDerivative(const ADRankFourTensor & elasticity_tensor)
+{
+  Real dE = _data_youngs_modulus->sampleDerivative((*_temperature)[_qp].value());
+  Real dnu = _data_poissons_ratio->sampleDerivative((*_temperature)[_qp].value());
+
+  ADReal poissons_ratio = ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor);
+  ADReal youngs_modulus = ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor);
+
+  _shear_modulus_derivative = (2.0*dE*(1.0+poissons_ratio) - 2.0*dnu*youngs_modulus)/4.0/(1.0+poissons_ratio)/(1.0+poissons_ratio);
+
+  // std::cout<<"E: "<<youngs_modulus.value()<<", dE: "<<dE<<"; nu: "<<poissons_ratio.value()<<"; dnu: "<<dnu<<"; dG: "<<_shear_modulus_derivative.value()<<std::endl;
 }
 
 void
