@@ -35,14 +35,8 @@ order = FIRST
     preserve_volumes = off
     smoothing_max_it = 3
   []
-  [./c1_rename]
-    type = RenameBoundaryGenerator
-    input = c1
-    old_boundary_name = 'outer'
-    new_boundary_name = '10'
-  []
   [./cylinder1]
-    input = c1_rename
+    input = c1
     type = MeshExtruderGenerator
     num_layers = ${nz}
     extrusion_vector = '0 0 ${height}'
@@ -70,14 +64,8 @@ order = FIRST
     preserve_volumes = off
     smoothing_max_it = 3
   []
-  [./c2_rename]
-    type = RenameBoundaryGenerator
-    input = c2
-    old_boundary_name = 'outer'
-    new_boundary_name = '40'
-  []
   [./cylinder2]
-    input = c2_rename
+    input = c2
     type = MeshExtruderGenerator
     num_layers = ${nz}
     extrusion_vector = '0 0 ${height}'
@@ -287,8 +275,8 @@ order = FIRST
   [./contact]
     mesh = block_sidesets
     formulation = kinematic
-    master = 10
-    slave = 40
+    primary = 10
+    secondary = 40
     model = coulomb
     penalty = 1E7
     tangential_tolerance = .01
@@ -309,8 +297,8 @@ order = FIRST
      [./interior]
        type = ContactSplit
        vars = 'disp_x disp_y'
-       uncontact_master   = '10'
-       uncontact_slave    = '40'
+       uncontact_primary =  '10'
+       uncontact_secondary =  '40'
        # contact_displaced = '20'
        blocks              = '1 2'
        include_all_contact_nodes = 1
@@ -323,8 +311,8 @@ order = FIRST
       [./contact]
        type = ContactSplit
        vars = 'disp_x disp_y'
-       contact_master   = '10'
-       contact_slave    = '40'
+       contact_primary =  '10'
+       contact_secondary =  '40'
        # contact_displaced = '20'
        include_all_contact_nodes = 1
        blocks = '20'

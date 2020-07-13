@@ -217,8 +217,8 @@ end_time=1
   [./contact]
     mesh = block_sidesets
     formulation = kinematic
-    master = '10'
-    slave = '40'
+    primary = '10'
+    secondary = '40'
     model = coulomb
     penalty = 1E7
     tangential_tolerance = .01
@@ -239,8 +239,8 @@ end_time=1
      [./interior]
        type = ContactSplit
        vars = 'disp_x disp_y'
-       uncontact_master   = '10'
-       uncontact_slave    = '40'
+       uncontact_primary =  '10'
+       uncontact_secondary =  '40'
        # contact_displaced = '20'
        blocks              = '1 2'
        include_all_contact_nodes = 1
@@ -253,8 +253,8 @@ end_time=1
       [./contact]
        type = ContactSplit
        vars = 'disp_x disp_y'
-       contact_master   = '10'
-       contact_slave    = '40'
+       contact_primary =  '10'
+       contact_secondary =  '40'
        # contact_displaced = '20'
        include_all_contact_nodes = 1
        blocks = '200'
@@ -273,10 +273,12 @@ end_time=1
   type = Transient
   solve_type = 'PJFNK'
 
+  petsc_options=' -snes_monitor -ksp_monitor'
+
   line_search = 'none'
 
-  l_max_its = 7000
-  nl_max_its = 100
+  l_max_its = 200
+  nl_max_its = 20
   nl_abs_tol = 0.9E-8
   nl_rel_tol = 0.9E-7
   l_tol = 0.9E-3
