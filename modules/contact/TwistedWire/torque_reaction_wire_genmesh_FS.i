@@ -1,13 +1,13 @@
 radius= 0.5
 height=5.0
 
-nz=2
-ring_num=2
-sector=4
+nz=20
+ring_num=4
+sector=2
 
 refine=0
 
-Job=1
+# Job=1
 
 end_time= 1
 
@@ -95,8 +95,8 @@ order = FIRST
               -${radius} 0 ${height}
               ${radius} 0 0
               ${radius} 0 ${height}
-              ${radius} ${radius} 5
-              -${radius} ${radius} 5'
+              ${radius} ${radius} 0.5
+              -${radius} ${radius} 0.5'
     new_boundary = '20 30 50 60 40 10'
   [../]
   uniform_refine =${refine}
@@ -296,27 +296,24 @@ order = FIRST
      [../]
      [./interior]
        type = ContactSplit
-       vars = 'disp_x disp_y'
+       vars = 'disp_x disp_y disp_z'
        uncontact_primary =  '10'
        uncontact_secondary =  '40'
-       # contact_displaced = '20'
        blocks              = '1 2'
        include_all_contact_nodes = 1
 
-       # petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
-       # petsc_options_value = '  preonly hypre  boomeramg'
-       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
-       petsc_options_value = '  preonly lu NONZERO 1e-15'
+       petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
+       petsc_options_value = '  preonly hypre  boomeramg'
+       # petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       # petsc_options_value = '  preonly lu NONZERO 1e-15'
       [../]
       [./contact]
        type = ContactSplit
-       vars = 'disp_x disp_y'
+       vars = 'disp_x disp_y disp_z'
        contact_primary =  '10'
        contact_secondary =  '40'
-       # contact_displaced = '20'
        include_all_contact_nodes = 1
-       blocks = '20'
-
+       blocks = ''
 
        petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
        petsc_options_value = '  preonly lu NONZERO 1e-15'
@@ -335,15 +332,15 @@ order = FIRST
 
   automatic_scaling = false
 
-  l_max_its = 100
-  nl_max_its = 30
+  l_max_its = 20
+  nl_max_its = 10
   nl_abs_tol = 0.9E-8
   nl_rel_tol = 0.9E-7
   l_tol = 0.9E-3
 
   start_time = 0.0
   dt = 0.25
-  dtmin = 0.01
+  dtmin = 0.25
 
   end_time = ${end_time}
 
@@ -354,7 +351,8 @@ order = FIRST
 []
 
 [Outputs]
-  file_base = ./stroing_scaling_output/torque_2wires_height${height}_radii${radius}_${end_time}deg_job${Job}_out
+  # file_base = ./strong_scaling_output/torque_2wires_height${height}_${end_time}deg_job${Job}_out
+  file_base = out
   interval = 4
   # [./exodus]
   #       type = Exodus

@@ -611,6 +611,7 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
       for (const auto & vit : *(dmm->_var_ids))
       {
         unsigned int v = vit.second;
+        // std::cout<<"Variable: "<<vit.first<<std::endl;
         // Iterate only over this DM's blocks.
         if (!dmm->_all_blocks || (dmm->_nosides && dmm->_nocontacts))
         {
@@ -665,7 +666,9 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
               }
             }
           }
+          // std::cout<<"\tblocks: "<<indices.size()<<std::endl;
         }
+
 
         // Iterate over the sides from this split.
         if (dmm->_side_ids->size())
@@ -739,24 +742,28 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
 
             evindices.clear();
             dofmap.dof_indices(elem_bdry, evindices, v);
+            // std::cout<<"\t\t"<<elem_bdry->id()<<std::endl;
             for (const auto & edof : evindices)
               if (edof >= dofmap.first_dof() && edof < dofmap.end_dof())
                 indices.insert(edof);
           }
-          // loop over lower dimensional secondary elements
-          for (const auto & bit : *(dmm->_block_ids))
-            for (const auto & elem : as_range(
-                     dmm->_nl->system().get_mesh().active_local_subdomain_elements_begin(
-                         bit.second),
-                     dmm->_nl->system().get_mesh().active_local_subdomain_elements_end(bit.second)))
-            {
-              evindices.clear();
-              dofmap.dof_indices(elem, evindices, v);
-              for (const auto & edof : evindices)
-                if (edof >= dofmap.first_dof() && edof < dofmap.end_dof())
-                  indices.insert(edof);
-            }
+          // // loop over lower dimensional secondary elements
+          // for (const auto & bit : *(dmm->_block_ids))
+          //   for (const auto & elem : as_range(
+          //            dmm->_nl->system().get_mesh().active_local_subdomain_elements_begin(
+          //                bit.second),
+          //            dmm->_nl->system().get_mesh().active_local_subdomain_elements_end(bit.second)))
+          //   {
+          //     evindices.clear();
+          //     dofmap.dof_indices(elem, evindices, v);
+          //     std::cout<<evindices.size()<<std::endl;
+          //     for (const auto & edof : evindices)
+          //       if (edof >= dofmap.first_dof() && edof < dofmap.end_dof())
+          //         indices.insert(edof);
+          //   }
+          // std::cout<<"\tContacts: "<<indices.size()<<std::endl;
         }
+
 
         // Iterate over the contacts included in this split.
         if (dmm->_contact_names->size() && !(dmm->_include_all_contact_nodes))
@@ -856,10 +863,12 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
             std::unique_ptr<const Elem> side_bdry = elem_bdry->build_side_ptr(side, false);
             evindices.clear();
             dofmap.dof_indices(side_bdry.get(), evindices, v);
+            // std::cout<<"\t\t"<<elem_bdry->id()<<std::endl;
             for (const auto & edof : evindices)
               if (edof >= dofmap.first_dof() && edof < dofmap.end_dof())
                 unindices.insert(edof);
           }
+          // std::cout<<"\tuncontacts: "<<unindices.size()<<std::endl;
         }
 
         // Iterate over the contacts excluded from this split.
@@ -945,6 +954,7 @@ DMMooseGetEmbedding_Private(DM dm, IS * embedding)
                           unindices.end(),
                           std::inserter(dindices, dindices.end()));
       PetscInt * darray;
+      // std::cout<<"Send to PetscMalloc: "<<dindices.size()<<std::endl;
       ierr = PetscMalloc(sizeof(PetscInt) * dindices.size(), &darray);
       CHKERRQ(ierr);
       dof_id_type i = 0;
@@ -1038,6 +1048,7 @@ DMCreateFieldDecomposition_Moose(
       if (!dinfo._rembedding)
       {
         IS dembedding, lembedding;
+        // std::cout<<"\n====>call embedding for: "<<dname<<std::endl;
         ierr = DMMooseGetEmbedding_Private(dinfo._dm, &dembedding);
         CHKERRQ(ierr);
         if (dmm->_embedding)

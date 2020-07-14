@@ -238,26 +238,26 @@ end_time=1
      [../]
      [./interior]
        type = ContactSplit
-       vars = 'disp_x disp_y'
+       vars = 'disp_x disp_y disp_z'
        uncontact_primary =  '10'
        uncontact_secondary =  '40'
        # contact_displaced = '20'
        blocks              = '1 2'
        include_all_contact_nodes = 1
 
-       # petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
-       # petsc_options_value = '  preonly hypre  boomeramg'
-       petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
-       petsc_options_value = '  preonly lu NONZERO 1e-15'
+       petsc_options_iname = '-ksp_type -pc_type -pc_hypre_type '
+       petsc_options_value = '  preonly hypre  boomeramg'
+       # petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
+       # petsc_options_value = '  preonly lu NONZERO 1e-15'
       [../]
       [./contact]
        type = ContactSplit
-       vars = 'disp_x disp_y'
+       vars = 'disp_x disp_y disp_z'
        contact_primary =  '10'
        contact_secondary =  '40'
        # contact_displaced = '20'
        include_all_contact_nodes = 1
-       blocks = '200'
+       blocks = '1 2'
 
 
        petsc_options_iname = '-ksp_type -pc_sub_type -pc_factor_shift_type  -pc_factor_shift_amount'
@@ -277,15 +277,15 @@ end_time=1
 
   line_search = 'none'
 
-  l_max_its = 200
-  nl_max_its = 20
+  l_max_its = 20
+  nl_max_its = 10
   nl_abs_tol = 0.9E-8
   nl_rel_tol = 0.9E-7
   l_tol = 0.9E-3
 
   start_time = 0.0
   dt = 0.25
-  dtmin = 0.01
+  dtmin = 0.25
 
   end_time = ${end_time}
 
