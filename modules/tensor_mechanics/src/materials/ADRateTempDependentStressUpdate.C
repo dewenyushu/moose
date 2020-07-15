@@ -242,16 +242,12 @@ ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
                                         const ADRankFourTensor & elasticity_tensor,
                                         const RankTwoTensor & elastic_strain_old)
 {
-  // accumulate pressure in preparation for calculations after melting
-  ADReal p_increment=_K_melt * strain_increment.trace();
 
-  _pressure[_qp]=_pressure_old[_qp] + p_increment;
 
   // if(_qp==0)
   // std::cout<<"\t\tT: "<<(*_temperature)[_qp].value()<<"; p: "<< _pressure[_qp].value()<<"; p_old: "<< _pressure_old[_qp]<<"; increment: "<<p_increment.value()<<"; strain increment: "<<strain_increment.trace().value();
 
-  if ((*_temperature)[_qp] < _theta_melt)
-  {
+
     // std::cout<<"\tSolid..."<<std::endl;
     ADRadialReturnStressUpdate::updateState(strain_increment,
                                             inelastic_strain_increment,
@@ -260,14 +256,18 @@ ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
                                             stress_old,
                                             elasticity_tensor,
                                             elastic_strain_old);
-  }
-  else
+
+  // accumulate pressure in preparation for calculations after melting
+  ADReal p_increment=_K_melt * strain_increment.trace();
+  _pressure[_qp]=_pressure_old[_qp] + p_increment;
+
+  if ((*_temperature)[_qp] >= _theta_melt)
   {
     // if(_qp==0)
     // std::cout<<"\tMelt..."<<std::endl;
     ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment;
     RankTwoTensor I; I.setToIdentity();
-    // stress_new = -_pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate;
-    stress_new = stress_new - p_increment*I + 2.0*_mu_melt*strain_increment_rate;
+    stress_new = -_pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate;
+    // stress_new = stress_new - p_increment*I + 2.0*_mu_melt*strain_increment_rate;
   }
 }
