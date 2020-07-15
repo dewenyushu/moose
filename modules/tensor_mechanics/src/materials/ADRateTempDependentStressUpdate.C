@@ -113,6 +113,7 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
   computeShearStressDerivative(elasticity_tensor);
 
   _hardening_variable[_qp] = _hardening_variable_old[_qp];
+  _pressure[_qp] = _pressure_old[_qp];
 
   updateInternalStateVariables(effective_trial_stress);
 }
@@ -258,16 +259,22 @@ ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
                                             elastic_strain_old);
 
   // accumulate pressure in preparation for calculations after melting
-  ADReal p_increment=_K_melt * strain_increment.trace();
-  _pressure[_qp]=_pressure_old[_qp] + p_increment;
+  ADRankTwoTensor strain_increment_total = strain_increment; //+inelastic_strain_increment;
 
   if ((*_temperature)[_qp] >= _theta_melt)
   {
-    // if(_qp==0)
-    // std::cout<<"\tMelt..."<<std::endl;
-    ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment;
+    ADReal p_increment=_K_melt * strain_increment_total.trace();
+    _pressure[_qp]=_pressure_old[_qp] + p_increment;
+    ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment_total;
     RankTwoTensor I; I.setToIdentity();
     stress_new = -_pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate;
-    // stress_new = stress_new - p_increment*I + 2.0*_mu_melt*strain_increment_rate;
+
+    // if(_qp==0)
+    // {
+    //   // std::cout<<"\tMelt... _dt: "<<_dt<<std::endl;
+    //   // // std::cout<<"\t strain rate yy: "<<strain_increment_rate(1,1).value()<<std::endl;
+    //   // std::cout<<"\t pressure: "<<_pressure[_qp].value()<<std::endl;
+    //   std::cout<<"\t new stress trace: "<<stress_new.trace().value()<<std::endl;
+    // }
   }
 }
