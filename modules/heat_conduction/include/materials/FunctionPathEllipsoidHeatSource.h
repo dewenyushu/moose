@@ -38,8 +38,6 @@ protected:
   const Real _b;
   /// longitudinal ellipsoid axe
   const Real _c;
-  /// heating spot travel speed
-  const Real _v;
   /// scaling factor
   const Real _f;
   /// path of the heat source, x, y, z components
