@@ -21,7 +21,6 @@ validParams<FunctionPathEllipsoidHeatSource>()
   params.addRequiredParam<Real>("a", "transverse ellipsoid axe");
   params.addRequiredParam<Real>("b",  "depth ellipsoid axe");
   params.addRequiredParam<Real>("c", "longitudinal ellipsoid axe");
-  params.addRequiredParam<Real>("velocity",  "heating spot travel speed");
   params.addRequiredParam<Real>("factor",  "scaling factor");
   params.addParam<FunctionName>("function_x", "The x component heating spot travel path");
   params.addParam<FunctionName>("function_y", "The y component heating spot travel path");
@@ -38,7 +37,6 @@ FunctionPathEllipsoidHeatSource::FunctionPathEllipsoidHeatSource(const InputPara
     _a(getParam<Real>("a")),
     _b(getParam<Real>("b")),
     _c(getParam<Real>("c")),
-    _v(getParam<Real>("velocity")),
     _f(getParam<Real>("factor")),
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
