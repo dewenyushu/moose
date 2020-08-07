@@ -169,7 +169,7 @@ ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effecti
 
   // check value
   if(std::isinf(_plastic_strain_rate.value()) || std::isinf(_C1.value()) || std::isinf(_C2.value()))
-    mooseError("Plastic strain variable out of bound.. check trial stress");
+    mooseException("Plastic strain variable out of bound.. check trial stress and reduce time step");
 }
 
 void
