@@ -102,8 +102,8 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
   nux = getParam<std::vector<Real>>("nux");
   nuy = getParam<std::vector<Real>>("nuy");
 
-  _data_youngs_modulus=libmesh_make_unique<LinearInterpolation>(Ex, Ey, false);
-  _data_poissons_ratio=libmesh_make_unique<LinearInterpolation>(nux, nuy, false);
+  _data_youngs_modulus=libmesh_make_unique<LinearInterpolation>(Ex, Ey, true);
+  _data_poissons_ratio=libmesh_make_unique<LinearInterpolation>(nux, nuy, true);
 }
 
 void
