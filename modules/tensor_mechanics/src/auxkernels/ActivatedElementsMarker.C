@@ -64,7 +64,6 @@ ActivatedElementsMarker::computeValue()
     for (unsigned int i = 0; i < _q_point.size(); ++i)
       if (_temp_aux[i]>_melt_temperature)
       {
-        std::cout<<"temperature: "<<_temp_aux[i]<<std::endl;
         qp_temp_greater_than_melt = true; break;
       }
   }
