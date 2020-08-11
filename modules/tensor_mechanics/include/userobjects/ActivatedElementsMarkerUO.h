@@ -41,4 +41,5 @@ protected:
   std::vector<dof_id_type> _newly_activated_elem;
   const VariableValue & _temp_aux;
   Real _melt_temperature;
+  bool _use_avg_temperature;
 };

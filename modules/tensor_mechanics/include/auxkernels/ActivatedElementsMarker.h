@@ -32,6 +32,7 @@ protected:
 
   const VariableValue & _temp_aux;
   Real _melt_temperature;
+  bool _use_avg_temperature;
 
   // const ActivatedElementsMarkerUO * _marker_uo;
   // const std::map<dof_id_type, Real> * _marker_map;
