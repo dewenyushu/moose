@@ -275,17 +275,17 @@ ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
 
   temp /= _qrule->n_points();
 
-  if (temp >= _theta_melt)
-  {
-    ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment_total;
-    RankTwoTensor I; I.setToIdentity();
-    stress_new = _pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate.deviatoric();
-    _strain_fluid[_qp] = elastic_strain_old + strain_increment;
-  }
-  else
-  {
-    // compute trial stress using the strain caused only by solid deformation
-    stress_new = stress_new - elasticity_tensor*(_strain_fluid[_qp]);
+  // if (temp >= _theta_melt)
+  // {
+  //   ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment_total;
+  //   RankTwoTensor I; I.setToIdentity();
+  //   stress_new = _pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate.deviatoric();
+  //   _strain_fluid[_qp] = elastic_strain_old + strain_increment;
+  // }
+  // else
+  // {
+  //   // compute trial stress using the strain caused only by solid deformation
+  //   stress_new = stress_new - elasticity_tensor*(_strain_fluid[_qp]);
 
     ADRadialReturnStressUpdate::updateState(strain_increment,
                                             inelastic_strain_increment,
@@ -294,7 +294,7 @@ ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
                                             stress_old,
                                             elasticity_tensor,
                                             elastic_strain_old);
-  }
+  // }
 }
 
 Real
