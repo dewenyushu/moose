@@ -60,8 +60,8 @@ ActivateElementTemp::execute()
     */
     dof_id_type ele_id= _current_elem->id();
     Elem * ele = _mesh.elemPtr(ele_id);
-    std::cout<<"====>  Current element info:\n";
-    ele->print_info();
+    // std::cout<<"====>  Current element info:\n";
+    // ele->print_info();
     /*
       Add element to the activate subdomain
     */
