@@ -1,5 +1,9 @@
 T_room = 300
 
+[Problem]
+  kernel_coverage_check = false
+[]
+
 [Mesh]
   [./gen]
     type = GeneratedMeshGenerator
@@ -34,9 +38,6 @@ T_room = 300
     initial_condition = ${T_room}
     block = '1'
   [../]
-  [./dummy]
-    block = '2'
-  [../]
 []
 
 [Kernels]
@@ -58,15 +59,6 @@ T_room = 300
     use_displaced_mesh = true
   [../]
 
-  [./dummy_diffusion]
-    type = Diffusion
-    variable = dummy
-  [../]
-  [./dummy_bforce]
-    type = BodyForce
-    variable = dummy
-    function = forcing_fn_dummy
-  [../]
 []
 
 [Functions]
@@ -82,10 +74,6 @@ T_room = 300
     type = ParsedFunction
     value= '0.25'
   [../]
-  [./forcing_fn_dummy]
-    type = ConstantFunction
-    value = 0.0
-  [../]
 []
 
 [BCs]
@@ -96,12 +84,6 @@ T_room = 300
     value = ${T_room}
   [../]
 
-  [./dummy_bottom_fix]
-    type = ADDirichletBC
-    variable = dummy
-    boundary = 'back'
-    value = 0.0
-  [../]
 []
 
 [Materials]
@@ -113,7 +95,6 @@ T_room = 300
     power = 1000
     efficienty = 1.0
     factor = 2
-    velocity = 5
     function_x= heat_source_x
     function_y= heat_source_y
     function_z= heat_source_z
