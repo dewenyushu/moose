@@ -62,8 +62,6 @@ ActivateElementTemp::execute()
     */
     dof_id_type ele_id= _current_elem->id();
     Elem * ele = _mesh.elemPtr(ele_id);
-    // std::cout<<"====>  Current element info:\n";
-    // ele->print_info();
     /*
       Add element to the activate subdomain
     */
@@ -74,8 +72,11 @@ ActivateElementTemp::execute()
     auto displaced_problem = _fe_problem.getDisplacedProblem();
     if (displaced_problem)
     {
-      Elem * disp_ele = displaced_problem->refMesh().elemPtr(ele_id);
+      Elem * disp_ele = displaced_problem->mesh().elemPtr(ele_id);
       disp_ele->subdomain_id()=_active_subdomain_id;
+
+      Elem * ref_ele = displaced_problem->refMesh().elemPtr(ele_id);
+      ref_ele->subdomain_id()=_active_subdomain_id;
     }
 
     // std::cout<<"====>  Neighbor element info:\n";
