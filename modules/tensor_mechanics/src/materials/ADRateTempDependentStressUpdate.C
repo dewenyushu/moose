@@ -116,8 +116,16 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
 
   computeShearStressDerivative(elasticity_tensor);
 
-  _hardening_variable[_qp] = _hardening_variable_old[_qp];
-  _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
+  if ( std::abs(_hardening_variable_old[_qp])<1e-10)
+    _hardening_variable[_qp] = 1.0;
+  else
+    _hardening_variable[_qp] = _hardening_variable_old[_qp];
+
+  if (std::abs(_misorientation_variable_old[_qp])<1e-10)
+    _misorientation_variable[_qp] = 1.0;
+  else
+    _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
+
   _pressure[_qp] = _pressure_old[_qp];
   _strain_fluid[_qp]=_strain_fluid_old[_qp];
 
@@ -183,7 +191,6 @@ ADRateTempDependentStressUpdate::computeShearStressDerivative(const ADRankFourTe
 
   _shear_modulus_derivative = (2.0*dE*(1.0+poissons_ratio) - 2.0*dnu*youngs_modulus)/4.0/(1.0+poissons_ratio)/(1.0+poissons_ratio);
 
-  // std::cout<<"E: "<<youngs_modulus.value()<<", dE: "<<dE<<"; nu: "<<poissons_ratio.value()<<"; dnu: "<<dnu<<"; dG: "<<_shear_modulus_derivative.value()<<std::endl;
 }
 
 void
@@ -195,10 +202,10 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
   // @ t=0, _hardening_variable=exp(_shear_modulus_derivative/_shear_modulus*t)->_hardening_variable=1.0
   // similarly for the misorientation_variable
 
-  if(_hardening_variable[_qp]<1e-10)
+  if(std::abs(_hardening_variable[_qp].value())<1e-10)
     _hardening_variable[_qp]=1.0;
 
-  if(_misorientation_variable[_qp]<1e-10)
+  if(std::abs(_misorientation_variable[_qp].value())<1e-10)
     _misorientation_variable[_qp]=1.0;
 
   ADRadialReturnStressUpdate::initQpStatefulProperties();
@@ -207,8 +214,16 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
 void
 ADRateTempDependentStressUpdate::propagateQpStatefulProperties()
 {
-  _plastic_strain[_qp] = _plastic_strain_old[_qp];
-  _hardening_variable[_qp]=_hardening_variable_old[_qp];
+  if ( std::abs(_hardening_variable_old[_qp])<1e-10)
+    _hardening_variable[_qp] = 1.0;
+  else
+    _hardening_variable[_qp] = _hardening_variable_old[_qp];
+
+  if (std::abs(_misorientation_variable_old[_qp])<1e-10)
+    _misorientation_variable[_qp] = 1.0;
+  else
+    _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
+
   _misorientation_variable[_qp]=_misorientation_variable_old[_qp];
   _pressure[_qp]= _pressure_old[_qp];
 
@@ -246,10 +261,14 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
     misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi*_shear_modulus*std::pow(_misorientation_variable[_qp]/_shear_modulus , n_power)*std::abs(scalar);
   _misorientation_variable[_qp] = _misorientation_variable_old[_qp] + misorientation_variable_increment;
 
-  // if (_qp==0)
-  //   std::cout<<"\t\t[qp= "<< _qp<<"], Update: r="<<_hardening_variable[_qp].value()<<", dr= "<<hardening_variable_increment.value()<<", xi= "<<_misorientation_variable[_qp].value()<<", dxi= "<<misorientation_variable_increment.value()<<", plas_strain_rate: "<<std::abs(scalar).value()<<std::endl;
-
   computePlasticStrainRate(effective_trial_stress, scalar);
+
+
+  // check value
+  if(std::isinf(_hardening_variable[_qp].value()))
+    mooseException("Hardening variable out of bound.. reduce time step");
+  if(std::isinf(_misorientation_variable[_qp].value()))
+    mooseException("Misorientation variable out of bound.. reduce time step");
 }
 
 void
