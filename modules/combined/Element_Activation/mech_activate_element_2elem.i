@@ -245,6 +245,7 @@ T_room = 300
     function_z= heat_source_z
     # activate_tol=1e-2
     active_subdomain_id = 1
+    use_displaced_mesh = true
   [../]
 []
 

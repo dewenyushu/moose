@@ -8,6 +8,8 @@
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
 #include "ActivateElementTemp.h"
+#include "DisplacedProblem.h"
+
 #include "libmesh/quadrature.h"
 #include "libmesh/parallel_algebra.h"
 #include "libmesh/parallel.h"
@@ -66,7 +68,15 @@ ActivateElementTemp::execute()
       Add element to the activate subdomain
     */
     ele->subdomain_id()=_active_subdomain_id;
-
+    /*
+      Reassign element in the reference mesh while using a displaced mesh
+    */
+    auto displaced_problem = _fe_problem.getDisplacedProblem();
+    if (displaced_problem)
+    {
+      Elem * disp_ele = displaced_problem->refMesh().elemPtr(ele_id);
+      disp_ele->subdomain_id()=_active_subdomain_id;
+    }
 
     // std::cout<<"====>  Neighbor element info:\n";
     // for (auto s : ele->side_index_range())
@@ -80,7 +90,6 @@ ActivateElementTemp::execute()
     // }
     // std::cout<<"====>  Current element info:\n";
     // ele->print_info();
-
   }
 
 
@@ -89,22 +98,8 @@ ActivateElementTemp::execute()
 void
 ActivateElementTemp::finalize()
 {
-  // _communicator.set_union(_activated_elem_map);
   /*
     Reinit equation systems
   */
-  // std::cout<<"check"<<std::endl;
-  // _mesh.getMesh().prepare_for_use();
-  // std::cout<<"check"<<std::endl;
-  // _mesh.meshChanged();
-  // std::cout<<"check"<<std::endl;
-  // _fe_problem.es().reinit_solutions();
-  // std::cout<<"check"<<std::endl;
-  // _fe_problem.es().reinit();
-  // std::cout<<"check"<<std::endl;
-  // _fe_problem.es().reinit_systems();
-  // std::cout<<"check"<<std::endl;
-  // _mesh.getMesh().prepare_for_use();
-  // std::cout<<"check"<<std::endl;
   _fe_problem.meshChanged();
 }
