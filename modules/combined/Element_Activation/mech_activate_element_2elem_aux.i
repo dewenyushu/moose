@@ -58,6 +58,14 @@ T_room = 300
   [../]
 []
 
+[AuxVariables]
+  [./stress_xx]
+    order = CONSTANT
+    family = MONOMIAL
+    block=1
+  [../]
+[]
+
 [Kernels]
   [./time]
     type = ADHeatConductionTimeDerivative
@@ -102,6 +110,17 @@ T_room = 300
     use_displaced_mesh = true
     block = 1
     displacements = 'disp_x disp_y disp_z'
+  [../]
+[]
+
+[AuxKernels]
+  [./stress_xx]
+    type = ADRankTwoAux
+    rank_two_tensor = stress
+    variable = stress_xx
+    index_i = 0
+    index_j = 0
+    block=1
   [../]
 []
 
