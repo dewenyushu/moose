@@ -43,10 +43,15 @@ protected:
 
   /// activate/inactive subdomain IDs
   const subdomain_id_type _active_subdomain_id;
-  /// Spatial tolerance for checking if an element should be activated
-  const Real _tol;
   /// path of the heat source, x, y, z components
   const Function & _function_x;
   const Function & _function_y;
   const Function & _function_z;
+  /// whether to use variable value for element activation
+  /// if false, use path activation
+  const bool _variable_activation;
+  /// varaible to decide wether an element whould be activated
+  const VariableValue * _coupled_var;
+  /// varaible to decide wether an element whould be activated
+  const Real _activate_value;
 };

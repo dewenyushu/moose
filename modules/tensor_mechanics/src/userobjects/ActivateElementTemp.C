@@ -24,10 +24,18 @@ validParams<ActivateElementTemp>()
   InputParameters params = validParams<ElementUserObject>();
   params.addClassDescription("Determine activated elements.");
   params.addRequiredParam<int>("active_subdomain_id", "The active subdomain ID.");
-  params.addParam<Real>("activate_tol", 1e-4, "The spatial tolerance for activating an element.");
   params.addParam<FunctionName>("function_x", "The x component heating spot travel path");
   params.addParam<FunctionName>("function_y", "The y component heating spot travel path");
   params.addParam<FunctionName>("function_z", "The z component heating spot travel path");
+  params.addParam<bool>(
+    "variable_activation",
+    false, "Whether to use variable value for element activation. If false, use path activation");
+  params.addParam<Real>(
+    "activate_value",
+    0.0, "The value above which to activate the element");
+  params.addCoupledVar(
+      "coupled_var",
+      "The variable value will be used to decide wether an element whould be activated.");
 
   return params;
 }
@@ -35,11 +43,18 @@ validParams<ActivateElementTemp>()
 ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
   : ElementUserObject(parameters),
     _active_subdomain_id(getParam<int>("active_subdomain_id")),
-    _tol(getParam<Real>("activate_tol")),
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
-    _function_z(getFunction("function_z"))
+    _function_z(getFunction("function_z")),
+    _variable_activation(getParam<bool>("variable_activation")),
+    _coupled_var(isParamValid("coupled_var") ? & coupledValue("coupled_var"): nullptr),
+    _activate_value(getParam<Real>("activate_value"))
 {
+  if(_variable_activation && _coupled_var == nullptr)
+    mooseError("Need a 'coupled_var' defined if variable_activation = true");
+
+  if((!_variable_activation) && _coupled_var!= nullptr)
+    mooseWarning("Not using variable activation, so the 'coupled_var' is ignored");
 }
 
 void
@@ -54,7 +69,18 @@ ActivateElementTemp::execute()
   Real y_t = _function_y.value(_t, _q_point[0]);
   Real z_t = _function_z.value(_t, _q_point[0]);
 
-  if(_current_elem->contains_point( Point (x_t, y_t, z_t) ) && _current_elem->subdomain_id()!=_active_subdomain_id)
+  Real avg_val = 0.0;
+  if(_variable_activation)
+  {
+      for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
+        avg_val +=(* _coupled_var)[qp];
+      avg_val /=  _qrule->n_points();
+  }
+
+  bool activate_by_var = _variable_activation && avg_val > _activate_value;
+  bool activate_by_path = (!_variable_activation) && _current_elem->contains_point( Point (x_t, y_t, z_t));
+
+  if((activate_by_var || activate_by_path) && _current_elem->subdomain_id()!=_active_subdomain_id)
   {
     /*
       _current_elem subdomain id is not assignable
