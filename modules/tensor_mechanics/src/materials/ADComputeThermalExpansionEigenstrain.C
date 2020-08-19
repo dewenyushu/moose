@@ -1,3 +1,4 @@
+
 //* This file is part of the MOOSE framework
 //* https://www.mooseframework.org
 //*
@@ -18,27 +19,18 @@ ADComputeThermalExpansionEigenstrain::validParams()
   params.addClassDescription("Computes eigenstrain due to thermal expansion "
                              "with a constant coefficient");
   params.addRequiredParam<Real>("thermal_expansion_coeff", "Thermal expansion coefficient");
-  params.addCoupledVar(
-      "activated_elem_aux", 1, "Activated element aux variable used to determine activated elements.");
-  params.addRequiredParam<Real>("melt_temperature", "Melt temperature.");
   return params;
 }
 
 ADComputeThermalExpansionEigenstrain::ADComputeThermalExpansionEigenstrain(
     const InputParameters & parameters)
   : ADComputeThermalExpansionEigenstrainBase(parameters),
-    _thermal_expansion_coeff(getParam<Real>("thermal_expansion_coeff")),
-    _activated_elem(coupledValue("activated_elem_aux")),
-    _melt_temperature(getParam<Real>("melt_temperature"))
+    _thermal_expansion_coeff(getParam<Real>("thermal_expansion_coeff"))
 {
 }
 
 void
 ADComputeThermalExpansionEigenstrain::computeThermalStrain(ADReal & thermal_strain)
 {
-  if (_activated_elem[_qp] >= 1.0 && _current_elem->subdomain_id() == 1)
-    thermal_strain =
-        _thermal_expansion_coeff * (_temperature[_qp] - _melt_temperature);
-  else
-    thermal_strain = _thermal_expansion_coeff * (_temperature[_qp] - _stress_free_temperature[_qp]);
+  thermal_strain = _thermal_expansion_coeff * (_temperature[_qp] - _stress_free_temperature[_qp]);
 }
