@@ -26,6 +26,4 @@ protected:
   virtual void computeThermalStrain(ADReal & thermal_strain) override;
 
   const Real & _thermal_expansion_coeff;
-  const VariableValue & _activated_elem;
-  const Real & _melt_temperature;
 };
