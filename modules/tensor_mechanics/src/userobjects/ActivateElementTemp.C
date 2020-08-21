@@ -15,6 +15,9 @@
 #include "libmesh/parallel.h"
 #include "libmesh/point.h"
 
+#include "libmesh/parallel_ghost_sync.h"
+#include "libmesh/mesh_communication.h"
+
 registerMooseObject("MooseApp", ActivateElementTemp);
 
 template <>
@@ -88,6 +91,8 @@ ActivateElementTemp::execute()
     */
     dof_id_type ele_id= _current_elem->id();
     Elem * ele = _mesh.elemPtr(ele_id);
+
+    std::cout<<"new element activated!"<<std::endl;
     /*
       Add element to the activate subdomain
     */
@@ -125,6 +130,10 @@ ActivateElementTemp::execute()
 void
 ActivateElementTemp::finalize()
 {
+  SyncSubdomainIds sync(_mesh.getMesh());
+  Parallel::sync_dofobject_data_by_id
+      (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
+
   /*
     Reinit equation systems
   */
