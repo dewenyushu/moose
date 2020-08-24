@@ -27,6 +27,7 @@ validParams<ActivateElementTemp>()
   InputParameters params = validParams<ElementUserObject>();
   params.addClassDescription("Determine activated elements.");
   params.addRequiredParam<int>("active_subdomain_id", "The active subdomain ID.");
+  params.addRequiredParam<std::vector<BoundaryName>>("expand_boundary_name", "The expanded boundary name.");
   params.addParam<FunctionName>("function_x", "The x component heating spot travel path");
   params.addParam<FunctionName>("function_y", "The y component heating spot travel path");
   params.addParam<FunctionName>("function_z", "The z component heating spot travel path");
@@ -46,6 +47,7 @@ validParams<ActivateElementTemp>()
 ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
   : ElementUserObject(parameters),
     _active_subdomain_id(getParam<int>("active_subdomain_id")),
+    _expand_boundary_name(getParam<std::vector<BoundaryName>>("expand_boundary_name")),
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
     _function_z(getFunction("function_z")),
@@ -58,6 +60,9 @@ ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
 
   if((!_variable_activation) && _coupled_var!= nullptr)
     mooseWarning("Not using variable activation, so the 'coupled_var' is ignored");
+
+  // add the new boundary and get its boundary id
+  _boundary_ids = _mesh.getBoundaryIDs(_expand_boundary_name, true);
 }
 
 void
@@ -108,6 +113,10 @@ ActivateElementTemp::execute()
       // Elem * ref_ele = displaced_problem->refMesh().elemPtr(ele_id);
       // ref_ele->subdomain_id()=_active_subdomain_id;
     }
+    /*
+      Save the newly activated element id for updating boundary info later
+    */
+    _newly_activated_elem.insert(ele_id);
 
     // std::cout<<"====>  Neighbor element info:\n";
     // for (auto s : ele->side_index_range())
@@ -129,6 +138,9 @@ ActivateElementTemp::execute()
 void
 ActivateElementTemp::finalize()
 {
+  /*
+    Synchronize ghost element subdomain ID
+  */
   SyncSubdomainIds sync(_mesh.getMesh());
   Parallel::sync_dofobject_data_by_id
       (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
@@ -144,6 +156,33 @@ ActivateElementTemp::finalize()
     // Parallel::sync_dofobject_data_by_id
     //     (displaced_problem->refMesh().getMesh().comm(), displaced_problem->refMesh().getMesh().elements_begin(),  displaced_problem->refMesh().getMesh().elements_end(), sync_ref_mesh);
   }
+  /*
+    Update boundary info
+  */
+  BoundaryInfo boundary_info = _mesh.getMesh().get_boundary_info();
+  for (auto ele_id : _newly_activated_elem)
+  {
+    Elem * ele = _mesh.elemPtr(ele_id);
+    for (auto s : ele->side_index_range())
+    {
+      if (ele->neighbor_ptr(s))
+      {
+        dof_id_type neighbor_ele_id=ele->neighbor_ptr(s)->id();
+        Elem * neighbor_ele = _mesh.elemPtr(neighbor_ele_id);
+        if (neighbor_ele->subdomain_id()!=_active_subdomain_id)
+        {
+          // add this side to boundary
+          _mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
+        }
+        else
+        {
+          // remove this side from the boundary
+          _mesh.getMesh().get_boundary_info().remove_side(ele, s);
+        }
+      }
+    }
+  }
+
   /*
     Reinit equation systems
   */

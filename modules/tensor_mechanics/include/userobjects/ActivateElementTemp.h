@@ -22,12 +22,7 @@ class ActivateElementTemp : public ElementUserObject
 public:
   ActivateElementTemp(const InputParameters & parameters);
 
-  const std::map<dof_id_type, Real> & getActivatedElementsMap() const
-  {
-    return _activated_elem_map;
-  };
-
-  const std::vector<dof_id_type> & getNewlyActivatedElements() const
+  const std::set<dof_id_type> & getNewlyActivatedElements() const
   {
     return _newly_activated_elem;
   };
@@ -38,11 +33,14 @@ public:
   void finalize() override;
 
 protected:
-  std::map<dof_id_type, Real> _activated_elem_map;
-  std::vector<dof_id_type> _newly_activated_elem;
+  std::set<dof_id_type> _newly_activated_elem;
 
-  /// activate/inactive subdomain IDs
+  /// activate subdomain ID
   const subdomain_id_type _active_subdomain_id;
+  /// expanded boundary name
+  const std::vector<BoundaryName> _expand_boundary_name;
+  /// expanded boundary IDs
+  std::vector<BoundaryID> _boundary_ids;
   /// path of the heat source, x, y, z components
   const Function & _function_x;
   const Function & _function_y;
