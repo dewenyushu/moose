@@ -168,11 +168,10 @@ T_room = 300
   [../]
   [./thermal_expansion_strain]
     type = ADComputeThermalExpansionEigenstrain
-    stress_free_temperature = 293
+    stress_free_temperature = ${T_melt}
     thermal_expansion_coeff = 1e-6
     temperature = temp
     eigenstrain_name = thermal_eigenstrain
-    melt_temperature = ${T_melt}
     block = 1
   [../]
   [./volumetric_heat]
