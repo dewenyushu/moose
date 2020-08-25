@@ -92,7 +92,6 @@ ActivateElementTemp::execute()
     dof_id_type ele_id= _current_elem->id();
     Elem * ele = _mesh.elemPtr(ele_id);
 
-    std::cout<<"new element activated!"<<std::endl;
     /*
       Add element to the activate subdomain
     */
@@ -106,8 +105,8 @@ ActivateElementTemp::execute()
       Elem * disp_ele = displaced_problem->mesh().elemPtr(ele_id);
       disp_ele->subdomain_id()=_active_subdomain_id;
 
-      Elem * ref_ele = displaced_problem->refMesh().elemPtr(ele_id);
-      ref_ele->subdomain_id()=_active_subdomain_id;
+      // Elem * ref_ele = displaced_problem->refMesh().elemPtr(ele_id);
+      // ref_ele->subdomain_id()=_active_subdomain_id;
     }
 
     // std::cout<<"====>  Neighbor element info:\n";
@@ -134,6 +133,17 @@ ActivateElementTemp::finalize()
   Parallel::sync_dofobject_data_by_id
       (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
 
+  auto displaced_problem = _fe_problem.getDisplacedProblem();
+  if (displaced_problem)
+  {
+    SyncSubdomainIds sync_mesh(displaced_problem->mesh().getMesh());
+    Parallel::sync_dofobject_data_by_id
+        (displaced_problem->mesh().getMesh().comm(), displaced_problem->mesh().getMesh().elements_begin(),  displaced_problem->mesh().getMesh().elements_end(), sync_mesh);
+
+    // SyncSubdomainIds sync_ref_mesh(displaced_problem->refMesh().getMesh());
+    // Parallel::sync_dofobject_data_by_id
+    //     (displaced_problem->refMesh().getMesh().comm(), displaced_problem->refMesh().getMesh().elements_begin(),  displaced_problem->refMesh().getMesh().elements_end(), sync_ref_mesh);
+  }
   /*
     Reinit equation systems
   */
