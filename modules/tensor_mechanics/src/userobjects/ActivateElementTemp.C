@@ -145,6 +145,11 @@ ActivateElementTemp::finalize()
   Parallel::sync_dofobject_data_by_id
       (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
 
+  /*
+    Update boundary info
+  */
+  updateBoundaryInfo(_mesh);
+
   auto displaced_problem = _fe_problem.getDisplacedProblem();
   if (displaced_problem)
   {
@@ -155,36 +160,43 @@ ActivateElementTemp::finalize()
     // SyncSubdomainIds sync_ref_mesh(displaced_problem->refMesh().getMesh());
     // Parallel::sync_dofobject_data_by_id
     //     (displaced_problem->refMesh().getMesh().comm(), displaced_problem->refMesh().getMesh().elements_begin(),  displaced_problem->refMesh().getMesh().elements_end(), sync_ref_mesh);
+
+    updateBoundaryInfo(displaced_problem->mesh());
   }
-  /*
-    Update boundary info
-  */
-  BoundaryInfo boundary_info = _mesh.getMesh().get_boundary_info();
-  for (auto ele_id : _newly_activated_elem)
-  {
-    Elem * ele = _mesh.elemPtr(ele_id);
-    for (auto s : ele->side_index_range())
-    {
-      if (ele->neighbor_ptr(s))
-      {
-        dof_id_type neighbor_ele_id=ele->neighbor_ptr(s)->id();
-        Elem * neighbor_ele = _mesh.elemPtr(neighbor_ele_id);
-        if (neighbor_ele->subdomain_id()!=_active_subdomain_id)
-        {
-          // add this side to boundary
-          _mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
-        }
-        else
-        {
-          // remove this side from the boundary
-          _mesh.getMesh().get_boundary_info().remove_side(ele, s);
-        }
-      }
-    }
-  }
+
 
   /*
     Reinit equation systems
   */
   _fe_problem.meshChanged();
+}
+
+void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
+{
+  BoundaryInfo boundary_info = mesh.getMesh().get_boundary_info();
+  for (auto ele_id : _newly_activated_elem)
+  {
+    Elem * ele = mesh.elemPtr(ele_id);
+    for (auto s : ele->side_index_range())
+    {
+      if (ele->neighbor_ptr(s))
+      {
+        dof_id_type neighbor_ele_id=ele->neighbor_ptr(s)->id();
+        Elem * neighbor_ele = mesh.elemPtr(neighbor_ele_id);
+        if (neighbor_ele->subdomain_id()!=_active_subdomain_id)
+        {
+          // add this side to boundary
+          mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
+        }
+        else
+        {
+          // remove this side from the boundary
+          mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
+          // remove the neighbor side from the boundary
+          unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
+          mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s,  _boundary_ids[0]);
+        }
+      }
+    }
+  }
 }

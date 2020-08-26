@@ -27,6 +27,8 @@ public:
     return _newly_activated_elem;
   };
 
+  void updateBoundaryInfo(MooseMesh & mesh);
+
   void initialize() override{};
   void execute() override;
   void threadJoin(const UserObject & /*uo*/) override{};
