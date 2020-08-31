@@ -139,29 +139,24 @@ void
 ActivateElementTemp::finalize()
 {
   /*
+    Update boundary info
+  */
+  updateBoundaryInfo(_mesh);
+  /*
     Synchronize ghost element subdomain ID
   */
   SyncSubdomainIds sync(_mesh.getMesh());
   Parallel::sync_dofobject_data_by_id
       (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
 
-  /*
-    Update boundary info
-  */
-  updateBoundaryInfo(_mesh);
-
   auto displaced_problem = _fe_problem.getDisplacedProblem();
   if (displaced_problem)
   {
+    updateBoundaryInfo(displaced_problem->mesh());
+
     SyncSubdomainIds sync_mesh(displaced_problem->mesh().getMesh());
     Parallel::sync_dofobject_data_by_id
         (displaced_problem->mesh().getMesh().comm(), displaced_problem->mesh().getMesh().elements_begin(),  displaced_problem->mesh().getMesh().elements_end(), sync_mesh);
-
-    // SyncSubdomainIds sync_ref_mesh(displaced_problem->refMesh().getMesh());
-    // Parallel::sync_dofobject_data_by_id
-    //     (displaced_problem->refMesh().getMesh().comm(), displaced_problem->refMesh().getMesh().elements_begin(),  displaced_problem->refMesh().getMesh().elements_end(), sync_ref_mesh);
-
-    updateBoundaryInfo(displaced_problem->mesh());
   }
 
 
@@ -169,11 +164,24 @@ ActivateElementTemp::finalize()
     Reinit equation systems
   */
   _fe_problem.meshChanged();
+
+  // // print boundary element info
+  // ConstBndElemRange & range = *_mesh.getBoundaryElementRange();
+  // for (const auto & belem : range)
+  // {
+  //   std::cout<<"Element ID: "<<belem->_elem->id()
+  //             <<"; Boundary name: "<< _mesh.getMesh().get_boundary_info().get_sideset_name(belem->_bnd_id)
+  //             <<"; side: "<< belem->_side
+  //             <<std::endl;
+  // }
 }
 
 void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
 {
-  BoundaryInfo boundary_info = mesh.getMesh().get_boundary_info();
+  // save the removed ghost sides to sync across processors
+  std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
+      ghost_sides_to_remove;
+
   for (auto ele_id : _newly_activated_elem)
   {
     Elem * ele = mesh.elemPtr(ele_id);
@@ -194,9 +202,16 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
           mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
           // remove the neighbor side from the boundary
           unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
-          mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s,  _boundary_ids[0]);
+          mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s, _boundary_ids[0]);
+          if (neighbor_ele->processor_id()!=this->processor_id())
+            ghost_sides_to_remove[neighbor_ele->processor_id()].emplace_back(neighbor_ele->id(), neighbor_s);
         }
       }
     }
   }
+
+  // synchronize boundary information across processors
+  mesh.getMesh().get_boundary_info().sync_push_boundary_side_id(ghost_sides_to_remove);
+  mesh.getMesh().get_boundary_info().sync_pull_boundary_side_id();
+  mesh.buildBndElemList();
 }
