@@ -224,7 +224,6 @@ ADRateTempDependentStressUpdate::propagateQpStatefulProperties()
   else
     _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
 
-  _misorientation_variable[_qp]=_misorientation_variable_old[_qp];
   _pressure[_qp]= _pressure_old[_qp];
 
   propagateQpStatefulPropertiesRadialReturn();
