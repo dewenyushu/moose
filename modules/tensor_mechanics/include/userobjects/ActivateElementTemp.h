@@ -28,6 +28,9 @@ public:
   };
 
   void updateBoundaryInfo(MooseMesh & mesh);
+  // void initActivatedElementStatefulProps(std::set<dof_id_type> elem_list);
+
+  ConstElemRange * getNewlyActivatedElementRange();
 
   void push_boundary_side_ids( MooseMesh & mesh
     std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
@@ -40,6 +43,11 @@ public:
 
 protected:
   std::set<dof_id_type> _newly_activated_elem;
+
+  /**
+   * A range for use with threading.
+   */
+  std::unique_ptr<ConstElemRange> _activated_elem_range;
 
   /// activate subdomain ID
   const subdomain_id_type _active_subdomain_id;

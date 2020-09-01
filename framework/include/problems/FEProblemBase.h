@@ -1459,6 +1459,12 @@ public:
   void notifyWhenMeshChanges(MeshChangedInterface * mci);
 
   /**
+   * Initialize stateful properties for elements in a specific \p elem_range
+   */
+  void initActivatedElementStatefulProps(ConstElemRange & elem_range);
+
+
+  /**
    * Method called to perform a series of sanity checks before a simulation is run. This method
    * doesn't return when errors are found, instead it generally calls mooseError() directly.
    */
