@@ -165,15 +165,16 @@ ActivateElementTemp::finalize()
   */
   _fe_problem.meshChanged();
 
-  // // print boundary element info
-  // ConstBndElemRange & range = *_mesh.getBoundaryElementRange();
-  // for (const auto & belem : range)
-  // {
-  //   std::cout<<"Element ID: "<<belem->_elem->id()
-  //             <<"; Boundary name: "<< _mesh.getMesh().get_boundary_info().get_sideset_name(belem->_bnd_id)
-  //             <<"; side: "<< belem->_side
-  //             <<std::endl;
-  // }
+  /*
+    Initialize stateful material properties for the newly activated elements
+  */
+  ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
+  _fe_problem.initActivatedElementStatefulProps(elem_range);
+
+  /*
+    Clear the list
+  */
+  _newly_activated_elem.clear();
 }
 
 void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
@@ -232,4 +233,51 @@ void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh
 
   Parallel::push_parallel_vector_data
     (mesh.getMesh().get_boundary_info().comm(), elems_to_push, elem_action_functor);
+
+
+// void ActivateElementTemp::initActivatedElementStatefulProps(std::set<dof_id_type> elem_list)
+// {
+//   // for (auto ele_id : elem_list)
+//   // {
+//   //   Elem * ele = _mesh.elemPtr(ele_id);
+//   //   const MaterialPropertyStorage & material_props = _fe_problem.getMaterialPropertyStorage();
+//   //   material_props.initStatefulProps(
+//   //     *_material_data[_tid],
+//   //     _fe_problem.getDiscreteMaterialWarehouse().getActiveBlockObjects(_subdomain, _tid),
+//   //     n_points,
+//   //     *elem
+//   //   );
+//   // }
+// }
+
+
+ConstElemRange * ActivateElementTemp::getNewlyActivatedElementRange()
+{
+  // deletes the object first
+  _activated_elem_range.reset();
+
+  // create a vector of the newly activated elements
+  std::vector<Elem*> elems;
+  for (auto elem_id : _newly_activated_elem)
+    elems.push_back(_mesh.elemPtr(elem_id));
+
+  // Make some fake element iterators defining this vector of
+  // elements
+  Elem * const * elempp = const_cast<Elem * const * >(elems.data());
+  Elem * const * elemend = elempp+elems.size();
+
+  const MeshBase::const_element_iterator elems_begin =
+    MeshBase::const_element_iterator(elempp,
+                                     elemend,
+                                     Predicates::NotNull<Elem * const *>());
+
+  const MeshBase::const_element_iterator elems_end =
+    MeshBase::const_element_iterator(elemend,
+                                     elemend,
+                                     Predicates::NotNull<Elem * const *>());
+  if (!_activated_elem_range)
+    _activated_elem_range = libmesh_make_unique<ConstElemRange>(
+        elems_begin, elems_end);
+
+  return _activated_elem_range.get();
 }
