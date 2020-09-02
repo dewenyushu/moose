@@ -28,11 +28,10 @@ public:
   };
 
   void updateBoundaryInfo(MooseMesh & mesh);
-  // void initActivatedElementStatefulProps(std::set<dof_id_type> elem_list);
 
   ConstElemRange * getNewlyActivatedElementRange();
 
-  void push_boundary_side_ids( MooseMesh & mesh
+  void push_boundary_side_ids( MooseMesh & mesh,
     std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
     & elems_to_push);
 

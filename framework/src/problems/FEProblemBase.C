@@ -6161,7 +6161,7 @@ FEProblemBase::notifyWhenMeshChanges(MeshChangedInterface * mci)
 }
 
 void
-FEProblemBase::initActivatedElementStatefulProps(ConstElemRange & elem_range)
+FEProblemBase::initElementStatefulProps(ConstElemRange & elem_range)
 {
   ComputeMaterialsObjectThread cmt(*this,
                                    _material_data,

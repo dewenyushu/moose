@@ -1461,7 +1461,7 @@ public:
   /**
    * Initialize stateful properties for elements in a specific \p elem_range
    */
-  void initActivatedElementStatefulProps(ConstElemRange & elem_range);
+  void initElementStatefulProps(ConstElemRange & elem_range);
 
 
   /**
