@@ -211,7 +211,25 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
   }
 
   // synchronize boundary information across processors
-  mesh.getMesh().get_boundary_info().sync_push_boundary_side_id(ghost_sides_to_remove);
+  // mesh.getMesh().get_boundary_info().sync_push_boundary_side_id(ghost_sides_to_remove);
+  push_boundary_side_ids(mesh, ghost_sides_to_remove);
   mesh.getMesh().get_boundary_info().sync_pull_boundary_side_id();
   mesh.buildBndElemList();
+}
+
+void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh
+  std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
+  & elems_to_push)
+{
+  auto elem_action_functor =
+    [& mesh]
+    (processor_id_type,
+     const std::vector<std::pair<dof_id_type, unsigned int>> & received_elem)
+    {
+      for (const auto & pr : received_elem)
+        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second);
+    };
+
+  Parallel::push_parallel_vector_data
+    (mesh.getMesh().get_boundary_info().comm(), elems_to_push, elem_action_functor);
 }
