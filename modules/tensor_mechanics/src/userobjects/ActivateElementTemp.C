@@ -169,7 +169,7 @@ ActivateElementTemp::finalize()
     Initialize stateful material properties for the newly activated elements
   */
   ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
-  _fe_problem.initActivatedElementStatefulProps(elem_range);
+  _fe_problem.initElementStatefulProps(elem_range);
 
   /*
     Clear the list
@@ -212,13 +212,12 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
   }
 
   // synchronize boundary information across processors
-  // mesh.getMesh().get_boundary_info().sync_push_boundary_side_id(ghost_sides_to_remove);
   push_boundary_side_ids(mesh, ghost_sides_to_remove);
   mesh.getMesh().get_boundary_info().sync_pull_boundary_side_id();
   mesh.buildBndElemList();
 }
 
-void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh
+void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh,
   std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
   & elems_to_push)
 {
@@ -233,22 +232,7 @@ void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh
 
   Parallel::push_parallel_vector_data
     (mesh.getMesh().get_boundary_info().comm(), elems_to_push, elem_action_functor);
-
-
-// void ActivateElementTemp::initActivatedElementStatefulProps(std::set<dof_id_type> elem_list)
-// {
-//   // for (auto ele_id : elem_list)
-//   // {
-//   //   Elem * ele = _mesh.elemPtr(ele_id);
-//   //   const MaterialPropertyStorage & material_props = _fe_problem.getMaterialPropertyStorage();
-//   //   material_props.initStatefulProps(
-//   //     *_material_data[_tid],
-//   //     _fe_problem.getDiscreteMaterialWarehouse().getActiveBlockObjects(_subdomain, _tid),
-//   //     n_points,
-//   //     *elem
-//   //   );
-//   // }
-// }
+}
 
 
 ConstElemRange * ActivateElementTemp::getNewlyActivatedElementRange()
