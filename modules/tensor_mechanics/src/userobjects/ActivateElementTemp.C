@@ -171,6 +171,15 @@ ActivateElementTemp::finalize()
   ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
   _fe_problem.initElementStatefulProps(elem_range);
 
+  std::cout<<"Boundary Node information:\n";
+  ConstBndNodeRange & bnd_nodes = *_mesh.getBoundaryNodeRange();
+  for (const auto & bnode : bnd_nodes)
+  {
+    Node * node = bnode->_node;
+    if (bnode->_bnd_id ==  _boundary_ids[0])
+      std::cout<<"Node id() = "<<node->id()<<std::endl;
+  }
+
   /*
     Clear the list
   */
@@ -179,7 +188,7 @@ ActivateElementTemp::finalize()
 
 void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
 {
-  // save the removed ghost sides to sync across processors
+  // save the removed ghost sides and associated nodes to sync across processors
   std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
       ghost_sides_to_remove;
 
@@ -201,9 +210,13 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
         {
           // remove this side from the boundary
           mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
+          remove_bounday_node(mesh, ele->side_ptr(s));
+
           // remove the neighbor side from the boundary
           unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
           mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s, _boundary_ids[0]);
+          remove_bounday_node(mesh, neighbor_ele->side_ptr(neighbor_s));
+
           if (neighbor_ele->processor_id()!=this->processor_id())
             ghost_sides_to_remove[neighbor_ele->processor_id()].emplace_back(neighbor_ele->id(), neighbor_s);
         }
@@ -212,22 +225,30 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
   }
 
   // synchronize boundary information across processors
-  push_boundary_side_ids(mesh, ghost_sides_to_remove);
-  mesh.getMesh().get_boundary_info().sync_pull_boundary_side_id();
-  mesh.buildBndElemList();
+  push_boundary_info(mesh, ghost_sides_to_remove);
+  mesh.getMesh().get_boundary_info().parallel_sync_side_ids();
+  mesh.getMesh().get_boundary_info().parallel_sync_node_ids();
+  // mesh.buildBndElemList();
+  // mesh.buildNodeList();
+  mesh.update();
 }
 
-void ActivateElementTemp::push_boundary_side_ids( MooseMesh & mesh,
+void ActivateElementTemp::push_boundary_info( MooseMesh & mesh,
   std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
   & elems_to_push)
 {
   auto elem_action_functor =
-    [& mesh]
+    [&mesh, this]
     (processor_id_type,
      const std::vector<std::pair<dof_id_type, unsigned int>> & received_elem)
     {
       for (const auto & pr : received_elem)
-        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second);
+      {
+        // remove the side
+        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second, this->getExpandedBoundaryID());
+        // remove the nodes on this side
+        this->remove_bounday_node(mesh, mesh.getMesh().elem_ptr(pr.first)->side_ptr(pr.second));
+      }
     };
 
   Parallel::push_parallel_vector_data
@@ -264,4 +285,23 @@ ConstElemRange * ActivateElementTemp::getNewlyActivatedElementRange()
         elems_begin, elems_end);
 
   return _activated_elem_range.get();
+}
+
+ConstBndNodeRange * ActivateElementTemp::getNewlyActivatedBndNodeRange()
+{
+  // deletes the object first
+  _activated_bnd_node_range.reset();
+
+
+  return _activated_bnd_node_range.get();
+}
+
+
+void ActivateElementTemp::remove_bounday_node(MooseMesh & mesh, std::unique_ptr<Elem> side)
+{
+  unsigned int n_nodes=side->n_nodes();
+  const Node * const * side_nodes = side->get_nodes();
+  for (unsigned int n=0; n<n_nodes; n++)
+    mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
+    // mesh.getMesh().get_boundary_info().remove(side_nodes[n]);
 }
