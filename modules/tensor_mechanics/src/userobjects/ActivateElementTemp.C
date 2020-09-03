@@ -170,15 +170,10 @@ ActivateElementTemp::finalize()
   */
   ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
   _fe_problem.initElementStatefulProps(elem_range);
-
-  std::cout<<"Boundary Node information:\n";
-  ConstBndNodeRange & bnd_nodes = *_mesh.getBoundaryNodeRange();
-  for (const auto & bnode : bnd_nodes)
-  {
-    Node * node = bnode->_node;
-    if (bnode->_bnd_id ==  _boundary_ids[0])
-      std::cout<<"Node id() = "<<node->id()<<std::endl;
-  }
+  /*
+    Apply initial condition for the newly activated elements
+  */
+  _fe_problem.projectInitialConditionOnElemRange(elem_range);
 
   /*
     Clear the list
