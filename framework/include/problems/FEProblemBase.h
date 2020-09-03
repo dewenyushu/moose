@@ -689,6 +689,8 @@ public:
 
   void projectSolution();
 
+  void projectInitialConditionOnElemRange(ConstElemRange & elem_range);
+
   // Materials /////
   virtual void addMaterial(const std::string & kernel_name,
                            const std::string & name,
