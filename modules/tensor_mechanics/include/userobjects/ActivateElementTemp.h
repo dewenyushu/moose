@@ -38,18 +38,21 @@ public:
   void finalize() override;
 
 protected:
+  void initializeBoundary(MooseMesh & mesh);
+
   void updateBoundaryInfo(MooseMesh & mesh);
 
   void push_boundary_info( MooseMesh & mesh,
     std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
     & elems_to_push);
 
-  void remove_bounday_node(MooseMesh & mesh, std::unique_ptr<Elem> side);
+  void remove_bounday_node(MooseMesh & mesh, std::unique_ptr<const Elem> side);
 
   ConstElemRange * getNewlyActivatedElementRange();
   ConstBndNodeRange * getNewlyActivatedBndNodeRange();
 
   std::set<dof_id_type> _newly_activated_elem;
+  std::set<dof_id_type> _newly_activated_node;
 
   /**
    * Ranges for use with threading.
@@ -59,6 +62,8 @@ protected:
 
   /// activate subdomain ID
   const subdomain_id_type _active_subdomain_id;
+  /// inactivate subdomain ID (the subdomain that you want to keep the same)
+  const subdomain_id_type _inactive_subdomain_id;
   /// expanded boundary name
   const std::vector<BoundaryName> _expand_boundary_name;
   /// expanded boundary IDs
