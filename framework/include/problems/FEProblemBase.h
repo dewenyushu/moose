@@ -691,6 +691,8 @@ public:
 
   void projectInitialConditionOnElemRange(ConstElemRange & elem_range);
 
+  void projectInitialConditionOnNodeRange(ConstBndNodeRange & bnd_nodes);
+
   // Materials /////
   virtual void addMaterial(const std::string & kernel_name,
                            const std::string & name,
