@@ -2932,6 +2932,16 @@ FEProblemBase::projectInitialConditionOnElemRange(ConstElemRange & elem_range)
   _aux->solution().close();
 }
 
+void
+FEProblemBase::projectInitialConditionOnNodeRange(ConstBndNodeRange & bnd_nodes)
+{
+  ComputeBoundaryInitialConditionThread cbic(*this);
+  Threads::parallel_reduce(bnd_nodes, cbic);
+
+  _nl->solution().close();
+  _aux->solution().close();
+}
+
 std::shared_ptr<MaterialBase>
 FEProblemBase::getMaterial(std::string name,
                            Moose::MaterialDataType type,
