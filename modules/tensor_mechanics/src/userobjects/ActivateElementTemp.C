@@ -14,6 +14,7 @@
 #include "libmesh/parallel_algebra.h"
 #include "libmesh/parallel.h"
 #include "libmesh/point.h"
+#include "libmesh/dof_map.h"
 
 #include "libmesh/parallel_ghost_sync.h"
 #include "libmesh/mesh_communication.h"
@@ -238,17 +239,37 @@ ActivateElementTemp::finalize()
   _fe_problem.meshChanged();
 
   /*
-    Initialize stateful material properties for the newly activated elements
+    Get storage ranges for the newly activated elements and boundary nodes
   */
   ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
-  _fe_problem.initElementStatefulProps(elem_range);
+  ConstBndNodeRange & bnd_node_range = * this->getNewlyActivatedBndNodeRange();
+  ConstNodeRange & node_range = * this->getNewlyActivatedNodeRange();
   /*
     Apply initial condition for the newly activated elements and nodes
   */
-  _fe_problem.projectInitialConditionOnElemRange(elem_range);
+  // _fe_problem.projectInitialConditionOnElemRange(elem_range);
+  // _fe_problem.projectInitialConditionOnNodeRange(bnd_node_range);
+  initSolutions(elem_range, bnd_node_range, node_range);
 
-  ConstBndNodeRange & bnd_node_range = * this->getNewlyActivatedBndNodeRange();
-  _fe_problem.projectInitialConditionOnNodeRange(bnd_node_range);
+   // for (auto elem: elem_range)
+   // {
+   //   elem->print_info();
+   // }
+
+   // for (auto bnode: bnd_node_range)
+   // {
+   //   std::cout<<"New boundary node ID = "<<bnode->_node->id()<<std::endl;
+   // }
+
+   // for (auto node: node_range)
+   // {
+   //   std::cout<<"New node ID = "<<node->id()<<std::endl;
+   // }
+
+   /*
+     Initialize stateful material properties for the newly activated elements
+   */
+   _fe_problem.initElementStatefulProps(elem_range);
 
   /*
     Clear the list
@@ -272,24 +293,33 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
       {
         dof_id_type neighbor_ele_id=ele->neighbor_ptr(s)->id();
         Elem * neighbor_ele = mesh.elemPtr(neighbor_ele_id);
-        if (neighbor_ele->subdomain_id()!=_active_subdomain_id)
+        if (neighbor_ele->subdomain_id()!=_active_subdomain_id && neighbor_ele->subdomain_id()!=_inactive_subdomain_id)
         {
           // add this side to boundary
           mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
           // add the nodes on this side to the _newly_activated_node
           unsigned int n_nodes=ele->side_ptr(s)->n_nodes();
           for (unsigned int n =0; n<n_nodes; ++n)
-            _newly_activated_node.insert(ele->side_ptr(s)->node_ptr(n)->id());
+          {
+            Node * node = ele->side_ptr(s)->node_ptr(n);
+            if (!mesh.getMesh().get_boundary_info().n_boundary_ids(node))
+            {
+              _newly_activated_node.insert(node->id());
+              mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
+            }
+          }
         }
         else
         {
           // remove this side from the boundary
-          mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
+          // mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
+          mesh.getMesh().get_boundary_info().remove_side(ele, s);
           remove_bounday_node(mesh, ele->side_ptr(s));
 
           // remove the neighbor side from the boundary
           unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
-          mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s, _boundary_ids[0]);
+          // mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s, _boundary_ids[0]);
+          mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s);
           remove_bounday_node(mesh, neighbor_ele->side_ptr(neighbor_s));
 
           if (neighbor_ele->processor_id()!=this->processor_id())
@@ -320,7 +350,8 @@ void ActivateElementTemp::push_boundary_info( MooseMesh & mesh,
       for (const auto & pr : received_elem)
       {
         // remove the side
-        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second, this->getExpandedBoundaryID());
+        // mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second, this->getExpandedBoundaryID());
+        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second);
         // remove the nodes on this side
         this->remove_bounday_node(mesh, mesh.getMesh().elem_ptr(pr.first)->side_ptr(pr.second));
       }
@@ -367,8 +398,11 @@ ConstBndNodeRange * ActivateElementTemp::getNewlyActivatedBndNodeRange()
   // deletes the object first
   _activated_bnd_node_range.reset();
 
+  // std::cout<<"number of newly activated nodes =  "<<_newly_activated_node.size()<<std::endl;
+
   // create a vector of the newly activated nodes
   std::vector<const BndNode *> nodes;
+  std::set<const BndNode *> set_nodes;
   ConstBndNodeRange & bnd_nodes = *_mesh.getBoundaryNodeRange();
   for (auto & bnode : bnd_nodes)
   {
@@ -376,11 +410,13 @@ ConstBndNodeRange * ActivateElementTemp::getNewlyActivatedBndNodeRange()
     auto it = _newly_activated_node.find(bnode_id);
     if (it != _newly_activated_node.end())
     {
-      nodes.push_back(bnode);
+      set_nodes.insert(bnode);
       // std::cout<<"BoundaryNode Id()="<<bnode_id<<std::endl;
     }
 
   }
+
+  nodes.assign(set_nodes.begin(), set_nodes.end());
 
   // Make some fake element iterators defining this vector of
   // nodes
@@ -404,11 +440,126 @@ ConstBndNodeRange * ActivateElementTemp::getNewlyActivatedBndNodeRange()
   return _activated_bnd_node_range.get();
 }
 
+ConstNodeRange * ActivateElementTemp::getNewlyActivatedNodeRange()
+{
+  // deletes the object first
+  _activated_node_range.reset();
+
+  // create a vector of the newly activated nodes
+  std::vector<const Node *> nodes;
+  for (auto  elem_id : _newly_activated_elem)
+  {
+    const Node * const * elem_nodes=_mesh.elemPtr(elem_id)->get_nodes();
+    unsigned int n_nodes = _mesh.elemPtr(elem_id)->n_nodes();
+    for (unsigned int n =0; n<n_nodes; ++n)
+    {
+      // check if all the elements connected to this node are newly activated
+      const Node * nd = elem_nodes[n];
+      if (isNewlyActivated(nd))
+        nodes.push_back(nd);
+    }
+  }
+
+  // Make some fake node iterators defining this vector of
+  // nodes
+  Node * const * nodepp = const_cast<Node * const * >(nodes.data());
+  Node * const * nodeend = nodepp+nodes.size();
+
+  const MeshBase::const_node_iterator nodes_begin =
+    MeshBase::const_node_iterator(nodepp,
+                                  nodeend,
+                                  Predicates::NotNull<Node * const *>());
+
+  const MeshBase::const_node_iterator nodes_end =
+    MeshBase::const_node_iterator(nodeend,
+                                  nodeend,
+                                  Predicates::NotNull<Node * const *>());
+
+  if (!_activated_node_range)
+    _activated_node_range = libmesh_make_unique<ConstNodeRange>(
+        nodes_begin, nodes_end);
+
+  return _activated_node_range.get();
+}
+
+bool ActivateElementTemp::isNewlyActivated(const Node * nd)
+{
+  const auto & node_to_elem_map = _mesh.nodeToElemMap();
+  auto node_to_elem_pair = node_to_elem_map.find(nd->id());
+  if (node_to_elem_pair != node_to_elem_map.end())
+  {
+    const std::vector<dof_id_type> & connected_ele_ids = node_to_elem_pair->second;
+    for (auto connected_ele_id : connected_ele_ids)
+    {
+      // check the connected elements
+      // if (_mesh.elemPtr(connected_ele_id)->subdomain_id()==_inactive_subdomain_id)
+      //     return false;
+      if(_mesh.elemPtr(connected_ele_id)->subdomain_id()==_active_subdomain_id &&
+          std::find(_newly_activated_elem.begin(), _newly_activated_elem.end(), connected_ele_id) == _newly_activated_elem.end())
+          return false;
+    }
+  }
+  return true;
+}
 
 void ActivateElementTemp::remove_bounday_node(MooseMesh & mesh, std::unique_ptr<const Elem> side)
 {
   unsigned int n_nodes=side->n_nodes();
   const Node * const * side_nodes = side->get_nodes();
   for (unsigned int n=0; n<n_nodes; n++)
-    mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
+  {
+    // only remove side node that does not belong to the newly activated nodes
+    if (_newly_activated_node.find (side_nodes[n]->id()) == _newly_activated_node.end())
+    {
+      // std::cout<<"Remove boundary node id = "<<side_nodes[n]->id()<<std::endl;
+      mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
+    }
+  }
+}
+
+void ActivateElementTemp::initSolutions(ConstElemRange & elem_range,
+                                        ConstBndNodeRange & bnd_node_range,
+                                        ConstNodeRange & node_range)
+{
+  // project initial condition to the current solution
+  _fe_problem.projectInitialConditionOnCustomRange(elem_range, bnd_node_range);
+
+  NumericVector<Number> & current_solution = _fe_problem.getNonlinearSystemBase().solution();
+  NumericVector<Number> & old_solution = _fe_problem.getNonlinearSystemBase().solutionOld();
+  NumericVector<Number> & older_solution = _fe_problem.getNonlinearSystemBase().solutionOlder();
+
+  // do not worry about aux for now
+  // NumericVector<Number> & current_aux_solution = _fe_problem.getAuxiliarySystem().solution();
+  // NumericVector<Number> & old_aux_solution = _fe_problem.getAuxiliarySystem().solutionOld();
+  // NumericVector<Number> & older_aux_solution = _fe_problem.getAuxiliarySystem().solutionOlder();
+
+  DofMap & dof_map = _fe_problem.getNonlinearSystemBase().dofMap();
+
+  // std::cout<<"current sol size = "<<current_solution.size()
+  // <<"; old solution size = "<<old_solution.size()
+  // <<"; older solution size = "<<older_solution.size()<<std::endl;
+  //
+  // std::cout<<"current aux sol size = "<<current_aux_solution.size()
+  // <<"; old aux solution size = "<<old_aux_solution.size()
+  // <<"; older aux solution size = "<<older_aux_solution.size()<<std::endl;
+
+  std::set<dof_id_type> dofs;
+  // get dofs for the newly added nodes
+  for (auto & node : node_range)
+  {
+    std::vector<dof_id_type> di;
+    dof_map.dof_indices(node, di);
+
+    for(unsigned int i =0; i<di.size(); ++i)
+      dofs.insert(di[i]);
+
+    di.clear();
+  }
+
+  for (auto dof: dofs)
+  {
+    old_solution.set(dof, current_solution(dof));
+    older_solution.set(dof, current_solution(dof));
+  }
+
 }
