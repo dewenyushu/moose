@@ -11,6 +11,8 @@
 
 #include "ElementUserObject.h"
 #include "Function.h"
+#include "NonlinearSystemBase.h"
+#include "AuxiliarySystem.h"
 
 class ActivateElementTemp;
 
@@ -48,8 +50,21 @@ protected:
 
   void remove_bounday_node(MooseMesh & mesh, std::unique_ptr<const Elem> side);
 
+  /**
+   * Initialize solutions for the nodes
+   */
+  void initSolutions(ConstElemRange & elem_range, ConstBndNodeRange & bnd_node_range, ConstNodeRange & node_range);
+  /**
+   * Returns true if all the connected elements are in the _newly_activated_elem
+   */
+  bool isNewlyActivated(const Node * node);
+
+  /**
+   * Get ranges for use with threading.
+   */
   ConstElemRange * getNewlyActivatedElementRange();
   ConstBndNodeRange * getNewlyActivatedBndNodeRange();
+  ConstNodeRange * getNewlyActivatedNodeRange();
 
   std::set<dof_id_type> _newly_activated_elem;
   std::set<dof_id_type> _newly_activated_node;
@@ -59,6 +74,7 @@ protected:
    */
   std::unique_ptr<ConstElemRange> _activated_elem_range;
   std::unique_ptr<ConstBndNodeRange> _activated_bnd_node_range;
+  std::unique_ptr<ConstNodeRange> _activated_node_range;
 
   /// activate subdomain ID
   const subdomain_id_type _active_subdomain_id;
