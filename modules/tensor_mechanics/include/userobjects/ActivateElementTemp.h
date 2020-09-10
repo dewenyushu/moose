@@ -53,7 +53,7 @@ protected:
   /**
    * Initialize solutions for the nodes
    */
-  void initSolutions(ConstElemRange & elem_range, ConstBndNodeRange & bnd_node_range, ConstNodeRange & node_range);
+  void initSolutions(ConstElemRange & elem_range, ConstBndNodeRange & bnd_node_range);
   /**
    * Returns true if all the connected elements are in the _newly_activated_elem
    */

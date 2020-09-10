@@ -243,13 +243,11 @@ ActivateElementTemp::finalize()
   */
   ConstElemRange & elem_range = * this->getNewlyActivatedElementRange();
   ConstBndNodeRange & bnd_node_range = * this->getNewlyActivatedBndNodeRange();
-  ConstNodeRange & node_range = * this->getNewlyActivatedNodeRange();
+  // ConstNodeRange & node_range = * this->getNewlyActivatedNodeRange();
   /*
-    Apply initial condition for the newly activated elements and nodes
+    Apply initial condition for the newly activated elements
   */
-  // _fe_problem.projectInitialConditionOnElemRange(elem_range);
-  // _fe_problem.projectInitialConditionOnNodeRange(bnd_node_range);
-  initSolutions(elem_range, bnd_node_range, node_range);
+  initSolutions(elem_range, bnd_node_range);
 
    // for (auto elem: elem_range)
    // {
@@ -518,56 +516,69 @@ void ActivateElementTemp::remove_bounday_node(MooseMesh & mesh, std::unique_ptr<
 }
 
 void ActivateElementTemp::initSolutions(ConstElemRange & elem_range,
-                                        ConstBndNodeRange & bnd_node_range,
-                                        ConstNodeRange & node_range)
+                                        ConstBndNodeRange & bnd_node_range)
 {
   // project initial condition to the current solution
   _fe_problem.projectInitialConditionOnCustomRange(elem_range, bnd_node_range);
 
-  // NumericVector<Number> & current_solution = _fe_problem.getNonlinearSystemBase().solution();
   NumericVector<Number> & current_solution = * _fe_problem.getNonlinearSystemBase().system().current_local_solution;
   NumericVector<Number> & old_solution = _fe_problem.getNonlinearSystemBase().solutionOld();
   NumericVector<Number> & older_solution = _fe_problem.getNonlinearSystemBase().solutionOlder();
 
-  // do not worry about aux for now
-  // NumericVector<Number> & current_aux_solution = _fe_problem.getAuxiliarySystem().solution();
-  // NumericVector<Number> & old_aux_solution = _fe_problem.getAuxiliarySystem().solutionOld();
-  // NumericVector<Number> & older_aux_solution = _fe_problem.getAuxiliarySystem().solutionOlder();
+  NumericVector<Number> & current_aux_solution = * _fe_problem.getAuxiliarySystem().system().current_local_solution;
+  NumericVector<Number> & old_aux_solution = _fe_problem.getAuxiliarySystem().solutionOld();
+  NumericVector<Number> & older_aux_solution = _fe_problem.getAuxiliarySystem().solutionOlder();
 
   DofMap & dof_map = _fe_problem.getNonlinearSystemBase().dofMap();
+  DofMap & dof_map_aux = _fe_problem.getAuxiliarySystem().dofMap();
 
   // std::cout<<"current sol size = "<<current_solution.size()
   // <<"; old solution size = "<<old_solution.size()
   // <<"; older solution size = "<<older_solution.size()<<std::endl;
-  //
+
   // std::cout<<"current aux sol size = "<<current_aux_solution.size()
   // <<"; old aux solution size = "<<old_aux_solution.size()
   // <<"; older aux solution size = "<<older_aux_solution.size()<<std::endl;
 
-  std::set<dof_id_type> dofs;
-  // get dofs for the newly added nodes
-  for (auto & node : node_range)
+  std::set<dof_id_type> dofs, dofs_aux;
+  // get dofs for the newly added elements
+  for (auto & elem : elem_range)
   {
-    std::vector<dof_id_type> di;
-    dof_map.dof_indices(node, di);
-
+    std::vector<dof_id_type> di, di_aux;
+    dof_map.dof_indices(elem, di);
+    dof_map_aux.dof_indices(elem, di_aux);
     for(unsigned int i =0; i<di.size(); ++i)
       dofs.insert(di[i]);
+    for(unsigned int i =0; i<di_aux.size(); ++i)
+      dofs_aux.insert(di_aux[i]);
 
     di.clear();
+    di_aux.clear();
   }
 
+  // update solutions
   for (auto dof: dofs)
   {
     old_solution.set(dof, current_solution(dof));
     older_solution.set(dof, current_solution(dof));
   }
+  // update aux solutions
+  for (auto dof_aux: dofs_aux)
+  {
+    old_aux_solution.set(dof_aux, current_aux_solution(dof_aux));
+    older_aux_solution.set(dof_aux, current_aux_solution(dof_aux));
+  }
 
   dofs.clear();
+  dofs_aux.clear();
 
   current_solution.close();
   old_solution.close();
   older_solution.close();
+
+  current_aux_solution.close();
+  old_aux_solution.close();
+  older_aux_solution.close();
 
   _fe_problem.restoreSolutions();
 }
