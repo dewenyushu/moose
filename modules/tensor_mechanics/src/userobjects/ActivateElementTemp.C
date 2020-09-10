@@ -212,24 +212,27 @@ void
 ActivateElementTemp::finalize()
 {
   /*
-    Update boundary info
-  */
-  updateBoundaryInfo(_mesh);
-  /*
     Synchronize ghost element subdomain ID
+    Note: this needs to be done before updating boundary info because
+    updating boundary requires the updated element subdomain ids
   */
   SyncSubdomainIds sync(_mesh.getMesh());
   Parallel::sync_dofobject_data_by_id
       (_mesh.getMesh().comm(), _mesh.getMesh().elements_begin(),  _mesh.getMesh().elements_end(), sync);
-
+  /*
+      Update boundary info
+  */
+  updateBoundaryInfo(_mesh);
+  /*
+     Similarly for the displaced mesh
+  */
   auto displaced_problem = _fe_problem.getDisplacedProblem();
   if (displaced_problem)
   {
-    updateBoundaryInfo(displaced_problem->mesh());
-
     SyncSubdomainIds sync_mesh(displaced_problem->mesh().getMesh());
     Parallel::sync_dofobject_data_by_id
         (displaced_problem->mesh().getMesh().comm(), displaced_problem->mesh().getMesh().elements_begin(),  displaced_problem->mesh().getMesh().elements_end(), sync_mesh);
+    updateBoundaryInfo(displaced_problem->mesh());
   }
 
 
@@ -287,38 +290,33 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
     Elem * ele = mesh.elemPtr(ele_id);
     for (auto s : ele->side_index_range())
     {
-      if (ele->neighbor_ptr(s))
+      Elem * neighbor_ele = ele->neighbor_ptr(s);
+      if (neighbor_ele != nullptr)
       {
-        dof_id_type neighbor_ele_id=ele->neighbor_ptr(s)->id();
-        Elem * neighbor_ele = mesh.elemPtr(neighbor_ele_id);
         if (neighbor_ele->subdomain_id()!=_active_subdomain_id && neighbor_ele->subdomain_id()!=_inactive_subdomain_id)
         {
           // add this side to boundary
           mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
-          // add the nodes on this side to the _newly_activated_node
-          unsigned int n_nodes=ele->side_ptr(s)->n_nodes();
-          for (unsigned int n =0; n<n_nodes; ++n)
-          {
-            Node * node = ele->side_ptr(s)->node_ptr(n);
-            if (!mesh.getMesh().get_boundary_info().n_boundary_ids(node))
-            {
-              _newly_activated_node.insert(node->id());
-              // mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
-            }
-          }
+          // // add the nodes on this side to the _newly_activated_node
+          // unsigned int n_nodes=ele->side_ptr(s)->n_nodes();
+          // for (unsigned int n =0; n<n_nodes; ++n)
+          // {
+          //   Node * node = ele->side_ptr(s)->node_ptr(n);
+          //   if (!mesh.getMesh().get_boundary_info().n_boundary_ids(node))
+          //   {
+          //     _newly_activated_node.insert(node->id());
+          //     // mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
+          //   }
+          // }
         }
         else
         {
           // remove this side from the boundary
-          // mesh.getMesh().get_boundary_info().remove_side(ele, s,  _boundary_ids[0]);
           mesh.getMesh().get_boundary_info().remove_side(ele, s);
-          remove_bounday_node(mesh, ele->side_ptr(s));
 
           // remove the neighbor side from the boundary
           unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
-          // mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s, _boundary_ids[0]);
           mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s);
-          remove_bounday_node(mesh, neighbor_ele->side_ptr(neighbor_s));
 
           if (neighbor_ele->processor_id()!=this->processor_id())
             ghost_sides_to_remove[neighbor_ele->processor_id()].emplace_back(neighbor_ele->id(), neighbor_s);
@@ -341,7 +339,8 @@ void ActivateElementTemp::push_boundary_info( MooseMesh & mesh,
   & elems_to_push)
 {
   auto elem_action_functor =
-    [&mesh, this]
+    // [&mesh, this]
+    [&mesh]
     (processor_id_type,
      const std::vector<std::pair<dof_id_type, unsigned int>> & received_elem)
     {
@@ -349,9 +348,9 @@ void ActivateElementTemp::push_boundary_info( MooseMesh & mesh,
       {
         // remove the side
         // mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second, this->getExpandedBoundaryID());
-        mesh.getMesh().get_boundary_info().remove_side(mesh.getMesh().elem_ptr(pr.first), pr.second);
-        // remove the nodes on this side
-        this->remove_bounday_node(mesh, mesh.getMesh().elem_ptr(pr.first)->side_ptr(pr.second));
+        mesh.getMesh().get_boundary_info().remove_side(mesh.elemPtr(pr.first), pr.second);
+        // // remove the nodes on this side
+        // this->remove_bounday_node(mesh, mesh.getMesh().elem_ptr(pr.first)->side_ptr(pr.second));
       }
     };
 
@@ -510,7 +509,7 @@ void ActivateElementTemp::remove_bounday_node(MooseMesh & mesh, std::unique_ptr<
     if (_newly_activated_node.find (side_nodes[n]->id()) == _newly_activated_node.end())
     {
       // std::cout<<"Remove boundary node id = "<<side_nodes[n]->id()<<std::endl;
-      // mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
+      mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
     }
   }
 }
