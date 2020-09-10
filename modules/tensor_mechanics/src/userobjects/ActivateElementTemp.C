@@ -305,7 +305,7 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
             if (!mesh.getMesh().get_boundary_info().n_boundary_ids(node))
             {
               _newly_activated_node.insert(node->id());
-              mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
+              // mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
             }
           }
         }
@@ -492,8 +492,8 @@ bool ActivateElementTemp::isNewlyActivated(const Node * nd)
     for (auto connected_ele_id : connected_ele_ids)
     {
       // check the connected elements
-      // if (_mesh.elemPtr(connected_ele_id)->subdomain_id()==_inactive_subdomain_id)
-      //     return false;
+      if (_mesh.elemPtr(connected_ele_id)->subdomain_id()==_inactive_subdomain_id)
+          return false;
       if(_mesh.elemPtr(connected_ele_id)->subdomain_id()==_active_subdomain_id &&
           std::find(_newly_activated_elem.begin(), _newly_activated_elem.end(), connected_ele_id) == _newly_activated_elem.end())
           return false;
@@ -512,7 +512,7 @@ void ActivateElementTemp::remove_bounday_node(MooseMesh & mesh, std::unique_ptr<
     if (_newly_activated_node.find (side_nodes[n]->id()) == _newly_activated_node.end())
     {
       // std::cout<<"Remove boundary node id = "<<side_nodes[n]->id()<<std::endl;
-      mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
+      // mesh.getMesh().get_boundary_info().remove_node(side_nodes[n], _boundary_ids[0]);
     }
   }
 }
@@ -524,7 +524,8 @@ void ActivateElementTemp::initSolutions(ConstElemRange & elem_range,
   // project initial condition to the current solution
   _fe_problem.projectInitialConditionOnCustomRange(elem_range, bnd_node_range);
 
-  NumericVector<Number> & current_solution = _fe_problem.getNonlinearSystemBase().solution();
+  // NumericVector<Number> & current_solution = _fe_problem.getNonlinearSystemBase().solution();
+  NumericVector<Number> & current_solution = * _fe_problem.getNonlinearSystemBase().system().current_local_solution;
   NumericVector<Number> & old_solution = _fe_problem.getNonlinearSystemBase().solutionOld();
   NumericVector<Number> & older_solution = _fe_problem.getNonlinearSystemBase().solutionOlder();
 
@@ -562,4 +563,11 @@ void ActivateElementTemp::initSolutions(ConstElemRange & elem_range,
     older_solution.set(dof, current_solution(dof));
   }
 
+  dofs.clear();
+
+  current_solution.close();
+  old_solution.close();
+  older_solution.close();
+
+  _fe_problem.restoreSolutions();
 }
