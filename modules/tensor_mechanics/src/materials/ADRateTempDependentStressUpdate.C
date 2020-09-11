@@ -84,11 +84,12 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
     _misorientation_variable(declareADProperty<Real>(_base_name + "misorientation_variable")),
     _misorientation_variable_old(getMaterialPropertyOld<Real>(_base_name + "misorientation_variable")),
     _plastic_strain(declareADProperty<RankTwoTensor>(_base_name + "plastic_strain")),
-    _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "plastic_strain")),
-    _pressure(declareADProperty<Real>(_base_name + "pressure")),
-    _pressure_old(getMaterialPropertyOld<Real>(_base_name + "pressure")),
-    _strain_fluid(declareADProperty<RankTwoTensor>(_base_name + "strain_fluid")),
-    _strain_fluid_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "strain_fluid"))
+    _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "plastic_strain"))
+    //,
+    // _pressure(declareADProperty<Real>(_base_name + "pressure")),
+    // _pressure_old(getMaterialPropertyOld<Real>(_base_name + "pressure")),
+    // _strain_fluid(declareADProperty<RankTwoTensor>(_base_name + "strain_fluid")),
+    // _strain_fluid_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "strain_fluid"))
 {
   // Get linear interpolation of Young's modulus and Poisson'ratio
   // The goal is to compute _shear_modulus_derivative
@@ -110,24 +111,24 @@ void
 ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effective_trial_stress,
                                                      const ADRankFourTensor & elasticity_tensor)
 {
-  _yield_stress = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - (*_temperature)[_qp])))/(_Y4 + std::exp(-_Y1/(*_temperature)[_qp]));
+  _yield_stress = computeYieldStress();
 
   _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
 
   computeShearStressDerivative(elasticity_tensor);
 
-  if ( std::abs(_hardening_variable_old[_qp])<1e-10)
-    _hardening_variable[_qp] = 1.0;
-  else
+  // if ( std::abs(_hardening_variable_old[_qp])<1e-10)
+  //   _hardening_variable[_qp] = 1.0;
+  // else
     _hardening_variable[_qp] = _hardening_variable_old[_qp];
 
-  if (std::abs(_misorientation_variable_old[_qp])<1e-10)
-    _misorientation_variable[_qp] = 1.0;
-  else
+  // if (std::abs(_misorientation_variable_old[_qp])<1e-10)
+  //   _misorientation_variable[_qp] = 1.0;
+  // else
     _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
 
-  _pressure[_qp] = _pressure_old[_qp];
-  _strain_fluid[_qp]=_strain_fluid_old[_qp];
+  // _pressure[_qp] = _pressure_old[_qp];
+  // _strain_fluid[_qp]=_strain_fluid_old[_qp];
 
   updateInternalStateVariables(effective_trial_stress);
 }
@@ -146,26 +147,37 @@ ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_tria
 {
   computePlasticStrainRate(effective_trial_stress, scalar);
 
-  const ADReal theta = (*_temperature)[_qp];
-  const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
+  if(std::isinf(_hardening_variable[_qp].value()))
+    mooseException("Hardening variable out of bound..");
 
-  ADReal tmp = creep_rate_derivative * _dt - 1.0;
+  ADReal theta = getTemperature();
+  // const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
 
-  return creep_rate_derivative * _dt - 1.0;
+  ADReal p1 =  _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) ;
+  ADReal p2 = _Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]);
+  ADReal p3 = _Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp];
+  ADReal derivative = p1 - _C1*_C2*(p2-p3);
+
+  ADReal tmp = derivative * _dt - 1.0;
+
+  if(!std::isfinite(tmp.value()))
+    mooseException("Derivative out of bound..");
+
+  return tmp;
 }
 
 void
 ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effective_trial_stress,
                                                       const ADReal & scalar)
 {
-  const ADReal theta = (*_temperature)[_qp];
+  const ADReal theta = getTemperature();
   const ADReal stress_delta = effective_trial_stress - 3.0 * _shear_modulus * scalar;
   const ADReal ratio = stress_delta/(_hardening_variable[_qp] + _yield_stress);
 
   if (ratio>1.0)
   {
     _plastic_strain_rate = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
-    _C1 = (_n1+_n2/theta)*_plastic_strain_rate*std::cosh(ratio-1.0)/std::sinh(ratio-1.0);
+    _C1 = (_n1+_n2/theta)*_plastic_strain_rate/std::tanh(ratio-1.0);
     _C2 = (3.0*_shear_modulus*scalar-effective_trial_stress)/(_hardening_variable[_qp] + _yield_stress)/(_hardening_variable[_qp] + _yield_stress);
   }
   else
@@ -178,13 +190,16 @@ ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effecti
   // check value
   if(std::isinf(_plastic_strain_rate.value()) || std::isinf(_C1.value()) || std::isinf(_C2.value()))
     mooseException("Plastic strain variable out of bound.. check trial stress and reduce time step");
+  // if(_plastic_strain_rate.value()>1e20 || _C1.value()>1e20 || _C2.value()>1e20)
+  //   mooseError("Plastic strain variable >1e20.. check trial stress and reduce time step");
 }
 
 void
 ADRateTempDependentStressUpdate::computeShearStressDerivative(const ADRankFourTensor & elasticity_tensor)
 {
-  Real dE = _data_youngs_modulus->sampleDerivative((*_temperature)[_qp].value());
-  Real dnu = _data_poissons_ratio->sampleDerivative((*_temperature)[_qp].value());
+  const ADReal theta = getTemperature();
+  Real dE = _data_youngs_modulus->sampleDerivative(theta.value());
+  Real dnu = _data_poissons_ratio->sampleDerivative(theta.value());
 
   ADReal poissons_ratio = ElasticityTensorTools::getIsotropicPoissonsRatio(elasticity_tensor);
   ADReal youngs_modulus = ElasticityTensorTools::getIsotropicYoungsModulus(elasticity_tensor);
@@ -202,10 +217,10 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
   // @ t=0, _hardening_variable=exp(_shear_modulus_derivative/_shear_modulus*t)->_hardening_variable=1.0
   // similarly for the misorientation_variable
 
-  if(std::abs(_hardening_variable[_qp].value())<1e-10)
+  // if(std::abs(_hardening_variable[_qp].value())<1e-10)
     _hardening_variable[_qp]=1.0;
 
-  if(std::abs(_misorientation_variable[_qp].value())<1e-10)
+  // if(std::abs(_misorientation_variable[_qp].value())<1e-10)
     _misorientation_variable[_qp]=1.0;
 
   ADRadialReturnStressUpdate::initQpStatefulProperties();
@@ -214,19 +229,20 @@ ADRateTempDependentStressUpdate::initQpStatefulProperties()
 void
 ADRateTempDependentStressUpdate::propagateQpStatefulProperties()
 {
-  if ( std::abs(_hardening_variable_old[_qp])<1e-10)
-    _hardening_variable[_qp] = 1.0;
-  else
+  // if ( std::abs(_hardening_variable_old[_qp])<1e-10)
+  //   _hardening_variable[_qp] = 1.0;
+  // else
     _hardening_variable[_qp] = _hardening_variable_old[_qp];
 
-  if (std::abs(_misorientation_variable_old[_qp])<1e-10)
-    _misorientation_variable[_qp] = 1.0;
-  else
+  // if (std::abs(_misorientation_variable_old[_qp])<1e-10)
+  //   _misorientation_variable[_qp] = 1.0;
+  // else
     _misorientation_variable[_qp] = _misorientation_variable_old[_qp];
+    _plastic_strain[_qp] = _plastic_strain_old[_qp];
 
-  _pressure[_qp]= _pressure_old[_qp];
+  // _pressure[_qp]= _pressure_old[_qp];
 
-  propagateQpStatefulPropertiesRadialReturn();
+  ADRadialReturnStressUpdate::propagateQpStatefulPropertiesRadialReturn();
 }
 
 void
@@ -245,7 +261,7 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
                                           const ADReal & scalar,
                                           const ADReal & /*scalar_increment*/)
 {
-  const ADReal theta = (*_temperature)[_qp];
+  const ADReal theta = getTemperature();
 
   /// Compute increment of isotropic harderning internal state variable
   ADReal hardening_variable_increment= _hardening_variable[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp])-_Rd1*std::exp(-_Rd2/theta)* _hardening_variable[_qp])*scalar;
@@ -270,50 +286,71 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
     mooseException("Misorientation variable out of bound.. reduce time step");
 }
 
-void
-ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
-                                        ADRankTwoTensor & inelastic_strain_increment,
-                                        const ADRankTwoTensor & rotation_increment,
-                                        ADRankTwoTensor & stress_new,
-                                        const RankTwoTensor & stress_old,
-                                        const ADRankFourTensor & elasticity_tensor,
-                                        const RankTwoTensor & elastic_strain_old)
+ADReal
+ADRateTempDependentStressUpdate::computeYieldStress()
 {
+  const ADReal theta = getTemperature();
 
-  // accumulate pressure in preparation for calculations after melting
-  ADRankTwoTensor strain_increment_total = strain_increment; //+inelastic_strain_increment;
+  ADReal nominator = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - theta)));
+  ADReal denominator = (_Y4 + std::exp(-_Y1/theta));
 
-  ADReal p_increment=_K_melt * strain_increment_total.trace();
-  _pressure[_qp]=_pressure_old[_qp] + p_increment;
-
-  // get average temperature
-  ADReal temp = 0;
-  for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
-    temp += (*_temperature)[qp];
-
-  temp /= _qrule->n_points();
-
-  // if (temp >= _theta_melt)
-  // {
-  //   ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment_total;
-  //   RankTwoTensor I; I.setToIdentity();
-  //   stress_new = _pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate.deviatoric();
-  //   _strain_fluid[_qp] = elastic_strain_old + strain_increment;
-  // }
-  // else
-  // {
-  //   // compute trial stress using the strain caused only by solid deformation
-  //   stress_new = stress_new - elasticity_tensor*(_strain_fluid[_qp]);
-
-    ADRadialReturnStressUpdate::updateState(strain_increment,
-                                            inelastic_strain_increment,
-                                            rotation_increment,
-                                            stress_new,
-                                            stress_old,
-                                            elasticity_tensor,
-                                            elastic_strain_old);
-  // }
+  return nominator/denominator;
 }
+
+ADReal
+ADRateTempDependentStressUpdate::getTemperature()
+{
+  return (*_temperature)[_qp];
+  // if (theta <1e-10)
+  //   return 293;
+  // else
+  //   return theta;
+}
+
+// void
+// ADRateTempDependentStressUpdate::updateState(ADRankTwoTensor & strain_increment,
+//                                         ADRankTwoTensor & inelastic_strain_increment,
+//                                         const ADRankTwoTensor & rotation_increment,
+//                                         ADRankTwoTensor & stress_new,
+//                                         const RankTwoTensor & stress_old,
+//                                         const ADRankFourTensor & elasticity_tensor,
+//                                         const RankTwoTensor & elastic_strain_old)
+// {
+//
+//   // accumulate pressure in preparation for calculations after melting
+//   ADRankTwoTensor strain_increment_total = strain_increment; //+inelastic_strain_increment;
+//
+//   ADReal p_increment=_K_melt * strain_increment_total.trace();
+//   _pressure[_qp]=_pressure_old[_qp] + p_increment;
+//
+//   // get average temperature
+//   ADReal temp = 0;
+//   for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
+//     temp += (*_temperature)[qp];
+//
+//   temp /= _qrule->n_points();
+//
+//   // if (temp >= _theta_melt)
+//   // {
+//   //   ADRankTwoTensor strain_increment_rate = 1.0/_dt * strain_increment_total;
+//   //   RankTwoTensor I; I.setToIdentity();
+//   //   stress_new = _pressure[_qp]*I + 2.0*_mu_melt*strain_increment_rate.deviatoric();
+//   //   _strain_fluid[_qp] = elastic_strain_old + strain_increment;
+//   // }
+//   // else
+//   // {
+//   //   // compute trial stress using the strain caused only by solid deformation
+//   //   stress_new = stress_new - elasticity_tensor*(_strain_fluid[_qp]);
+//
+//     ADRadialReturnStressUpdate::updateState(strain_increment,
+//                                             inelastic_strain_increment,
+//                                             rotation_increment,
+//                                             stress_new,
+//                                             stress_old,
+//                                             elasticity_tensor,
+//                                             elastic_strain_old);
+//   // }
+// }
 
 Real
 ADRateTempDependentStressUpdate::computeReferenceResidual(
