@@ -2532,7 +2532,7 @@ NonlinearSystemBase::computeJacobianInternal(const std::set<TagID> & tags)
 
       // Avoid looping through the node that has no dofs attached
       if (nbc_warehouse->hasActiveBoundaryObjects(boundary_id) &&
-          node->processor_id() == processor_id() && node->total_dofs())
+          node->processor_id() == processor_id())
       {
         _fe_problem.reinitNodeFace(node, boundary_id, 0);
 
