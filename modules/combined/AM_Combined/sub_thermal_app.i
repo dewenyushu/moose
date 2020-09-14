@@ -1,5 +1,5 @@
 T_room = 300
-T_melt = 1200
+T_melt = 800
 T_ambient = 300
 
 [GlobalParams]
@@ -360,7 +360,7 @@ T_ambient = 300
     a = 4
     b = 4
     c = 4
-    power = 2000
+    power = 1000
     efficienty = 0.36
     factor = 1.0
     function_x= heat_source_x
@@ -431,7 +431,7 @@ T_ambient = 300
 []
 
 [Outputs]
-  file_base = './output_T1600/AM_combined_sub'
+  file_base = './output_T800_P1000_r8/AM_combined_sub'
   [./exodus]
     type = Exodus
     execute_on = 'INITIAL TIMESTEP_END'
