@@ -155,8 +155,11 @@ BoundaryRestrictable::initializeBoundaryRestrictable(const MooseObject * moose_o
                "Try setting \"Mesh/construct_side_list_from_node_list=true\" if you see this "
                "error.\n"
                "Note: If you are running with adaptivity you should prefer using side sets.";
-
-      moose_object->paramError("boundary", msg.str());
+      // produce a warning instead of an error
+      // in many cases this would be a mistake, so we would like to warn the user.
+      // however, sometimes we can have a variable defined in an empty boundary
+      // which will be expanded later
+      moose_object->paramWarning("boundary", msg.str());
     }
   }
 }
