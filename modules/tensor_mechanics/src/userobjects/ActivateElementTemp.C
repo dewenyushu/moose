@@ -66,6 +66,15 @@ ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
 
   // add the new boundary and get its boundary id
   _boundary_ids = _mesh.getBoundaryIDs(_expand_boundary_name, true);
+  _mesh.setBoundaryName(_boundary_ids[0], _expand_boundary_name[0]);
+
+  auto displaced_problem = _fe_problem.getDisplacedProblem();
+  if (displaced_problem)
+  {
+    _boundary_ids=displaced_problem->mesh().getBoundaryIDs(_expand_boundary_name, true);
+    displaced_problem->mesh().setBoundaryName(_boundary_ids[0], _expand_boundary_name[0]);
+  }
+
 
 
   // initializeBoundary(_mesh);

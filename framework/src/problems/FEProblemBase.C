@@ -524,7 +524,8 @@ FEProblemBase::getCoordSystem(SubdomainID sid)
   if (it != _coord_sys.end())
     return (*it).second;
   else
-    mooseError("Requested subdomain ", sid, " does not exist.");
+    // mooseError("Requested subdomain ", sid, " does not exist.");
+    return Moose::COORD_XYZ;
 }
 
 void
