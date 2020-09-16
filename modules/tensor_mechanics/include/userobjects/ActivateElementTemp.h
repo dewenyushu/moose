@@ -40,7 +40,7 @@ public:
   void finalize() override;
 
 protected:
-  void initializeBoundary(MooseMesh & mesh);
+  void setNewBoundayName();
 
   void updateBoundaryInfo(MooseMesh & mesh);
 
@@ -83,7 +83,7 @@ protected:
   /// expanded boundary name
   const std::vector<BoundaryName> _expand_boundary_name;
   /// expanded boundary IDs
-  std::vector<BoundaryID> _boundary_ids;
+  std::vector<BoundaryID> _boundary_ids, _disp_boundary_ids;
   /// path of the heat source, x, y, z components
   const Function & _function_x;
   const Function & _function_y;

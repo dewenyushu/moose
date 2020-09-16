@@ -64,27 +64,26 @@ ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
   if((!_variable_activation) && _coupled_var!= nullptr)
     mooseWarning("Not using variable activation, so the 'coupled_var' is ignored");
 
+  setNewBoundayName();
+}
+
+void
+ActivateElementTemp::setNewBoundayName()
+{
   // add the new boundary and get its boundary id
   _boundary_ids = _mesh.getBoundaryIDs(_expand_boundary_name, true);
   _mesh.setBoundaryName(_boundary_ids[0], _expand_boundary_name[0]);
+  _mesh.getMesh().get_boundary_info().sideset_name(_boundary_ids[0]) = _expand_boundary_name[0];
+  _mesh.getMesh().get_boundary_info().nodeset_name(_boundary_ids[0]) = _expand_boundary_name[0];
 
   auto displaced_problem = _fe_problem.getDisplacedProblem();
   if (displaced_problem)
   {
-    _boundary_ids=displaced_problem->mesh().getBoundaryIDs(_expand_boundary_name, true);
-    displaced_problem->mesh().setBoundaryName(_boundary_ids[0], _expand_boundary_name[0]);
+    _disp_boundary_ids=displaced_problem->mesh().getBoundaryIDs(_expand_boundary_name, true);
+    displaced_problem->mesh().setBoundaryName(_disp_boundary_ids[0], _expand_boundary_name[0]);
+    displaced_problem->mesh().getMesh().get_boundary_info().sideset_name(_disp_boundary_ids[0]) = _expand_boundary_name[0];
+    displaced_problem->mesh().getMesh().get_boundary_info().nodeset_name(_disp_boundary_ids[0]) = _expand_boundary_name[0];
   }
-
-
-
-  // initializeBoundary(_mesh);
-}
-
-void
-ActivateElementTemp::initializeBoundary(MooseMesh & mesh)
-{
-  // We want the active subdomain to be empty, but it is often not the case.
-  // So we want to check the initial boundary info and update the moving boundary
 }
 
 void
@@ -171,7 +170,6 @@ ActivateElementTemp::finalize()
     updateBoundaryInfo(displaced_problem->mesh());
   }
 
-
   /*
     Reinit equation systems
   */
@@ -187,21 +185,6 @@ ActivateElementTemp::finalize()
     Apply initial condition for the newly activated elements
   */
   initSolutions(elem_range, bnd_node_range);
-
-   // for (auto elem: elem_range)
-   // {
-   //   elem->print_info();
-   // }
-
-   // for (auto bnode: bnd_node_range)
-   // {
-   //   std::cout<<"New boundary node ID = "<<bnode->_node->id()<<std::endl;
-   // }
-
-   // for (auto node: node_range)
-   // {
-   //   std::cout<<"New node ID = "<<node->id()<<std::endl;
-   // }
 
    /*
      Initialize stateful material properties for the newly activated elements
@@ -238,17 +221,6 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
         {
           // add this side to boundary
           mesh.getMesh().get_boundary_info().add_side( ele,  s, _boundary_ids[0]);
-          // // add the nodes on this side to the _newly_activated_node
-          // unsigned int n_nodes=ele->side_ptr(s)->n_nodes();
-          // for (unsigned int n =0; n<n_nodes; ++n)
-          // {
-          //   Node * node = ele->side_ptr(s)->node_ptr(n);
-          //   if (!mesh.getMesh().get_boundary_info().n_boundary_ids(node))
-          //   {
-          //     _newly_activated_node.insert(node->id());
-          //     // mesh.getMesh().get_boundary_info().add_node(node, _boundary_ids[0]);
-          //   }
-          // }
         }
         else
         {
