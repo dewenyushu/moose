@@ -15,7 +15,8 @@ Radius = 4
 [Mesh]
   [./mesh]
     type = FileMeshGenerator
-    file = ./INL_logo_substrate_100x100.e
+    # file = ./INL_logo_substrate_100x100.e
+    file = ./INL_logo_height5_refined.e
   [../]
   [./add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -36,7 +37,7 @@ Radius = 4
     input = add_set2
     block_id = 2
     bottom_left = '12 -10 0'
-    top_right = '13.5 -9 1'
+    top_right = '13.5 -9 0.5'
   [../]
   [./moving_boundary]
     type = SideSetsAroundSubdomainGenerator
@@ -185,19 +186,19 @@ Radius = 4
 [Functions]
   [./heat_source_x]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_x.csv
+    data_file = ./input_params/path_t_x_v2.csv
     format = columns
     scale_factor = 1.0
   [../]
   [./heat_source_y]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_y.csv
+    data_file = ./input_params/path_t_y_v2.csv
     format = columns
     scale_factor = 1.0
   [../]
   [./heat_source_z]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_z.csv
+    data_file = ./input_params/path_t_z_v2.csv
     format = columns
     scale_factor = 1.0
   [../]
@@ -423,7 +424,7 @@ Radius = 4
   nl_abs_tol = 1e-6
 
   start_time = 0.0
-  end_time = 85.0 # 49
+  end_time = 753.0 # 49
   dt = 0.05
   dtmin = 1e-2
 []
