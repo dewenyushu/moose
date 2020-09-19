@@ -15,7 +15,6 @@ Radius = 4
 [Mesh]
   [./mesh]
     type = FileMeshGenerator
-    # file = ./INL_logo_substrate_100x100.e
     file = ./INL_logo_height5_refined.e
   [../]
   [./add_set1]
@@ -85,11 +84,6 @@ Radius = 4
     family = MONOMIAL
     block = '2 3'
   [../]
-  [./dummy_aux]
-    order = FIRST
-    family = LAGRANGE
-    block = '2 3'
-  [../]
 []
 
 [ICs]
@@ -103,18 +97,6 @@ Radius = 4
     type = ConstantIC
     variable = temp
     value = ${T_melt}
-    block = '2'
-  [../]
-  [./dummy_substrate_aux]
-    type = ConstantIC
-    variable = dummy_aux
-    value = 50
-    block = '3'
-  [../]
-  [./dummy_product_aux]
-    type = ConstantIC
-    variable = dummy_aux
-    value = 500
     block = '2'
   [../]
 []
@@ -186,19 +168,19 @@ Radius = 4
 [Functions]
   [./heat_source_x]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_x_v2.csv
+    data_file = ./input_params/path_t_x_h5.csv
     format = columns
     scale_factor = 1.0
   [../]
   [./heat_source_y]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_y_v2.csv
+    data_file = ./input_params/path_t_y_h5.csv
     format = columns
     scale_factor = 1.0
   [../]
   [./heat_source_z]
     type = PiecewiseLinear
-    data_file = ./input_params/path_t_z_v2.csv
+    data_file = ./input_params/path_t_z_h5.csv
     format = columns
     scale_factor = 1.0
   [../]
@@ -424,15 +406,16 @@ Radius = 4
   nl_abs_tol = 1e-6
 
   start_time = 0.0
-  end_time = 753.0 # 49
+  end_time = 283.0 # 49
   dt = 0.05
   dtmin = 1e-2
 []
 
 [Outputs]
-  file_base = './output_T${T_melt}_P${Power}_r${Radius}/AM_INL_sub'
+  file_base = './output_T${T_melt}_P${Power}_r${Radius}_h5_fine/AM_INL_sub'
   [./exodus]
     type = Exodus
     execute_on = 'INITIAL TIMESTEP_END'
+    interval = 5
   [../]
 []
