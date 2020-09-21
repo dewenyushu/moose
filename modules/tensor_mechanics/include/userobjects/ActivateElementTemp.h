@@ -88,6 +88,9 @@ protected:
   const Function & _function_x;
   const Function & _function_y;
   const Function & _function_z;
+  /// define the distance of the element to the point on the path,
+  /// below which the element will be activated 
+  const Real _activate_distance;
   /// whether to use variable value for element activation
   /// if false, use path activation
   const bool _variable_activation;

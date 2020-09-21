@@ -33,6 +33,7 @@ validParams<ActivateElementTemp>()
   params.addParam<FunctionName>("function_x", "The x component heating spot travel path");
   params.addParam<FunctionName>("function_y", "The y component heating spot travel path");
   params.addParam<FunctionName>("function_z", "The z component heating spot travel path");
+  params.addParam<Real>("activate_distance", 0, "The maximum distance of the activated element to the point on the path.");
   params.addParam<bool>(
     "variable_activation",
     false, "Whether to use variable value for element activation. If false, use path activation");
@@ -54,6 +55,7 @@ ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
     _function_z(getFunction("function_z")),
+    _activate_distance(getParam<Real>("activate_distance")),
     _variable_activation(getParam<bool>("variable_activation")),
     _coupled_var(isParamValid("coupled_var") ? & coupledValue("coupled_var"): nullptr),
     _activate_value(getParam<Real>("activate_value"))
@@ -107,7 +109,7 @@ ActivateElementTemp::execute()
   }
 
   bool activate_by_var = _variable_activation && avg_val > _activate_value;
-  bool activate_by_path = (!_variable_activation) && _current_elem->contains_point( Point (x_t, y_t, z_t));
+  bool activate_by_path = (!_variable_activation) && _current_elem->close_to_point( Point (x_t, y_t, z_t), _activate_distance);
 
   if((activate_by_var || activate_by_path) && _current_elem->subdomain_id()!=_active_subdomain_id
       &&  _current_elem->subdomain_id()!=_inactive_subdomain_id )
