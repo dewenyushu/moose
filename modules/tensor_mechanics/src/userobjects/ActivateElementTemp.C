@@ -33,7 +33,7 @@ validParams<ActivateElementTemp>()
   params.addParam<FunctionName>("function_x", "The x component heating spot travel path");
   params.addParam<FunctionName>("function_y", "The y component heating spot travel path");
   params.addParam<FunctionName>("function_z", "The z component heating spot travel path");
-  params.addParam<Real>("activate_distance", 0, "The maximum distance of the activated element to the point on the path.");
+  params.addParam<Real>("activate_distance", 1e-4, "The maximum distance of the activated element to the point on the path.");
   params.addParam<bool>(
     "variable_activation",
     false, "Whether to use variable value for element activation. If false, use path activation");
@@ -49,22 +49,29 @@ validParams<ActivateElementTemp>()
 
 ActivateElementTemp::ActivateElementTemp(const InputParameters & parameters)
   : ElementUserObject(parameters),
-    _active_subdomain_id(getParam<int>("active_subdomain_id")),
-    _inactive_subdomain_id(getParam<int>("inactive_subdomain_id")),
+    _active_subdomain_id(declareRestartableData<int>("active_subdomain_id", getParam<int>("active_subdomain_id"))),
+    _inactive_subdomain_id(declareRestartableData<int>("inactive_subdomain_id", getParam<int>("inactive_subdomain_id"))),
     _expand_boundary_name(getParam<std::vector<BoundaryName>>("expand_boundary_name")),
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
     _function_z(getFunction("function_z")),
-    _activate_distance(getParam<Real>("activate_distance")),
-    _variable_activation(getParam<bool>("variable_activation")),
+    _activate_distance(declareRestartableData<Real>("activate_distance", getParam<Real>("activate_distance"))),
+    _variable_activation(declareRestartableData<bool>("variable_activation", getParam<bool>("variable_activation"))),
     _coupled_var(isParamValid("coupled_var") ? & coupledValue("coupled_var"): nullptr),
-    _activate_value(getParam<Real>("activate_value"))
+    _activate_value(declareRestartableData<Real>("activate_value", getParam<Real>("activate_value")))
 {
   if(_variable_activation && _coupled_var == nullptr)
     mooseError("Need a 'coupled_var' defined if variable_activation = true");
 
   if((!_variable_activation) && _coupled_var!= nullptr)
     mooseWarning("Not using variable activation, so the 'coupled_var' is ignored");
+
+  std::cout<<"active_subdomain_id = "<<_active_subdomain_id<<std::endl;
+  std::cout<<"inactive_subdomain_id = "<<_inactive_subdomain_id<<std::endl;
+  std::cout<<"expand_boundary_name = "<<_expand_boundary_name[0]<<std::endl;
+  std::cout<<"activate_distance = "<<_activate_distance<<std::endl;
+  std::cout<<"variable_activation = "<<_variable_activation<<std::endl;
+  std::cout<<"activate_value = "<<_activate_value<<std::endl;
 
   setNewBoundayName();
 }
