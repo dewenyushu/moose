@@ -1,6 +1,6 @@
 T_room = 300
 T_melt = 800
-T_ambient = 300
+# T_ambient = 300
 Power = 1000
 Radius = 4
 
@@ -222,33 +222,33 @@ Radius = 4
   [../]
 
 
-  [./convective]
-    # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-    type = ADConvectiveHeatFluxBC
-    variable = temp
-    boundary = 'moving_boundary'
-    # coefficient = 2e-5
-    heat_transfer_coefficient = 2e-4
-    T_infinity = ${T_ambient}
-  [../]
-  [./convective_substrate]
-    # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-    type = ADConvectiveHeatFluxBC
-    variable = temp
-    boundary = 2
-    # coefficient = 2e-5
-    heat_transfer_coefficient = 2e-4
-    T_infinity = ${T_ambient}
-  [../]
-  [./convective_middle]
-    # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-    type = ADConvectiveHeatFluxBC
-    variable = temp
-    boundary = 'middle'
-    # coefficient = 2e-5
-    heat_transfer_coefficient = 2e-4
-    T_infinity = ${T_ambient}
-  [../]
+  # [./convective]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = 'moving_boundary'
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 2e-4
+  #   T_infinity = ${T_ambient}
+  # [../]
+  # [./convective_substrate]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = 2
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 2e-4
+  #   T_infinity = ${T_ambient}
+  # [../]
+  # [./convective_middle]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = 'middle'
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 2e-4
+  #   T_infinity = ${T_ambient}
+  # [../]
 []
 
 [Materials]
@@ -349,7 +349,7 @@ Radius = 4
     active_subdomain_id = 2
     inactive_subdomain_id = 3
     variable_activation = false
-    activate_distance = 1.0
+    activate_distance = 1.4
     expand_boundary_name = 'moving_boundary'
   [../]
 []
@@ -386,17 +386,21 @@ Radius = 4
   # l_tol = 1e-5
 
   start_time = 0.0
-  end_time = 566.0
+  end_time = 566
   dt = 0.05
   dtmin = 1e-2
 []
 
 
 [Outputs]
-  file_base = './Path_T${T_melt}_P${Power}_r${Radius}_h10_coarse_v2/EA_thermal_out'
+  file_base = './Path_T${T_melt}_P${Power}_r${Radius}_h10_coarse/EA_thermal_out'
   [./exodus]
     type = Exodus
     execute_on = 'INITIAL TIMESTEP_END'
-    interval = 5
+    # interval = 5
   [../]
+  [checkpoint]
+    type = Checkpoint
+    num_files = 2
+  []
 []
