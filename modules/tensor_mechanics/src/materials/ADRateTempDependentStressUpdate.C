@@ -35,25 +35,25 @@ ADRateTempDependentStressUpdate::validParams()
   // Rate dependent plasticity parameters
   // Default values are from the paper by Michael E. Stender, et. al, 2018.
   // fluid parameters
-  params.addParam<Real>("theta_melt", 1700, "Melt temperature [K]");
-  params.addParam<Real>("mu_melt", 1.0e-6, "Melt viscosity [Pa*s]");
-  params.addParam<Real>("K_melt", 2.2e9, "Bulk modulus melt [Pa]");
+  params.addParam<MaterialPropertyName>("theta_melt", 1700, "Melt temperature [K]");
+  params.addParam<MaterialPropertyName>("mu_melt", 1.0e-6, "Melt viscosity [Pa*s]");
+  params.addParam<MaterialPropertyName>("K_melt", 2.2e9, "Bulk modulus melt [Pa]");
 
   // solid parameters
-  params.addParam<Real>("Y0", 5.264e09, "Rate independent yield constant [Pa]");
-  params.addParam<Real>("Y1", 2.688e05, "First rate independent yield temperature dependency [K]");
-  params.addParam<Real>("Y2", 1.87e-03, "Second rate independent yield temperature dependency [1/K]");
-  params.addParam<Real>("Y3", 8.683e02, "Third rate independent yield temperature dependency [K]");
-  params.addParam<Real>("Y4", 3.316e01, "Fourth rate independent yield temperature dependency [-]");
-  params.addParam<Real>("Hmu", 0.01, "Isotropic hardening shear coefficient [-]");
-  params.addParam<Real>("f1", 9.178e-02, "First flow rule coefficient constant [1/s]");
-  params.addParam<Real>("f2", 0.0, "Second flow rule coefficient constant [K]");
-  params.addParam<Real>("n1", 0.0, "Flow rule exponent constant [-]");
-  params.addParam<Real>("n2", 5.699e03, "Flow rule exponent temperature dependence [K]");
-  params.addParam<Real>("Rd1", 8.565e02, "Isotropic dynamic recovery constant [Pa]");
-  params.addParam<Real>("Rd2", 5.419e03, "Isotropic dynamic recovery temperature dependence [K]");
-  params.addParam<Real>("hxi", 1.670e-03, " Misorientation variable hardening constant [m/(s Pa)]");
-  params.addParam<Real>("r", 1.0, " Misorientation variable hardening exponent, 0.5<=r<=1 [-]");
+  params.addParam<MaterialPropertyName>("Y0", 5.264e09, "Rate independent yield constant [Pa]");
+  params.addParam<MaterialPropertyName>("Y1", 2.688e05, "First rate independent yield temperature dependency [K]");
+  params.addParam<MaterialPropertyName>("Y2", 1.87e-03, "Second rate independent yield temperature dependency [1/K]");
+  params.addParam<MaterialPropertyName>("Y3", 8.683e02, "Third rate independent yield temperature dependency [K]");
+  params.addParam<MaterialPropertyName>("Y4", 3.316e01, "Fourth rate independent yield temperature dependency [-]");
+  params.addParam<MaterialPropertyName>("Hmu", 0.01, "Isotropic hardening shear coefficient [-]");
+  params.addParam<MaterialPropertyName>("f1", 9.178e-02, "First flow rule coefficient constant [1/s]");
+  params.addParam<MaterialPropertyName>("f2", 0.0, "Second flow rule coefficient constant [K]");
+  params.addParam<MaterialPropertyName>("n1", 0.0, "Flow rule exponent constant [-]");
+  params.addParam<MaterialPropertyName>("n2", 5.699e03, "Flow rule exponent temperature dependence [K]");
+  params.addParam<MaterialPropertyName>("Rd1", 8.565e02, "Isotropic dynamic recovery constant [Pa]");
+  params.addParam<MaterialPropertyName>("Rd2", 5.419e03, "Isotropic dynamic recovery temperature dependence [K]");
+  params.addParam<MaterialPropertyName>("hxi", 1.670e-03, " Misorientation variable hardening constant [m/(s Pa)]");
+  params.addParam<MaterialPropertyName>("r", 1.0, " Misorientation variable hardening exponent, 0.5<=r<=1 [-]");
 
   return params;
 }
@@ -62,23 +62,23 @@ ADRateTempDependentStressUpdate::ADRateTempDependentStressUpdate(const InputPara
   : ADRadialReturnStressUpdate(parameters),
     _temperature(isParamValid("temperature") ? &adCoupledValue("temperature") : nullptr),
     _start_time(getParam<Real>("start_time")),
-    _theta_melt(getParam<Real>("theta_melt")),
-    _mu_melt(getParam<Real>("mu_melt")),
-    _K_melt(getParam<Real>("K_melt")),
-    _Y0(getParam<Real>("Y0")),
-    _Y1(getParam<Real>("Y1")),
-    _Y2(getParam<Real>("Y2")),
-    _Y3(getParam<Real>("Y3")),
-    _Y4(getParam<Real>("Y4")),
-    _Hmu(getParam<Real>("Hmu")),
-    _f1(getParam<Real>("f1")),
-    _f2(getParam<Real>("f2")),
-    _n1(getParam<Real>("n1")),
-    _n2(getParam<Real>("n2")),
-    _Rd1(getParam<Real>("Rd1")),
-    _Rd2(getParam<Real>("Rd2")),
-    _hxi(getParam<Real>("hxi")),
-    _r(getParam<Real>("r")),
+    _theta_melt(getADMaterialProperty<Real>("theta_melt")),
+    _mu_melt(getADMaterialProperty<Real>("mu_melt")),
+    _K_melt(getADMaterialProperty<Real>("K_melt")),
+    _Y0(getADMaterialProperty<Real>("Y0")),
+    _Y1(getADMaterialProperty<Real>("Y1")),
+    _Y2(getADMaterialProperty<Real>("Y2")),
+    _Y3(getADMaterialProperty<Real>("Y3")),
+    _Y4(getADMaterialProperty<Real>("Y4")),
+    _Hmu(getADMaterialProperty<Real>("Hmu")),
+    _f1(getADMaterialProperty<Real>("f1")),
+    _f2(getADMaterialProperty<Real>("f2")),
+    _n1(getADMaterialProperty<Real>("n1")),
+    _n2(getADMaterialProperty<Real>("n2")),
+    _Rd1(getADMaterialProperty<Real>("Rd1")),
+    _Rd2(getADMaterialProperty<Real>("Rd2")),
+    _hxi(getADMaterialProperty<Real>("hxi")),
+    _r(getADMaterialProperty<Real>("r")),
     _hardening_variable(declareADProperty<Real>(_base_name + "hardening_variable")),
     _hardening_variable_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
     _misorientation_variable(declareADProperty<Real>(_base_name + "misorientation_variable")),
@@ -115,7 +115,7 @@ ADRateTempDependentStressUpdate::computeStressInitialize(const ADReal & effectiv
 
   _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
 
-  computeShearStressDerivative(elasticity_tensor);
+  computeShearModulusDerivative(elasticity_tensor);
 
   // if ( std::abs(_hardening_variable_old[_qp])<1e-10)
   //   _hardening_variable[_qp] = 1.0;
@@ -151,11 +151,11 @@ ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_tria
     mooseException("Hardening variable out of bound..");
 
   ADReal theta = getTemperature();
-  // const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]) -_Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp]);
+  // const ADReal creep_rate_derivative = _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) - _C1*_C2*(_Hmu[_qp]*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]) -_Rd1[_qp]*std::exp(-_Rd2[_qp]/theta)*_hardening_variable[_qp]);
 
   ADReal p1 =  _C1*(-3.0*_shear_modulus/(_hardening_variable[_qp] + _yield_stress)) ;
-  ADReal p2 = _Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]);
-  ADReal p3 = _Rd1*std::exp(-_Rd2/theta)*_hardening_variable[_qp];
+  ADReal p2 = _Hmu[_qp]*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp]);
+  ADReal p3 = _Rd1[_qp]*std::exp(-_Rd2[_qp]/theta)*_hardening_variable[_qp];
   ADReal derivative = p1 - _C1*_C2*(p2-p3);
 
   ADReal tmp = derivative * _dt - 1.0;
@@ -176,8 +176,8 @@ ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effecti
 
   if (ratio>1.0)
   {
-    _plastic_strain_rate = _f1*std::exp(-_f2*theta)*std::pow(std::sinh(ratio-1.0), _n1+_n2/theta);
-    _C1 = (_n1+_n2/theta)*_plastic_strain_rate/std::tanh(ratio-1.0);
+    _plastic_strain_rate = _f1[_qp]*std::exp(-_f2[_qp]*theta)*std::pow(std::sinh(ratio-1.0), _n1[_qp]+_n2[_qp]/theta);
+    _C1 = (_n1[_qp]+_n2[_qp]/theta)*_plastic_strain_rate/std::tanh(ratio-1.0);
     _C2 = (3.0*_shear_modulus*scalar-effective_trial_stress)/(_hardening_variable[_qp] + _yield_stress)/(_hardening_variable[_qp] + _yield_stress);
   }
   else
@@ -195,7 +195,7 @@ ADRateTempDependentStressUpdate::computePlasticStrainRate(const ADReal & effecti
 }
 
 void
-ADRateTempDependentStressUpdate::computeShearStressDerivative(const ADRankFourTensor & elasticity_tensor)
+ADRateTempDependentStressUpdate::computeShearModulusDerivative(const ADRankFourTensor & elasticity_tensor)
 {
   const ADReal theta = getTemperature();
   Real dE = _data_youngs_modulus->sampleDerivative(theta.value());
@@ -264,16 +264,16 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
   const ADReal theta = getTemperature();
 
   /// Compute increment of isotropic harderning internal state variable
-  ADReal hardening_variable_increment= _hardening_variable[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp])-_Rd1*std::exp(-_Rd2/theta)* _hardening_variable[_qp])*scalar;
+  ADReal hardening_variable_increment= _hardening_variable[_qp]*(_shear_modulus_derivative/_shear_modulus)+(_Hmu[_qp]*_shear_modulus*(1.0+_misorientation_variable[_qp]/_hardening_variable[_qp])-_Rd1[_qp]*std::exp(-_Rd2[_qp]/theta)* _hardening_variable[_qp])*scalar;
   _hardening_variable[_qp]=_hardening_variable_old[_qp]+hardening_variable_increment;
 
   /// Compute increment of misorientation variable
   ADReal misorientation_variable_increment;
-  const Real n_power = 1.0 - 1.0/_r;
+  const ADReal n_power = 1.0 - 1.0/_r[_qp];
   if (n_power<1e-10)
-    misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi*_shear_modulus*std::abs(scalar);
+    misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi[_qp]*_shear_modulus*std::abs(scalar);
   else
-    misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi*_shear_modulus*std::pow(_misorientation_variable[_qp]/_shear_modulus , n_power)*std::abs(scalar);
+    misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi[_qp]*_shear_modulus*std::pow(_misorientation_variable[_qp]/_shear_modulus , n_power)*std::abs(scalar);
   _misorientation_variable[_qp] = _misorientation_variable_old[_qp] + misorientation_variable_increment;
 
   computePlasticStrainRate(effective_trial_stress, scalar);
@@ -291,8 +291,8 @@ ADRateTempDependentStressUpdate::computeYieldStress()
 {
   const ADReal theta = getTemperature();
 
-  ADReal nominator = 0.5*_Y0*(1.0 + std::tanh(_Y2*(_Y3 - theta)));
-  ADReal denominator = (_Y4 + std::exp(-_Y1/theta));
+  ADReal nominator = 0.5*_Y0[_qp]*(1.0 + std::tanh(_Y2[_qp]*(_Y3[_qp] - theta)));
+  ADReal denominator = (_Y4[_qp] + std::exp(-_Y1[_qp]/theta));
 
   return nominator/denominator;
 }

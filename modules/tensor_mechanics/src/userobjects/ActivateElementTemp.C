@@ -9,6 +9,7 @@
 
 #include "ActivateElementTemp.h"
 #include "DisplacedProblem.h"
+#include "MaterialPropertyStorage.h"
 
 #include "libmesh/quadrature.h"
 #include "libmesh/parallel_algebra.h"
@@ -201,6 +202,12 @@ ActivateElementTemp::finalize()
    */
    _fe_problem.initElementStatefulProps(elem_range);
 
+   /*
+     Remove material properties for the removed sides
+   */
+
+
+
   /*
     Clear the list
   */
@@ -274,6 +281,15 @@ void ActivateElementTemp::updateBoundaryInfo(MooseMesh & mesh)
           unsigned int neighbor_s = neighbor_ele->which_neighbor_am_i(ele);
           mesh.getMesh().get_boundary_info().remove_side(neighbor_ele, neighbor_s);
           insertNodeIdsOnSide(neighbor_ele, neighbor_s, remove_nodes);
+
+          // erase property for sides
+          _fe_problem.getMaterialPropertyStorage().eraseProperty(ele->side_ptr(s).get());
+          _fe_problem.getBndMaterialPropertyStorage().eraseProperty(ele->side_ptr(s).get());
+          _fe_problem.getNeighborMaterialPropertyStorage().eraseProperty(ele->side_ptr(s).get());
+
+          _fe_problem.getMaterialPropertyStorage().eraseProperty(neighbor_ele->side_ptr(neighbor_s).get());
+          _fe_problem.getBndMaterialPropertyStorage().eraseProperty(neighbor_ele->side_ptr(neighbor_s).get());
+          _fe_problem.getNeighborMaterialPropertyStorage().eraseProperty(neighbor_ele->side_ptr(neighbor_s).get());
 
           if (neighbor_ele->processor_id()!=this->processor_id())
             ghost_sides_to_remove[neighbor_ele->processor_id()].emplace_back(neighbor_ele->id(), neighbor_s);

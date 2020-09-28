@@ -41,7 +41,7 @@ protected:
                          const ADReal & scalar = 0.0);
 
   void computeMisorientationVariable();
-  void computeShearStressDerivative(const ADRankFourTensor & elasticity_tensor);
+  void computeShearModulusDerivative(const ADRankFourTensor & elasticity_tensor);
 
   ADReal computeYieldStress();
   ADReal getTemperature();
@@ -86,47 +86,47 @@ protected:
   ///
 
   /// Melt temperature [K]
-  const Real _theta_melt;
+  const ADMaterialProperty<Real> & _theta_melt;
 
   /// Melt viscosity [Pa*s]
-  const Real _mu_melt;
+  const ADMaterialProperty<Real> & _mu_melt;
 
   /// Bulk modulus melt [Pa]
-  const Real _K_melt;
+  const ADMaterialProperty<Real> & _K_melt;
 
   ///
   /// Model parameters (solid part)
   ///
 
   /// Rate independent yield constant [Pa]
-  const Real _Y0;
+  const ADMaterialProperty<Real> & _Y0;
 
   /// Rate independent yield temperature dependencies [K], [1/K], [K], [-]
-  const Real _Y1, _Y2, _Y3, _Y4;
+  const ADMaterialProperty<Real> & _Y1, & _Y2, & _Y3, & _Y4;
 
   /// Isotropic hardening shear coefficient [-]
-  const Real _Hmu;
+  const ADMaterialProperty<Real> & _Hmu;
 
   /// Flow rule coefficient constants [1/s], [K]
-  const Real _f1, _f2;
+  const ADMaterialProperty<Real> & _f1, & _f2;
 
   /// Flow rule exponent constant [-]
-  const Real _n1;
+  const ADMaterialProperty<Real> & _n1;
 
   /// Flow rule exponent temperature dependence [K]
-  const Real _n2;
+  const ADMaterialProperty<Real> & _n2;
 
   /// Isotropic dynamic recovery constant [Pa]
-  const Real _Rd1;
+  const ADMaterialProperty<Real> & _Rd1;
 
   /// Isotropic dynamic recovery temperature dependence [K]
-  const Real _Rd2;
+  const ADMaterialProperty<Real> & _Rd2;
 
   /// Misorientation variable hardening constant [m/(s Pa)]
-  const Real _hxi;
+  const ADMaterialProperty<Real> & _hxi;
 
   /// Misorientation variable hardening exponent [-]
-  const Real _r;
+  const ADMaterialProperty<Real> & _r;
 
   /// Components for computing the derivatives
   ADReal _C1, _C2;

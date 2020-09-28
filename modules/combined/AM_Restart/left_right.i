@@ -70,25 +70,16 @@ T_melt = 1000
 []
 
 [Modules/TensorMechanics/Master]
-  # [./all]
     strain = FINITE
     incremental = true
     add_variables = true
     generate_output = 'stress_xx stress_yy stress_zz stress_xy stress_yz stress_xz strain_yy strain_xx strain_zz strain_xy strain_xz strain_yz'
     use_automatic_differentiation = true
-    # eigenstrain_names = 'thermal_eigenstrain'
-    # block = '2 3'
-  # [../]
   [product]
     block = '1'
     eigenstrain_names = 'thermal_eigenstrain_product'
     use_automatic_differentiation = true
   []
-  # [substrate]
-  #   block = '2'
-  #   eigenstrain_names = 'thermal_eigenstrain_rest'
-  #   use_automatic_differentiation = true
-  # []
 []
 
 [Kernels]
@@ -115,44 +106,9 @@ T_melt = 1000
 []
 
 [AuxVariables]
-  # [./processor_id]
-  #   order = CONSTANT
-  #   family = MONOMIAL
-  # [../]
-  # [./von_mises]
-  #   order = CONSTANT
-  #   family = MONOMIAL
-  #   block = '1'
-  # [../]
-  # [./plastic_strain_eff]
-  #   order = CONSTANT
-  #   family = MONOMIAL
-  #   block = '1'
-  # [../]
 []
 
 [AuxKernels]
-  # [./processor_id_aux]
-  #   type = ProcessorIDAux
-  #   variable = processor_id
-  #   execute_on = timestep_begin
-  # [../]
-  # [./von_mises_kernel]
-  #   type = ADRankTwoScalarAux
-  #   variable = von_mises
-  #   rank_two_tensor = stress
-  #   execute_on = timestep_end
-  #   scalar_type = VonMisesStress
-  #   block = '1'
-  # [../]
-  # [./eff_plastic_strain_kernel]
-  #   type = ADRankTwoScalarAux
-  #   variable = plastic_strain_eff
-  #   rank_two_tensor = plastic_strain
-  #   execute_on = timestep_end
-  #   scalar_type = EffectiveStrain
-  #   block = '1'
-  # [../]
 []
 
 [Functions]

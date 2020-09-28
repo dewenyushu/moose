@@ -1383,11 +1383,11 @@ public:
   ///@{
   /**
    * Return a reference to the material property storage
-   * @return A const reference to the material property storage
+   * @return A writable reference to the material property storage
    */
-  const MaterialPropertyStorage & getMaterialPropertyStorage() { return _material_props; }
-  const MaterialPropertyStorage & getBndMaterialPropertyStorage() { return _bnd_material_props; }
-  const MaterialPropertyStorage & getNeighborMaterialPropertyStorage()
+  MaterialPropertyStorage & getMaterialPropertyStorage() { return _material_props; }
+  MaterialPropertyStorage & getBndMaterialPropertyStorage() { return _bnd_material_props; }
+  MaterialPropertyStorage & getNeighborMaterialPropertyStorage()
   {
     return _neighbor_material_props;
   }
