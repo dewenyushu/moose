@@ -44,12 +44,13 @@ protected:
 
   void updateBoundaryInfo(MooseMesh & mesh);
 
-  void push_boundary_info( MooseMesh & mesh,
+  void push_boundary_side_info( MooseMesh & mesh,
     std::unordered_map<processor_id_type, std::vector<std::pair<dof_id_type, unsigned int>>>
     & elems_to_push);
 
-  void remove_bounday_node(MooseMesh & mesh, std::unique_ptr<const Elem> side);
-
+  void push_boundary_node_info( MooseMesh & mesh,
+      std::unordered_map<processor_id_type, std::vector<dof_id_type>>
+      & nodes_to_push);
   /**
    * Initialize solutions for the nodes
    */
@@ -58,6 +59,10 @@ protected:
    * Returns true if all the connected elements are in the _newly_activated_elem
    */
   bool isNewlyActivated(const Node * node);
+
+  void getNodesToRemoveFromBnd(std::set<dof_id_type> remove_set, std::set<dof_id_type> add_set);
+
+  void insertNodeIdsOnSide(const Elem * ele, const unsigned short int side, std::set<dof_id_type> & node_ids);
 
   /**
    * Get ranges for use with threading.
@@ -68,6 +73,11 @@ protected:
 
   std::set<dof_id_type> _newly_activated_elem;
   std::set<dof_id_type> _newly_activated_node;
+  /**
+   * Somes nodes are to be removed from the boundary
+   * when adding/removing sides
+   */
+  std::set<dof_id_type> _node_to_remove_from_bnd;
 
   /**
    * Ranges for use with threading.
@@ -89,7 +99,7 @@ protected:
   const Function & _function_y;
   const Function & _function_z;
   /// define the distance of the element to the point on the path,
-  /// below which the element will be activated 
+  /// below which the element will be activated
   const Real _activate_distance;
   /// whether to use variable value for element activation
   /// if false, use path activation
