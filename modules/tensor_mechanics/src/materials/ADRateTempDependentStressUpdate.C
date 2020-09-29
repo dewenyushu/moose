@@ -138,7 +138,23 @@ ADRateTempDependentStressUpdate::computeResidual(const ADReal & effective_trial_
                                              const ADReal & scalar)
 {
   computePlasticStrainRate(effective_trial_stress, scalar);
-  return _plastic_strain_rate * _dt - scalar - _C1*_C2*_hardening_variable[_qp]*_shear_modulus_derivative/_shear_modulus*_dt;
+
+  ADReal p1 = _plastic_strain_rate * _dt;
+  ADReal p2 = _C1*_C2*_hardening_variable[_qp]*_shear_modulus_derivative/_shear_modulus*_dt;
+
+  ADReal tmp = p1 - scalar - p2;
+
+  // Not sure what value to put here.
+  // Choose 1e100 based on errors caused by dual number division around this magnitude
+  if(tmp.value()> 1e100)
+  {
+    // std::cout<<"Residual out of bound.."<<std::endl;
+    // std::cout<<"p1 = "<<p1.value()<<", scalar = "<<scalar.value()<<", p2 = "<<p2.value()<<", tmp = "<<tmp.value()<<std::endl;
+    // std::cout<<*static_cast<const Point *>(&_q_point[_qp])<<std::endl;
+    mooseException("Residual out of bound..");
+  }
+
+  return tmp;
 }
 
 ADReal
@@ -160,8 +176,12 @@ ADRateTempDependentStressUpdate::computeDerivative(const ADReal & effective_tria
 
   ADReal tmp = derivative * _dt - 1.0;
 
-  if(!std::isfinite(tmp.value()))
+  if(tmp.value()> 1e100)
+  {
+    // std::cout<<"p1 = "<<p1.value()<<", p2 = "<<p2.value()<<", p3 = "<<p3.value()<<", derivative = "<< derivative.value()<<std::endl;
+    // std::cout<<*static_cast<const Point *>(&_q_point[_qp])<<std::endl;
     mooseException("Derivative out of bound..");
+  }
 
   return tmp;
 }
@@ -270,7 +290,7 @@ ADRateTempDependentStressUpdate::updateInternalStateVariables(
   /// Compute increment of misorientation variable
   ADReal misorientation_variable_increment;
   const ADReal n_power = 1.0 - 1.0/_r[_qp];
-  if (n_power<1e-10)
+  if (n_power<libMesh::TOLERANCE)
     misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi[_qp]*_shear_modulus*std::abs(scalar);
   else
     misorientation_variable_increment = _misorientation_variable[_qp]*(_shear_modulus_derivative/_shear_modulus) + _hxi[_qp]*_shear_modulus*std::pow(_misorientation_variable[_qp]/_shear_modulus , n_power)*std::abs(scalar);

@@ -281,6 +281,7 @@ Radius = 4
     type = ADComputeMultipleInelasticStress
     inelastic_models = 'rate_temp_plas'
     block = '2 3'
+    internal_solve_full_iteration_history = true
   [../]
   [./rate_temp_plas]
     type = ADRateTempDependentStressUpdate
