@@ -26,6 +26,7 @@
   [./vpp_point_source]
     type = VectorPostprocessorPointSource
     variable = u
+    value_name = 'u'
     vector_postprocessor = csv_reader
   [../]
 []
