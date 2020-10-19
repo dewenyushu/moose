@@ -66,12 +66,12 @@ ADRadialReturnStressUpdate::calculateNumberSubsteps(const ADRankTwoTensor & stra
   int substep_number = 1;
   // compute an effective elastic strain measure
   ADReal contracted_elastic_strain = strain_increment.doubleContraction(strain_increment);
-  ADReal effective_elastic_strain =
-      contracted_elastic_strain == 0.0 ? 0.0 : std::sqrt(3.0 / 2.0 * contracted_elastic_strain);
+  Real effective_elastic_strain = std::sqrt(3.0 / 2.0 * MetaPhysicL::raw_value(contracted_elastic_strain));
 
-  if (!MooseUtils::absoluteFuzzyEqual(contracted_elastic_strain, 0.0))
+  if (!MooseUtils::absoluteFuzzyEqual(effective_elastic_strain, 0.0))
   {
-    Real ratio = MetaPhysicL::raw_value(contracted_elastic_strain) / _max_inelastic_increment;
+    Real ratio = effective_elastic_strain / _max_inelastic_increment;
+
     if (ratio > _substep_tolerance)
       substep_number = std::ceil(ratio / _substep_tolerance);
   }
@@ -156,10 +156,10 @@ ADRadialReturnStressUpdate::updateStateSubstep(ADRankTwoTensor & strain_incremen
                 elastic_strain_old);
     return;
   }
-  // go back to the previous timestep
-  _t -= _dt;
+  // Store original _dt; Reset at the end of solve
+  Real dt_original = _dt;
   // cut the original timestep
-  _dt /= total_substeps;
+  _dt = dt_original / total_substeps;
 
   // initialize the inputs
   const ADRankTwoTensor strain_increment_per_step = strain_increment/total_substeps;
@@ -175,11 +175,8 @@ ADRadialReturnStressUpdate::updateStateSubstep(ADRankTwoTensor & strain_incremen
   MathUtils::mooseSetToZero(inelastic_strain_increment);
   MathUtils::mooseSetToZero(stress_new);
 
-
   for (int step = 0; step < total_substeps; ++step)
   {
-    // proceed with sub time step
-    _t += _dt;
     // set up input for this substep
     ADRankTwoTensor sub_strain_increment = strain_increment_per_step;
     sub_stress_new +=  elasticity_tensor * sub_strain_increment;
@@ -208,7 +205,7 @@ ADRadialReturnStressUpdate::updateStateSubstep(ADRankTwoTensor & strain_incremen
   _effective_inelastic_strain[_qp] = _effective_inelastic_strain_old[_qp] + sub_scalar_effective_inelastic_strain;
 
   // recover the original timestep
-  _dt *= total_substeps;
+  _dt = dt_original;
 }
 
 void
