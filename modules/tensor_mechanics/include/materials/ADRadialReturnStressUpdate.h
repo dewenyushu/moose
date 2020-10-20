@@ -89,12 +89,6 @@ public:
    */
   virtual int calculateNumberSubsteps(const ADRankTwoTensor & strain_increment) override;
 
-  /**
-   * When using the incremental substepping approach, save the stateful
-   * _effective_inelastic_strain to an intermediate incremental variable
-   */
-  virtual void storeIncrementalMaterialProperties() override;
-
 protected:
   virtual void initQpStatefulProperties() override;
 
@@ -132,9 +126,6 @@ protected:
 
   ADMaterialProperty<Real> & _effective_inelastic_strain;
   const MaterialProperty<Real> & _effective_inelastic_strain_old;
-
-  ///Stores incremental value when substepping is used
-  ADReal _incremental_effective_inelastic_strain;
 
   /// Stores the scalar effective inelastic strain increment from Newton iteration
   ADReal _scalar_effective_inelastic_strain;

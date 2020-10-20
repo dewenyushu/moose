@@ -41,7 +41,6 @@ ADRadialReturnStressUpdate::ADRadialReturnStressUpdate(const InputParameters & p
         _base_name + getParam<std::string>("effective_inelastic_strain_name"))),
     _effective_inelastic_strain_old(getMaterialPropertyOld<Real>(
         _base_name + getParam<std::string>("effective_inelastic_strain_name"))),
-    _incremental_effective_inelastic_strain(0.0),
     _max_inelastic_increment(getParam<Real>("max_inelastic_increment")),
     _substep_tolerance(getParam<Real>("substep_strain_tolerance")),
     _apply_strain(getParam<bool>("apply_strain"))
@@ -197,7 +196,8 @@ ADRadialReturnStressUpdate::updateStateSubstep(ADRankTwoTensor & strain_incremen
     // accumulate scalar_effective_inelastic_strain
     sub_scalar_effective_inelastic_strain += _scalar_effective_inelastic_strain;
     computeStressFinalize(inelastic_strain_increment);
-
+    // store incremental material properties for this step
+    storeIncrementalMaterialProperties();
   }
   // update stress
   stress_new = sub_stress_new;
@@ -206,13 +206,6 @@ ADRadialReturnStressUpdate::updateStateSubstep(ADRankTwoTensor & strain_incremen
 
   // recover the original timestep
   _dt = dt_original;
-}
-
-void
-ADRadialReturnStressUpdate::storeIncrementalMaterialProperties()
-{
-  ADReal old_incremental_value = _incremental_effective_inelastic_strain;
-  _incremental_effective_inelastic_strain = (_effective_inelastic_strain[_qp] - _effective_inelastic_strain_old[_qp]) - old_incremental_value;
 }
 
 Real
