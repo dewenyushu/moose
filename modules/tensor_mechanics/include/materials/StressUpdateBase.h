@@ -13,7 +13,6 @@
 #include "InputParameters.h"
 #include "ADMaterial.h"
 
-
 /**
  * TangentCalculationMethod is an enum that determines the calculation method for the tangent
  * operator. ELASTIC uses the elasticity tensor as the tangent operator: J = C. The elasticity
@@ -42,18 +41,18 @@ enum class TangentCalculationMethod
  * All materials inheriting from this class must be called by a separate material,
  * such as ComputeMultipleInelasticStress
  */
-template<bool is_ad>
-class StressUpdateBaseTempl: public Material
+template <bool is_ad>
+class StressUpdateBaseTempl : public Material
 {
 public:
   static InputParameters validParams();
 
   StressUpdateBaseTempl(const InputParameters & parameters);
 
-  using Material::_qp;
+  using Material::_current_elem;
   using Material::_dt;
   using Material::_q_point;
-  using Material::_current_elem;
+  using Material::_qp;
 
   /**
    * Given a strain increment that results in a trial stress, perform some
@@ -162,7 +161,10 @@ public:
    * to bring a substepped trial stress guess distance from the yield surface
    * into the tolerance specified in the individual child class.
    */
-  virtual int calculateNumberSubsteps(const GenericRankTwoTensor<is_ad> & /*strain_increment*/) { return 1; }
+  virtual int calculateNumberSubsteps(const GenericRankTwoTensor<is_ad> & /*strain_increment*/)
+  {
+    return 1;
+  }
 
   /**
    * Properly set up the incremental calculation storage of the stateful material
@@ -175,15 +177,8 @@ protected:
   const std::string _base_name;
 };
 
-
-template<>
-TangentCalculationMethod
-StressUpdateBaseTempl<true>::getTangentCalculationMethod()
-{
-  mooseError("getTangentCalculationMethod called: no tangent calculationg is needed while using AD");
-  return TangentCalculationMethod::ELASTIC;
-}
-
+template <>
+TangentCalculationMethod StressUpdateBaseTempl<true>::getTangentCalculationMethod();
 
 typedef StressUpdateBaseTempl<false> StressUpdateBase;
 typedef StressUpdateBaseTempl<true> ADStressUpdateBase;
