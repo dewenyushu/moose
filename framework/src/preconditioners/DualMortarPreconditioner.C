@@ -42,6 +42,11 @@ DualMortarPreconditioner::validParams()
 {
   InputParameters params = MoosePreconditioner::validParams();
 
+  params.addClassDescription("Dual mortar preconditioner (DMP) condenses out the Lagrange "
+                             "multipliers from the Jacobian matrix "
+                             "and recover a system with only the primal unkowns in order to allow "
+                             "for a broader range of solvers/preconditioners.");
+
   params.addParam<std::vector<NonlinearVariableName>>(
       "off_diag_row",
       "The off diagonal row you want to add into the matrix, it will be associated "
@@ -193,6 +198,38 @@ DualMortarPreconditioner::getDofVarSubdomain()
 }
 
 void
+DualMortarPreconditioner::getLocalDofVarSubdomain()
+{
+  _local_dof_sets.resize(_n_vars);
+  for (unsigned int vn = 0; vn < _n_vars; vn++)
+  {
+    Variable var = _nl.system().variable(vn);
+    // loop through active subdomains of this variable
+    for (auto it = var.active_subdomains().begin(); it != var.active_subdomains().end(); ++it)
+    {
+      SubdomainID sd = (SubdomainID)(*it);
+      std::set<dof_id_type> dofs;
+      // check dofs of each element
+      ConstElemRange * active_local_elems = _mesh->getActiveLocalElementRange();
+      for (const auto & elem : *active_local_elems)
+      {
+        if (elem->subdomain_id() == sd)
+        {
+          std::vector<dof_id_type> di;
+          _dofmap->dof_indices(elem, di, vn);
+          for (auto index : di)
+          {
+            if (_dofmap->local_index(index))
+              dofs.insert(index);
+          }
+        }
+      }
+      _local_dof_sets[vn].insert(make_pair(sd, dofs));
+    }
+  }
+}
+
+void
 DualMortarPreconditioner::getDofVarInterior()
 {
   getDofVarSubdomain();
@@ -217,6 +254,35 @@ DualMortarPreconditioner::getDofVarInterior()
 
       std::vector<dof_id_type> vec_dofs(dofs.begin(), dofs.end());
       _dof_sets_interior[vn].insert(make_pair(sd, vec_dofs));
+    }
+  }
+}
+
+void
+DualMortarPreconditioner::getLocalDofVarInterior()
+{
+  getLocalDofVarSubdomain();
+  _local_dof_sets_interior.resize(_n_vars);
+  for (unsigned int vn = 0; vn < _n_vars; vn++)
+  {
+    Variable var = _nl.system().variable(vn);
+    // loop through active subdomains of this variable
+    for (auto it = var.active_subdomains().begin(); it != var.active_subdomains().end(); ++it)
+    {
+      SubdomainID sd = (SubdomainID)(*it);
+      std::set<dof_id_type> dofs = _local_dof_sets[vn][sd];
+      // remove dofs on the interface
+      for (auto it_primary = _local_dof_sets_primary[vn].begin();
+           it_primary != _local_dof_sets_primary[vn].end();
+           ++it_primary)
+        dofs.erase(*it_primary);
+      for (auto it_secondary = _local_dof_sets_secondary[vn].begin();
+           it_secondary != _local_dof_sets_secondary[vn].end();
+           ++it_secondary)
+        dofs.erase(*it_secondary);
+
+      std::vector<dof_id_type> vec_dofs(dofs.begin(), dofs.end());
+      _local_dof_sets_interior[vn].insert(make_pair(sd, vec_dofs));
     }
   }
 }
@@ -258,19 +324,69 @@ DualMortarPreconditioner::getDofVarInterface()
 }
 
 void
+DualMortarPreconditioner::getLocalDofVarInterface()
+{
+  _local_dof_sets_primary.resize(_n_vars);
+  _local_dof_sets_secondary.resize(_n_vars);
+  for (unsigned int vn = 0; vn < _n_vars; vn++)
+  {
+    // loop over boundary nodes
+    ConstBndNodeRange & range = *_mesh->getBoundaryNodeRange();
+    std::vector<dof_id_type> di;
+    for (const auto & bnode : range)
+    {
+      const Node * node_bdry = bnode->_node;
+      BoundaryID boundary_id = bnode->_bnd_id;
+
+      if (boundary_id == _secondary_boundary)
+      {
+        _dofmap->dof_indices(node_bdry, di, vn);
+        for (auto it = di.begin(); it != di.end(); ++it)
+          if (std::find(_local_dof_sets_secondary[vn].begin(),
+                        _local_dof_sets_secondary[vn].end(),
+                        *it) == _local_dof_sets_secondary[vn].end() &&
+              _dofmap->local_index(*it))
+            _local_dof_sets_secondary[vn].push_back(*it);
+      }
+
+      if (boundary_id == _primary_boundary)
+      {
+        _dofmap->dof_indices(node_bdry, di, vn);
+        for (auto it = di.begin(); it != di.end(); ++it)
+          if (std::find(_local_dof_sets_primary[vn].begin(),
+                        _local_dof_sets_primary[vn].end(),
+                        *it) == _local_dof_sets_primary[vn].end() &&
+              _dofmap->local_index(*it))
+            _local_dof_sets_primary[vn].push_back(*it);
+      }
+    }
+  }
+}
+
+void
 DualMortarPreconditioner::condenseSystem()
 {
-  std::vector<dof_id_type> u1c = _dof_sets_primary[0];
-  std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
+  std::vector<dof_id_type> u1c = _local_dof_sets_primary[0];
+  std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
 
-  std::vector<dof_id_type> lm = _dof_sets_secondary[1];
+  std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
 
-  std::vector<dof_id_type> u1i = _dof_sets_interior[0][_primary_subdomain];
-  std::vector<dof_id_type> u2i = _dof_sets_interior[0][_secondary_subdomain];
+  std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
+  std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
 
-  _matrix->create_submatrix(*_D, lm, u2c);
-  _D->get_transpose(*_D);
-  _matrix->create_submatrix(*_M, lm, u1c);
+  std::cout << "local dofs: ";
+  for (auto i : make_range(_dofmap->first_dof(), _dofmap->end_dof()))
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  _matrix->create_submatrix(*_D, lm, u2c);  // _D = _Dt
+  std::cout << "D nrow= " << _D->m() << " ncol = " << _D->n() << std::endl;
+  _D->print_personal();
+  _D->get_transpose(*_D); // obtain _D
+  _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
+  std::cout << "M nrow= " << _M->m() << " ncol = " << _M->n() << std::endl;
+  _M->print_personal();
+
   _matrix->create_submatrix(*_MDinv, u1c, lm);
   _M->get_transpose(*_M);
 
@@ -281,13 +397,36 @@ DualMortarPreconditioner::condenseSystem()
   // _D should be strictly diagonal if dual_mortar approach is utilized
   // so we only need to compute the reciprocal number of the diagonal entries
   // to save memory, no new matrix is created
-  for (unsigned int i = 0; i < _D->m(); ++i)
+
+  // auto diagonal = NumericVector<Number>::build(MoosePreconditioner::_communicator);
+  // // Allocate storage
+  // diagonal->init(_D->get_diagonal());
+  // // Fill entries
+  // _D->get_diagonal(*diagonal);
+
+  // std::unique_ptr<SparseMatrix<Number>> Dinv(_D->zero_clone());
+  // Dinv->print_personal();
+
+  std::vector<numeric_index_type> row_i;
+  std::vector<Number> vals;
+  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
   {
-    Number tmp = 1.0 / (*_D)(i, i);
-    std::vector<numeric_index_type> row_i;
-    row_i.push_back(i);
-    _D->zero_rows(row_i, tmp);
+      row_i.push_back(i);
+      vals.push_back( 1.0 /(*_D)(i, i));
   }
+  _D->zero_rows(row_i, 1.0);
+  std::cout<<"check 1"<<std::endl;
+  // for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
+  // {
+  //   Number value = vals[i];
+  //   std::cout<<"inner check i = "<<i<<std::endl;
+  //   _D->add(i,i,value);
+  // }
+  std::cout<<"check 2"<<std::endl;
+
+  _D->print_personal();
+
+  std::cout<<"check 3"<<std::endl;
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
@@ -295,25 +434,42 @@ DualMortarPreconditioner::condenseSystem()
   // initialize _J_condensed
 
   _matrix->create_submatrix(*_J_condensed, _rows, _cols);
-
+  std::cout << "_J_condensed nrow= " << _J_condensed->m() << " ncol = " << _J_condensed->n()
+            << std::endl;
   // compute changed parts: MDinv*K2ci, MDinv*K2cc
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
       libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
       MDinvK2cc(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator));
+  std::cout<<"check1"<<std::endl;
   _matrix->create_submatrix(
       *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
+  std::cout<<"check2"<<std::endl;
   _matrix->create_submatrix(
       *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
+  std::cout<<"check3"<<std::endl;
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
+  std::cout<<"check4"<<std::endl;
   _MDinv->matrix_matrix_mult(*_K2cc, *MDinvK2cc);
+  std::cout<<"check5"<<std::endl;
 
   // add changed parts to _J_condensed
   // original system row_id: u1c
   // original system col_id: u2i, u2c
   std::vector<numeric_index_type> row_id_cond, col_id_cond_u2i, col_id_cond_u2c;
-  std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, col_id_cond_u2i_mp,
+  std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, row_id_cond_u2i_mp, row_id_cond_u2c_mp, col_id_cond_u2i_mp,
       col_id_cond_u2c_mp;
 
+
+  // u1c = _dof_sets_primary[0];
+  u2c = _dof_sets_secondary[0];
+
+  // lm = _dof_sets_secondary[1];
+
+  // u1i = _dof_sets_interior[0][_primary_subdomain];
+  u2i = _dof_sets_interior[0][_secondary_subdomain];
+
+
+  // local rows
   for (auto it : index_range(u1c))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
@@ -322,18 +478,23 @@ DualMortarPreconditioner::condenseSystem()
     {
       numeric_index_type gid = std::distance(_rows.begin(), it_row);
       row_id_cond_mp.insert(std::make_pair(lid, gid));
+      if (lid >= MDinvK2ci->row_start() && lid < MDinvK2ci->row_stop())
+        row_id_cond_u2i_mp.insert(std::make_pair(lid, gid));
+      if (lid >= MDinvK2cc->row_start() && lid < MDinvK2cc->row_stop())
+        row_id_cond_u2c_mp.insert(std::make_pair(lid, gid));
     }
     else
       mooseError("DOF ", u1c[it], " does not exist in the rows of the condensed system");
   }
 
+  // global cols
   for (auto it : index_range(u2i))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_cols.begin(), _cols.end(), u2i[it]);
-    if (it_col != _cols.end())
+    auto it_col = find(_gcols.begin(), _gcols.end(), u2i[it]);
+    if (it_col != _gcols.end())
     {
-      numeric_index_type gid = std::distance(_cols.begin(), it_col);
+      numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2i_mp.insert(std::make_pair(lid, gid));
     }
     else
@@ -343,10 +504,10 @@ DualMortarPreconditioner::condenseSystem()
   for (auto it : index_range(u2c))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_cols.begin(), _cols.end(), u2c[it]);
-    if (it_col != _cols.end())
+    auto it_col = find(_gcols.begin(), _gcols.end(), u2c[it]);
+    if (it_col != _gcols.end())
     {
-      numeric_index_type gid = std::distance(_cols.begin(), it_col);
+      numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2c_mp.insert(std::make_pair(lid, gid));
     }
     else
@@ -354,8 +515,13 @@ DualMortarPreconditioner::condenseSystem()
   }
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_mp, col_id_cond_u2i_mp, -1.0);
-  _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_mp, col_id_cond_u2c_mp, -1.0);
+  std::cout<<"check6"<<std::endl;
+  if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2i_mp.empty()))
+  _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
+  std::cout<<"check7"<<std::endl;
+  if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2c_mp.empty()))
+  _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
+  std::cout<<"check8"<<std::endl;
   _J_condensed->close();
 
   // _J_condensed->print_personal();
@@ -371,26 +537,52 @@ DualMortarPreconditioner::init()
     getDofVarInterface();
     getDofVarInterior();
 
-    // get row and col dofs for the condensed Jacobian
-    std::vector<dof_id_type> u1c = _dof_sets_primary[0];
-    std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
+    // Get local DOFs on the secondary/primary and in subdomains for each variable
+    getLocalDofVarInterface();
+    getLocalDofVarInterior();
 
-    std::vector<dof_id_type> lm = _dof_sets_secondary[1];
+    // get local row and col dofs for the condensed Jacobian
+    std::vector<dof_id_type> u1c = _local_dof_sets_primary[0];
+    std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
 
-    std::vector<dof_id_type> u1i = _dof_sets_interior[0][_primary_subdomain];
-    std::vector<dof_id_type> u2i = _dof_sets_interior[0][_secondary_subdomain];
-    // get row dofs
-    _rows.reserve(_dofmap->n_dofs() - u2c.size());
+    std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
+
+    std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
+    std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
+    // get local row dofs
+    _rows.reserve(_dofmap->n_local_dofs () - u2c.size());
     _rows.insert(_rows.end(), u1i.begin(), u1i.end());
     _rows.insert(_rows.end(), u1c.begin(), u1c.end());
     _rows.insert(_rows.end(), u2i.begin(), u2i.end());
     _rows.insert(_rows.end(), lm.begin(), lm.end());
-    // get col dofs
-    _cols.reserve(_dofmap->n_dofs() - lm.size());
+    // get local col dofs
+    _cols.reserve(_dofmap->n_local_dofs () - lm.size());
     _cols.insert(_cols.end(), u1i.begin(), u1i.end());
     _cols.insert(_cols.end(), u1c.begin(), u1c.end());
     _cols.insert(_cols.end(), u2i.begin(), u2i.end());
     _cols.insert(_cols.end(), u2c.begin(), u2c.end());
+
+    // get global row and col dofs for the condensed Jacobian
+    u1c = _dof_sets_primary[0];
+    u2c = _dof_sets_secondary[0];
+
+    lm = _dof_sets_secondary[1];
+
+    u1i = _dof_sets_interior[0][_primary_subdomain];
+    u2i = _dof_sets_interior[0][_secondary_subdomain];
+
+    // get global row dofs
+    _grows.reserve(_dofmap->n_dofs () - u2c.size());
+    _grows.insert(_grows.end(), u1i.begin(), u1i.end());
+    _grows.insert(_grows.end(), u1c.begin(), u1c.end());
+    _grows.insert(_grows.end(), u2i.begin(), u2i.end());
+    _grows.insert(_grows.end(), lm.begin(), lm.end());
+    // get global col dofs
+    _gcols.reserve(_dofmap->n_dofs () - lm.size());
+    _gcols.insert(_gcols.end(), u1i.begin(), u1i.end());
+    _gcols.insert(_gcols.end(), u1c.begin(), u1c.end());
+    _gcols.insert(_gcols.end(), u2i.begin(), u2i.end());
+    _gcols.insert(_gcols.end(), u2c.begin(), u2c.end());
 
     _save_dofs = true;
   }
@@ -471,7 +663,8 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   for (dof_id_type idx = 0; idx < u2c.size(); ++idx)
   {
     dof_id_type id0 = u2c[idx]; // row id in the original system
-    _r2c->set(idx, y(id0));
+    if (idx>=_r2c->first_local_index() && idx<_r2c->last_local_index() && id0 >= y.first_local_index() && id0 < y.last_local_index())
+      _r2c->set(idx, y(id0));
   }
 
   _r2c->close();
@@ -505,10 +698,10 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 void
 DualMortarPreconditioner::computeLM()
 {
-  std::vector<dof_id_type> lm = _dof_sets_secondary[1];
+  std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
 
-  std::vector<dof_id_type> u2i = _dof_sets_interior[0][_secondary_subdomain];
-  std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
+  std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
+  std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
 
   _lambda = _r2c->zero_clone();
   _lambda->init(lm.size());
