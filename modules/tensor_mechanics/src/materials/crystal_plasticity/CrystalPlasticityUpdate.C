@@ -60,7 +60,7 @@ CrystalPlasticityUpdate::validParams()
                              tan_mod_options,
                              "Type of tangent moduli for preconditioner: default elastic");
   params.addParam<unsigned int>(
-      "maximum_substep_iteration", 5, "Maximum number of substep iteration");
+      "maximum_substep_iteration", 1, "Maximum number of substep iteration");
   params.addParam<bool>("use_line_search", false, "Use line search in constitutive update");
   params.addParam<Real>("min_line_search_step_size", 0.01, "Minimum line search step size");
   params.addParam<Real>("line_search_tol", 0.5, "Line search bisection method tolerance");
@@ -173,10 +173,7 @@ CrystalPlasticityUpdate::updateStress(RankTwoTensor & cauchy_stress, RankFourTen
   do
   {
     _error_tolerance = false;
-
-    // reset the PK2 stress and the inverse deformation gradient to old values
-    _pk2[_qp] = _pk2_old[_qp];
-    _inverse_plastic_deformation_grad_old = _plastic_deformation_gradient_old[_qp].inverse();
+    preSolveQp();
 
     _substep_dt = _dt / num_substep;
 
@@ -204,14 +201,25 @@ CrystalPlasticityUpdate::updateStress(RankTwoTensor & cauchy_stress, RankFourTen
 }
 
 void
-CrystalPlasticityUpdate::solveQp()
+CrystalPlasticityUpdate::preSolveQp()
 {
   setInitialConstitutiveVariableValues();
+
+  _pk2[_qp] = _pk2_old[_qp];
+  _inverse_plastic_deformation_grad_old = _plastic_deformation_gradient_old[_qp].inverse();
+}
+
+void
+CrystalPlasticityUpdate::solveQp()
+{
+  setSubstepConstitutiveVariableValues();
   _inverse_plastic_deformation_grad = _inverse_plastic_deformation_grad_old;
 
   solveStateVariables();
   if (_error_tolerance)
     return; // pop back up and take a smaller substep
+
+  updateSubstepConstitutiveVariableValues();
 
   // save off the old F^{p} inverse now that have converged on the stress and state variables
   _inverse_plastic_deformation_grad_old = _inverse_plastic_deformation_grad;
@@ -264,7 +272,8 @@ CrystalPlasticityUpdate::solveStateVariables()
     if (iter_flag)
     {
 #ifdef DEBUG
-      mooseWarning("CrystalPlasticityUpdate: state variables did not converge at element ",
+      mooseWarning("CrystalPlasticityUpdate: State variables (or the system resistance) did not "
+                   "converge at element ",
                    _current_elem->id(),
                    " and qp ",
                    _qp,
@@ -296,7 +305,7 @@ CrystalPlasticityUpdate::solveStress()
   Real rnorm, rnorm0, rnorm_prev;
 
   // Calculate stress residual
-  calcResidJacob();
+  calculateResidualAndJacobian();
   if (_error_tolerance)
   {
 #ifdef DEBUG
@@ -319,7 +328,7 @@ CrystalPlasticityUpdate::solveStress()
     dpk2 = -_jacobian.invSymm() * _residual_tensor;
     _pk2[_qp] = _pk2[_qp] + dpk2;
 
-    calcResidJacob();
+    calculateResidualAndJacobian();
 
     if (_error_tolerance)
     {
@@ -370,7 +379,7 @@ CrystalPlasticityUpdate::solveStress()
 
 // Calculates stress residual equation and jacobian
 void
-CrystalPlasticityUpdate::calcResidJacob()
+CrystalPlasticityUpdate::calculateResidualAndJacobian()
 {
   calcResidual();
   if (_error_tolerance)
