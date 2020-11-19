@@ -631,13 +631,15 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
   for (dof_id_type id1 = 0; id1 < _cols.size(); ++id1)
   {
     dof_id_type id0 = _cols[id1]; // id in the original system
-    x.set(id0, (*_x_hat)(id1));
+    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
+      x.set(id0, (*_x_hat)(id1));
   }
 
   for (dof_id_type id1 = 0; id1 < lm.size(); ++id1)
   {
     dof_id_type id0 = lm[id1]; // id in the original system
-    x.set(id0, (*_lambda)(id1));
+    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
+      x.set(id0, (*_lambda)(id1));
   }
 
   x.close();
@@ -654,10 +656,11 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   _x_hat->init(_rows.size());
   _y_hat->init(_rows.size());
   _r2c = y.zero_clone();
-  _r2c->init(u2c.size());
 
-  std::unique_ptr<NumericVector<Number>> mdinv_r2c = _r2c->zero_clone();
-  mdinv_r2c->init(u1c.size());
+  _r2c->init(_MDinv->n(), _MDinv->local_n(), false, PARALLEL);
+
+  std::unique_ptr<NumericVector<Number>> mdinv_r2c (NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  mdinv_r2c->init(_MDinv->m(), _MDinv->local_m(), false, PARALLEL);
 
   // get _r2c from the original y
   for (dof_id_type idx = 0; idx < u2c.size(); ++idx)
@@ -704,11 +707,13 @@ DualMortarPreconditioner::computeLM()
   std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
 
   _lambda = _r2c->zero_clone();
-  _lambda->init(lm.size());
+  _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
+
   _x2i = _r2c->zero_clone();
-  _x2i->init(u2i.size());
+  _x2i->init(_K2ci->n(), _K2ci->local_n(), false, PARALLEL);
+
   _x2c = _r2c->zero_clone();
-  _x2c->init(u2c.size());
+  _x2c->init(_K2cc->n(), _K2cc->local_n(), false, PARALLEL);
 
   // get x2i, x2c from _x_hat
   for (dof_id_type id = 0; id < _cols.size(); ++id)

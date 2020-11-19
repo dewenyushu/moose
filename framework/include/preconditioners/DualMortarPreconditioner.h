@@ -92,7 +92,7 @@ public:
    * Computes the preconditioned vector "x" based on input "y".
    * Usually by solving Px=y to get the action of P^-1 y.
    */
-  virtual void apply(const NumericVector<Number> & x, NumericVector<Number> & y);
+  virtual void apply(const NumericVector<Number> & y, NumericVector<Number> & x);
 
   /**
    * Release all memory and clear data structures.
