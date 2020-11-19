@@ -50,16 +50,19 @@ public:
    * Get dofs for variable in subdomains
    */
   void getDofVarSubdomain();
+  void getLocalDofVarSubdomain();
 
   /**
    * Get dofs for variable in the interior of subdomains
    */
   void getDofVarInterior();
+  void getLocalDofVarInterior();
 
   /**
    * Get dofs for variable on the contact inferface
    */
   void getDofVarInterface();
+  void getLocalDofVarInterface();
 
   /**
    * Get condensed x and y
@@ -89,7 +92,7 @@ public:
    * Computes the preconditioned vector "x" based on input "y".
    * Usually by solving Px=y to get the action of P^-1 y.
    */
-  virtual void apply(const NumericVector<Number> & x, NumericVector<Number> & y);
+  virtual void apply(const NumericVector<Number> & y, NumericVector<Number> & x);
 
   /**
    * Release all memory and clear data structures.
@@ -105,6 +108,7 @@ protected:
   DofMap * _dofmap;
   /// Number of variables
   unsigned int _n_vars;
+
   /// Set of dofs for each variable for every subdomain
   std::vector<std::map<SubdomainID, std::set<dof_id_type>>> _dof_sets;
   /// Set of dofs for each variable on the master
@@ -114,12 +118,21 @@ protected:
   /// Set of dofs in the interior of subdomains
   std::vector<std::map<SubdomainID, std::vector<dof_id_type>>> _dof_sets_interior;
 
+  /// Set of dofs for each variable for every subdomain
+  std::vector<std::map<SubdomainID, std::set<dof_id_type>>> _local_dof_sets;
+  /// Set of dofs for each variable on the master
+  std::vector<std::vector<dof_id_type>> _local_dof_sets_primary;
+  /// Set of dofs on the interface
+  std::vector<std::vector<dof_id_type>> _local_dof_sets_secondary;
+  /// Set of dofs in the interior of subdomains
+  std::vector<std::map<SubdomainID, std::vector<dof_id_type>>> _local_dof_sets_interior;
+
   /// Submatrices (_1 -> primary subdomain; _2 -> secondary subdomain; _i -> interior; _c -> contact interface)
   std::unique_ptr<PetscMatrix<Number>> _K2ci, _K2cc, _D, _M, _MDinv;
 
-  std::vector<numeric_index_type> _rows, _cols; // row and col dofs for the condensed system: rows->
-                                                // all dofs except u2c; cols-> all u dofs
-
+  std::vector<numeric_index_type> _rows, _cols; // local row and col dofs for the condensed system:
+                                                // rows-> all dofs except u2c; cols-> all u dofs
+  std::vector<numeric_index_type> _grows, _gcols;
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;
 

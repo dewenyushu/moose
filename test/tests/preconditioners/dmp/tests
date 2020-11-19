@@ -13,4 +13,10 @@
     csvdiff = 'no_condense_test_out.csv'
     requirement = "The system shall not converge when using SMP and AMG as the preconditioner."
   [../]
+  [./par_dmp_condense_amg_test]
+    type = 'CSVDiff'
+    input = 'par_dmp_test.i'
+    csvdiff = 'par_dmp_test_out.csv'
+    requirement = "The system shall converge when using the DMP interface with AMG as the preconditioner."
+  [../]
 []

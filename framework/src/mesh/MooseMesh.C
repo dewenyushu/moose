@@ -838,6 +838,18 @@ MooseMesh::getActiveLocalElementRange()
   return _active_local_elem_range.get();
 }
 
+ConstElemRange *
+MooseMesh::getActiveElementRange()
+{
+  if (!_active_elem_range)
+  {
+    _active_elem_range = libmesh_make_unique<ConstElemRange>(
+        getMesh().active_elements_begin(), getMesh().active_elements_end(), GRAIN_SIZE);
+  }
+
+  return _active_elem_range.get();
+}
+
 NodeRange *
 MooseMesh::getActiveNodeRange()
 {
