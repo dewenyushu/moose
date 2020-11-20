@@ -666,7 +666,8 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   for (dof_id_type idx = 0; idx < u2c.size(); ++idx)
   {
     dof_id_type id0 = u2c[idx]; // row id in the original system
-    if (idx>=_r2c->first_local_index() && idx<_r2c->last_local_index() && id0 >= y.first_local_index() && id0 < y.last_local_index())
+    // if (idx>=_r2c->first_local_index() && idx<_r2c->last_local_index() && id0 >= y.first_local_index() && id0 < y.last_local_index())
+    if (_r2c->is_local(idx))
       _r2c->set(idx, y(id0));
   }
 
@@ -682,16 +683,29 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
     // if id0 is in u1c, then need to subtract
     // otherwise, copy from y
     auto it_row = find(u1c.begin(), u1c.end(), id0);
+
+    if (! _y_hat->is_local(idx))
+      continue;
+
+    // if (id0 < y.first_local_index() || id0 >= y.last_local_index())
+    //   continue;
+
     if (it_row != u1c.end())
-      _y_hat->set(idx, y(id0) - (*mdinv_r2c)(std::distance(u1c.begin(), it_row)));
+    {
+      if (mdinv_r2c->is_local(std::distance(u1c.begin(), it_row)))
+        _y_hat->set(idx, y(id0) - (*mdinv_r2c)(std::distance(u1c.begin(), it_row)));
+    }
     else
       _y_hat->set(idx, y(id0));
+
+
   }
 
   for (dof_id_type idx = 0; idx < _cols.size(); ++idx)
   {
     dof_id_type id0 = _cols[idx]; // col id in the original system
-    _x_hat->set(idx, x(id0));
+    if ( _x_hat->is_local(idx) && x.is_local(id0))
+      _x_hat->set(idx, x(id0));
   }
 
   _y_hat->close();
