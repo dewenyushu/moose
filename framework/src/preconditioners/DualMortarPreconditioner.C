@@ -697,8 +697,6 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
     }
     else
       _y_hat->set(idx, y(id0));
-
-
   }
 
   for (dof_id_type idx = 0; idx < _cols.size(); ++idx)
