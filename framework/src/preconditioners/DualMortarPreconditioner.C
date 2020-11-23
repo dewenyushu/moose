@@ -182,8 +182,8 @@ DualMortarPreconditioner::getDofVarSubdomain()
       SubdomainID sd = (SubdomainID)(*it);
       std::set<dof_id_type> dofs;
       // check dofs of each element
-      ConstElemRange * active_local_elems = _mesh->getActiveLocalElementRange();
-      for (const auto & elem : *active_local_elems)
+      ConstElemRange * active_elems = _mesh->getActiveElementRange();
+      for (const auto & elem : *active_elems)
       {
         if (elem->subdomain_id() == sd)
         {
@@ -374,18 +374,9 @@ DualMortarPreconditioner::condenseSystem()
   std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
   std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
 
-  std::cout << "local dofs: ";
-  for (auto i : make_range(_dofmap->first_dof(), _dofmap->end_dof()))
-    std::cout << i << " ";
-  std::cout << std::endl;
-
   _matrix->create_submatrix(*_D, lm, u2c);  // _D = _Dt
-  std::cout << "D nrow= " << _D->m() << " ncol = " << _D->n() << std::endl;
-  _D->print_personal();
   _D->get_transpose(*_D); // obtain _D
   _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
-  std::cout << "M nrow= " << _M->m() << " ncol = " << _M->n() << std::endl;
-  _M->print_personal();
 
   _matrix->create_submatrix(*_MDinv, u1c, lm);
   _M->get_transpose(*_M);
@@ -415,42 +406,32 @@ DualMortarPreconditioner::condenseSystem()
       vals.push_back( 1.0 /(*_D)(i, i));
   }
   _D->zero_rows(row_i, 1.0);
-  std::cout<<"check 1"<<std::endl;
+
   // for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
   // {
   //   Number value = vals[i];
   //   std::cout<<"inner check i = "<<i<<std::endl;
   //   _D->add(i,i,value);
   // }
-  std::cout<<"check 2"<<std::endl;
 
   _D->print_personal();
-
-  std::cout<<"check 3"<<std::endl;
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
 
   // initialize _J_condensed
-
   _matrix->create_submatrix(*_J_condensed, _rows, _cols);
-  std::cout << "_J_condensed nrow= " << _J_condensed->m() << " ncol = " << _J_condensed->n()
-            << std::endl;
+
   // compute changed parts: MDinv*K2ci, MDinv*K2cc
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
       libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
       MDinvK2cc(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator));
-  std::cout<<"check1"<<std::endl;
   _matrix->create_submatrix(
       *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
-  std::cout<<"check2"<<std::endl;
   _matrix->create_submatrix(
       *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
-  std::cout<<"check3"<<std::endl;
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
-  std::cout<<"check4"<<std::endl;
   _MDinv->matrix_matrix_mult(*_K2cc, *MDinvK2cc);
-  std::cout<<"check5"<<std::endl;
 
   // add changed parts to _J_condensed
   // original system row_id: u1c
@@ -459,24 +440,18 @@ DualMortarPreconditioner::condenseSystem()
   std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, row_id_cond_u2i_mp, row_id_cond_u2c_mp, col_id_cond_u2i_mp,
       col_id_cond_u2c_mp;
 
+  // need global indices
+  std::vector<dof_id_type> u2c_global = _dof_sets_secondary[0];
+  std::vector<dof_id_type> u2i_global = _dof_sets_interior[0][_secondary_subdomain];
+  std::vector<dof_id_type> u1c_global = _dof_sets_primary[0];
 
-  // u1c = _dof_sets_primary[0];
-  u2c = _dof_sets_secondary[0];
-
-  // lm = _dof_sets_secondary[1];
-
-  // u1i = _dof_sets_interior[0][_primary_subdomain];
-  u2i = _dof_sets_interior[0][_secondary_subdomain];
-
-
-  // local rows
-  for (auto it : index_range(u1c))
+  for (auto it : index_range(u1c_global))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_row = find(_rows.begin(), _rows.end(), u1c[it]);
-    if (it_row != _rows.end())
+    auto it_row = find(_grows.begin(), _grows.end(), u1c_global[it]);
+    if (it_row != _grows.end())
     {
-      numeric_index_type gid = std::distance(_rows.begin(), it_row);
+      numeric_index_type gid = std::distance(_grows.begin(), it_row);
       row_id_cond_mp.insert(std::make_pair(lid, gid));
       if (lid >= MDinvK2ci->row_start() && lid < MDinvK2ci->row_stop())
         row_id_cond_u2i_mp.insert(std::make_pair(lid, gid));
@@ -488,43 +463,39 @@ DualMortarPreconditioner::condenseSystem()
   }
 
   // global cols
-  for (auto it : index_range(u2i))
+  for (auto it : index_range(u2i_global))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_gcols.begin(), _gcols.end(), u2i[it]);
+    auto it_col = find(_gcols.begin(), _gcols.end(), u2i_global[it]);
     if (it_col != _gcols.end())
     {
       numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2i_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", u2i[it], " does not exist in the columns of the condensed system");
+      mooseError("DOF ", u2i_global[it], " does not exist in the columns of the condensed system");
   }
 
-  for (auto it : index_range(u2c))
+  for (auto it : index_range(u2c_global))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_gcols.begin(), _gcols.end(), u2c[it]);
+    auto it_col = find(_gcols.begin(), _gcols.end(), u2c_global[it]);
     if (it_col != _gcols.end())
     {
       numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2c_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", u2c[it], " does not exist in the columns of the condensed system");
+      mooseError("DOF ", u2c_global[it], " does not exist in the columns of the condensed system");
   }
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  std::cout<<"check6"<<std::endl;
   if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2i_mp.empty()))
   _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
-  std::cout<<"check7"<<std::endl;
   if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2c_mp.empty()))
   _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
-  std::cout<<"check8"<<std::endl;
-  _J_condensed->close();
 
-  // _J_condensed->print_personal();
+  _J_condensed->close();
 }
 
 void
@@ -631,14 +602,14 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
   for (dof_id_type id1 = 0; id1 < _cols.size(); ++id1)
   {
     dof_id_type id0 = _cols[id1]; // id in the original system
-    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
+    if (x.is_local(id0) && _x_hat->is_local(id1))
       x.set(id0, (*_x_hat)(id1));
   }
 
   for (dof_id_type id1 = 0; id1 < lm.size(); ++id1)
   {
     dof_id_type id0 = lm[id1]; // id in the original system
-    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
+    if (x.is_local(id0) && _lambda->is_local(id1))
       x.set(id0, (*_lambda)(id1));
   }
 
@@ -651,60 +622,77 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   std::vector<dof_id_type> u1c = _dof_sets_primary[0];
   std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
 
+  std::vector<dof_id_type> u2c_local = _local_dof_sets_secondary[0];
+
   _x_hat = x.zero_clone();
   _y_hat = y.zero_clone();
-  _x_hat->init(_rows.size());
-  _y_hat->init(_rows.size());
-  _r2c = y.zero_clone();
+  _x_hat->init(_J_condensed->n(), _J_condensed->local_n(), false, PARALLEL);
+  _y_hat->init(_J_condensed->m(), _J_condensed->local_m(), false, PARALLEL);
 
+  x.create_subvector(*_x_hat, _cols);
+  y.create_subvector(*_y_hat, _rows);
+
+  _r2c = y.zero_clone();
   _r2c->init(_MDinv->n(), _MDinv->local_n(), false, PARALLEL);
 
   std::unique_ptr<NumericVector<Number>> mdinv_r2c (NumericVector<Number>::build(MoosePreconditioner::_communicator));
   mdinv_r2c->init(_MDinv->m(), _MDinv->local_m(), false, PARALLEL);
 
-  // get _r2c from the original y
-  for (dof_id_type idx = 0; idx < u2c.size(); ++idx)
-  {
-    dof_id_type id0 = u2c[idx]; // row id in the original system
-    // if (idx>=_r2c->first_local_index() && idx<_r2c->last_local_index() && id0 >= y.first_local_index() && id0 < y.last_local_index())
-    if (_r2c->is_local(idx))
-      _r2c->set(idx, y(id0));
-  }
+  std::unique_ptr<NumericVector<Number>> mdinv_r2c_localized (NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  mdinv_r2c_localized->init(mdinv_r2c->size(), false, SERIAL);
 
+  // get _r2c from the original y
+  y.create_subvector(*_r2c, u2c_local);
   _r2c->close();
 
   _MDinv->vector_mult(*mdinv_r2c, *_r2c);
-
   mdinv_r2c->close();
 
-  for (dof_id_type idx = 0; idx < _rows.size(); ++idx)
+  mdinv_r2c->localize(*mdinv_r2c_localized);
+  mdinv_r2c_localized->close();
+
+  for (auto idx : index_range(_grows))
   {
-    dof_id_type id0 = _rows[idx]; // row id in the original system
+    dof_id_type id0 = _grows[idx]; // row id in the original system
     // if id0 is in u1c, then need to subtract
     // otherwise, copy from y
     auto it_row = find(u1c.begin(), u1c.end(), id0);
 
-    if (! _y_hat->is_local(idx))
-      continue;
-
-    // if (id0 < y.first_local_index() || id0 >= y.last_local_index())
-    //   continue;
-
     if (it_row != u1c.end())
     {
-      if (mdinv_r2c->is_local(std::distance(u1c.begin(), it_row)))
-        _y_hat->set(idx, y(id0) - (*mdinv_r2c)(std::distance(u1c.begin(), it_row)));
+      if (_y_hat->is_local(idx))
+      {
+        // std::cout<<idx<<", "<<(*_y_hat)(idx)<<", "<<(*mdinv_r2c_localized)(std::distance(u1c.begin(), it_row))<<std::endl;
+        Number temp = (*_y_hat)(idx);
+        _y_hat->set(idx, temp - (*mdinv_r2c_localized)(std::distance(u1c.begin(), it_row)));
+      }
     }
-    else
-      _y_hat->set(idx, y(id0));
   }
 
-  for (dof_id_type idx = 0; idx < _cols.size(); ++idx)
-  {
-    dof_id_type id0 = _cols[idx]; // col id in the original system
-    if ( _x_hat->is_local(idx) && x.is_local(id0))
-      _x_hat->set(idx, x(id0));
-  }
+  // for (auto idx : index_range(u1c))
+  // {
+  //     if (_y_hat->is_local(_rows[idx + ]))
+  //     {
+  //       std::cout<<idx<<", "<<u1c[idx]<<", "<<(*_y_hat)(u1c[idx])<<", "<<(*mdinv_r2c_localized)(idx)<<std::endl;
+  //       // _y_hat->set(u1c[idx], (*_y_hat)(u1c[idx]) - (*mdinv_r2c_localized)(idx));
+  //     }
+  // }
+
+  // _y_hat->print();
+
+  // std::cout<<"x_hat local index: ";
+  //
+  // for (auto idx : index_range(_cols))
+  // {
+  //   dof_id_type id0 = _cols[idx]; // col id in the original system
+  //   if ( _x_hat->is_local(idx) && x.is_local(id0))
+  //   {
+  //     std::cout<<idx<<" ";
+  //     _x_hat->set(idx, x(id0));
+  //   }
+  // }
+  //
+  // std::cout<<std::endl;
 
   _y_hat->close();
   _x_hat->close();
@@ -715,27 +703,27 @@ DualMortarPreconditioner::computeLM()
 {
   std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
 
-  std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
-  std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
+  std::vector<dof_id_type> u2i = _dof_sets_interior[0][_secondary_subdomain];
+  std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
 
   _lambda = _r2c->zero_clone();
   _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
 
   _x2i = _r2c->zero_clone();
-  _x2i->init(_K2ci->n(), _K2ci->local_n(), false, PARALLEL);
+  _x2i->init(_K2ci->n(), false, SERIAL);
 
   _x2c = _r2c->zero_clone();
-  _x2c->init(_K2cc->n(), _K2cc->local_n(), false, PARALLEL);
+  _x2c->init(_K2cc->n(), false, SERIAL);
 
   // get x2i, x2c from _x_hat
   for (dof_id_type id = 0; id < _cols.size(); ++id)
   {
     auto id2c = find(u2c.begin(), u2c.end(), _cols[id]);
-    if (id2c != u2c.end())
+    if (id2c != u2c.end() && _x_hat->is_local(id))
       _x2c->set(std::distance(u2c.begin(), id2c), (*_x_hat)(id));
 
     auto id2i = find(u2i.begin(), u2i.end(), _cols[id]);
-    if (id2i != u2i.end())
+    if (id2i != u2i.end() && _x_hat->is_local(id))
       _x2i->set(std::distance(u2i.begin(), id2i), (*_x_hat)(id));
   }
 
