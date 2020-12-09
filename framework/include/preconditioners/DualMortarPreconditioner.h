@@ -130,8 +130,8 @@ protected:
   /// Submatrices (_1 -> primary subdomain; _2 -> secondary subdomain; _i -> interior; _c -> contact interface)
   std::unique_ptr<PetscMatrix<Number>> _K2ci, _K2cc, _D, _M, _MDinv;
 
-  std::vector<numeric_index_type> _rows, _cols; // local row and col dofs for the condensed system: rows->
-                                                // all dofs except u2c; cols-> all u dofs
+  std::vector<numeric_index_type> _rows, _cols; // local row and col dofs for the condensed system:
+                                                // rows-> all dofs except u2c; cols-> all u dofs
   std::vector<numeric_index_type> _grows, _gcols;
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;

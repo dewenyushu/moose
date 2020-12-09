@@ -374,8 +374,8 @@ DualMortarPreconditioner::condenseSystem()
   std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
   std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
 
-  _matrix->create_submatrix(*_D, lm, u2c);  // _D = _Dt
-  _D->get_transpose(*_D); // obtain _D
+  _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
+  _D->get_transpose(*_D);                  // obtain _D
   _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
   _matrix->create_submatrix(*_MDinv, u1c, lm);
@@ -402,8 +402,8 @@ DualMortarPreconditioner::condenseSystem()
   std::vector<Number> vals;
   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
   {
-      row_i.push_back(i);
-      vals.push_back( 1.0 /(*_D)(i, i));
+    row_i.push_back(i);
+    vals.push_back(1.0 / (*_D)(i, i));
   }
   _D->zero_rows(row_i, 1.0);
 
@@ -437,8 +437,8 @@ DualMortarPreconditioner::condenseSystem()
   // original system row_id: u1c
   // original system col_id: u2i, u2c
   std::vector<numeric_index_type> row_id_cond, col_id_cond_u2i, col_id_cond_u2c;
-  std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, row_id_cond_u2i_mp, row_id_cond_u2c_mp, col_id_cond_u2i_mp,
-      col_id_cond_u2c_mp;
+  std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, row_id_cond_u2i_mp,
+      row_id_cond_u2c_mp, col_id_cond_u2i_mp, col_id_cond_u2c_mp;
 
   // need global indices
   std::vector<dof_id_type> u2c_global = _dof_sets_secondary[0];
@@ -490,10 +490,10 @@ DualMortarPreconditioner::condenseSystem()
   }
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2i_mp.empty()))
-  _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
-  if ((!row_id_cond_mp.empty())&&(!col_id_cond_u2c_mp.empty()))
-  _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
+  if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2i_mp.empty()))
+    _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
+  if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
+    _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
 
   _J_condensed->close();
 }
@@ -521,13 +521,13 @@ DualMortarPreconditioner::init()
     std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
     std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
     // get local row dofs
-    _rows.reserve(_dofmap->n_local_dofs () - u2c.size());
+    _rows.reserve(_dofmap->n_local_dofs() - u2c.size());
     _rows.insert(_rows.end(), u1i.begin(), u1i.end());
     _rows.insert(_rows.end(), u1c.begin(), u1c.end());
     _rows.insert(_rows.end(), u2i.begin(), u2i.end());
     _rows.insert(_rows.end(), lm.begin(), lm.end());
     // get local col dofs
-    _cols.reserve(_dofmap->n_local_dofs () - lm.size());
+    _cols.reserve(_dofmap->n_local_dofs() - lm.size());
     _cols.insert(_cols.end(), u1i.begin(), u1i.end());
     _cols.insert(_cols.end(), u1c.begin(), u1c.end());
     _cols.insert(_cols.end(), u2i.begin(), u2i.end());
@@ -543,13 +543,13 @@ DualMortarPreconditioner::init()
     u2i = _dof_sets_interior[0][_secondary_subdomain];
 
     // get global row dofs
-    _grows.reserve(_dofmap->n_dofs () - u2c.size());
+    _grows.reserve(_dofmap->n_dofs() - u2c.size());
     _grows.insert(_grows.end(), u1i.begin(), u1i.end());
     _grows.insert(_grows.end(), u1c.begin(), u1c.end());
     _grows.insert(_grows.end(), u2i.begin(), u2i.end());
     _grows.insert(_grows.end(), lm.begin(), lm.end());
     // get global col dofs
-    _gcols.reserve(_dofmap->n_dofs () - lm.size());
+    _gcols.reserve(_dofmap->n_dofs() - lm.size());
     _gcols.insert(_gcols.end(), u1i.begin(), u1i.end());
     _gcols.insert(_gcols.end(), u1c.begin(), u1c.end());
     _gcols.insert(_gcols.end(), u2i.begin(), u2i.end());
@@ -563,6 +563,77 @@ DualMortarPreconditioner::init()
         Preconditioner<Number>::build_preconditioner(MoosePreconditioner::_communicator);
 
   _is_initialized = true;
+
+  // std::cout<<"global row =";
+  // for (auto i : _grows)
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global col =";
+  // for (auto i : _gcols)
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global u1c =";
+  // for (auto i : _dof_sets_primary[0])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global u2c =";
+  // for (auto i : _dof_sets_secondary[0])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global lm =";
+  // for (auto i : _dof_sets_secondary[1])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global u1i =";
+  // for (auto i : _dof_sets_interior[0][_primary_subdomain])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"global u2i =";
+  // for (auto i : _dof_sets_interior[0][_secondary_subdomain])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  //
+  // std::cout<<"local row =";
+  // for (auto i : _rows)
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local col =";
+  // for (auto i : _cols)
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local u1c =";
+  // for (auto i : _local_dof_sets_primary[0])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local u2c =";
+  // for (auto i : _local_dof_sets_secondary[0])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local lm =";
+  // for (auto i : _local_dof_sets_secondary[1])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local u1i =";
+  // for (auto i : _local_dof_sets_interior[0][_primary_subdomain])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
+  //
+  // std::cout<<"local u2i =";
+  // for (auto i : _local_dof_sets_interior[0][_secondary_subdomain])
+  //   std::cout<<i<<", ";
+  // std::cout<<std::endl;
 }
 
 void
@@ -629,16 +700,19 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   _x_hat->init(_J_condensed->n(), _J_condensed->local_n(), false, PARALLEL);
   _y_hat->init(_J_condensed->m(), _J_condensed->local_m(), false, PARALLEL);
 
-  x.create_subvector(*_x_hat, _cols);
-  y.create_subvector(*_y_hat, _rows);
+  x.create_subvector(*_x_hat, _gcols);
+  y.create_subvector(*_y_hat, _grows);
+
 
   _r2c = y.zero_clone();
   _r2c->init(_MDinv->n(), _MDinv->local_n(), false, PARALLEL);
 
-  std::unique_ptr<NumericVector<Number>> mdinv_r2c (NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  std::unique_ptr<NumericVector<Number>> mdinv_r2c(
+      NumericVector<Number>::build(MoosePreconditioner::_communicator));
   mdinv_r2c->init(_MDinv->m(), _MDinv->local_m(), false, PARALLEL);
 
-  std::unique_ptr<NumericVector<Number>> mdinv_r2c_localized (NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  std::unique_ptr<NumericVector<Number>> mdinv_r2c_localized(
+      NumericVector<Number>::build(MoosePreconditioner::_communicator));
   mdinv_r2c_localized->init(mdinv_r2c->size(), false, SERIAL);
 
   // get _r2c from the original y
@@ -662,40 +736,18 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
     {
       if (_y_hat->is_local(idx))
       {
-        // std::cout<<idx<<", "<<(*_y_hat)(idx)<<", "<<(*mdinv_r2c_localized)(std::distance(u1c.begin(), it_row))<<std::endl;
         Number temp = (*_y_hat)(idx);
         _y_hat->set(idx, temp - (*mdinv_r2c_localized)(std::distance(u1c.begin(), it_row)));
       }
     }
   }
 
-  // for (auto idx : index_range(u1c))
-  // {
-  //     if (_y_hat->is_local(_rows[idx + ]))
-  //     {
-  //       std::cout<<idx<<", "<<u1c[idx]<<", "<<(*_y_hat)(u1c[idx])<<", "<<(*mdinv_r2c_localized)(idx)<<std::endl;
-  //       // _y_hat->set(u1c[idx], (*_y_hat)(u1c[idx]) - (*mdinv_r2c_localized)(idx));
-  //     }
-  // }
-
-  // _y_hat->print();
-
-  // std::cout<<"x_hat local index: ";
-  //
-  // for (auto idx : index_range(_cols))
-  // {
-  //   dof_id_type id0 = _cols[idx]; // col id in the original system
-  //   if ( _x_hat->is_local(idx) && x.is_local(id0))
-  //   {
-  //     std::cout<<idx<<" ";
-  //     _x_hat->set(idx, x(id0));
-  //   }
-  // }
-  //
-  // std::cout<<std::endl;
-
   _y_hat->close();
   _x_hat->close();
+
+  std::cout<<_x_hat->l1_norm ()<<std::endl;
+  std::cout<<_y_hat->l1_norm ()<<std::endl;
+
 }
 
 void
