@@ -665,23 +665,46 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 
   getCondensedXY(y, x);
 
+  // std::cout<<"norm before apply: \n";
+  // std::cout<<_x_hat->l1_norm ()<<std::endl;
+  // std::cout<<_y_hat->l1_norm ()<<std::endl;
+
   _preconditioner->apply(*_y_hat, *_x_hat);
+
+  // std::cout<<"norm after apply: \n";
+  // std::cout<<_x_hat->l1_norm ()<<std::endl;
+  // std::cout<<_y_hat->l1_norm ()<<std::endl;
 
   computeLM();
 
+  // create a local copy of the vector
+  std::unique_ptr<NumericVector<Number>> x_hat_localized(
+      NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  x_hat_localized->init(_J_condensed->n(), false, SERIAL);
+
+  _x_hat->localize(*x_hat_localized);
+  x_hat_localized->close();
+
+  std::unique_ptr<NumericVector<Number>> lambda_localized(
+      NumericVector<Number>::build(MoosePreconditioner::_communicator));
+  lambda_localized->init(_D->m(), false, SERIAL);
+
+  _lambda->localize(*lambda_localized);
+  lambda_localized->close();
+
   // update x
-  for (dof_id_type id1 = 0; id1 < _cols.size(); ++id1)
+  for (dof_id_type id1 = 0; id1 < _gcols.size(); ++id1)
   {
-    dof_id_type id0 = _cols[id1]; // id in the original system
-    if (x.is_local(id0) && _x_hat->is_local(id1))
-      x.set(id0, (*_x_hat)(id1));
+    dof_id_type id0 = _gcols[id1]; // id in the original system
+    if (x.is_local(id0))
+      x.set(id0, (*x_hat_localized)(id1));
   }
 
   for (dof_id_type id1 = 0; id1 < lm.size(); ++id1)
   {
     dof_id_type id0 = lm[id1]; // id in the original system
-    if (x.is_local(id0) && _lambda->is_local(id1))
-      x.set(id0, (*_lambda)(id1));
+    if (x.is_local(id0))
+      x.set(id0, (*lambda_localized)(id1));
   }
 
   x.close();
@@ -744,10 +767,6 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 
   _y_hat->close();
   _x_hat->close();
-
-  std::cout<<_x_hat->l1_norm ()<<std::endl;
-  std::cout<<_y_hat->l1_norm ()<<std::endl;
-
 }
 
 void
@@ -758,26 +777,28 @@ DualMortarPreconditioner::computeLM()
   std::vector<dof_id_type> u2i = _dof_sets_interior[0][_secondary_subdomain];
   std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
 
+  std::vector<dof_id_type> u1c = _dof_sets_primary[0];
+  std::vector<dof_id_type> u1i = _dof_sets_interior[0][_primary_subdomain];
+
   _lambda = _r2c->zero_clone();
   _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
 
   _x2i = _r2c->zero_clone();
-  _x2i->init(_K2ci->n(), false, SERIAL);
+  _x2i->init(_K2ci->n(), _K2ci->local_n(), false, PARALLEL);
 
   _x2c = _r2c->zero_clone();
-  _x2c->init(_K2cc->n(), false, SERIAL);
+  _x2c->init(_K2cc->n(), _K2cc->local_n(), false, PARALLEL);
 
   // get x2i, x2c from _x_hat
-  for (dof_id_type id = 0; id < _cols.size(); ++id)
-  {
-    auto id2c = find(u2c.begin(), u2c.end(), _cols[id]);
-    if (id2c != u2c.end() && _x_hat->is_local(id))
-      _x2c->set(std::distance(u2c.begin(), id2c), (*_x_hat)(id));
+  std::vector<numeric_index_type> x2i_indices, x2c_indices;
+  for (numeric_index_type i = u1i.size() + u1c.size(); i< u1i.size() + u1c.size() + u2i.size(); ++i)
+    x2i_indices.push_back(i);
 
-    auto id2i = find(u2i.begin(), u2i.end(), _cols[id]);
-    if (id2i != u2i.end() && _x_hat->is_local(id))
-      _x2i->set(std::distance(u2i.begin(), id2i), (*_x_hat)(id));
-  }
+  for (numeric_index_type i = u1i.size() + u1c.size() + u2i.size(); i< u1i.size() + u1c.size() + u2i.size() + u2c.size(); ++i)
+    x2c_indices.push_back(i);
+
+  _x_hat->create_subvector(*_x2i, x2i_indices);
+  _x_hat->create_subvector(*_x2c, x2c_indices);
 
   _x2i->close();
   _x2c->close();
