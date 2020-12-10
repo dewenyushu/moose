@@ -378,7 +378,7 @@ DualMortarPreconditioner::condenseSystem()
   _D->get_transpose(*_D);                  // obtain _D
   _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
-  _matrix->create_submatrix(*_MDinv, u1c, lm);
+  _matrix->create_submatrix(*_MDinv, u1c, u2c);
   _M->get_transpose(*_M);
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
@@ -391,14 +391,14 @@ DualMortarPreconditioner::condenseSystem()
 
   auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
   // Allocate storage
-  diag_D->init(_D->m(), _D->local_m(),false, PARALLEL);
+  diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
   // Fill entries
   _D->get_diagonal(*diag_D);
   _D->zero();
 
   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
     if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
-      _D->set(i,i, 1.0/(*diag_D)(i));
+      _D->set(i, i, 1.0 / (*diag_D)(i));
 
   _D->close();
 
@@ -409,8 +409,26 @@ DualMortarPreconditioner::condenseSystem()
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
 
+#ifdef DEBUG
+  std::cout << "_rows = ";
+  for (auto i : _rows)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "_cols = ";
+  for (auto i : _cols)
+    std::cout << i << " ";
+  std::cout << std::endl;
+#endif
+
   // initialize _J_condensed
   _matrix->create_submatrix(*_J_condensed, _rows, _cols);
+
+#ifdef DEBUG
+  std::cout << "Norms of _J_condensed after cureate_submatrix: l1-norm = "
+            << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
+            << std::endl;
+#endif
 
   // compute changed parts: MDinv*K2ci, MDinv*K2cc
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
@@ -422,6 +440,16 @@ DualMortarPreconditioner::condenseSystem()
       *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
   _MDinv->matrix_matrix_mult(*_K2cc, *MDinvK2cc);
+
+  MDinvK2ci->close();
+  MDinvK2cc->close();
+
+#ifdef DEBUG
+  std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
+            << "; infinity-norm = " << MDinvK2ci->linfty_norm() << std::endl;
+  std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
+            << "; infinity-norm = " << MDinvK2cc->linfty_norm() << std::endl;
+#endif
 
   // add changed parts to _J_condensed
   // original system row_id: u1c
@@ -484,15 +512,45 @@ DualMortarPreconditioner::condenseSystem()
   {
     _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
     _J_condensed->close();
+#ifdef DEBUG
+    std::cout << "row_id_cond_mp = ";
+    for (auto i : row_id_cond_mp)
+      std::cout << "(" << i.first << "," << i.second << ") ";
+    std::cout << std::endl;
+
+    std::cout << "col_id_cond_u2i_mp = ";
+    for (auto i : col_id_cond_u2i_mp)
+      std::cout << "(" << i.first << "," << i.second << ") ";
+    std::cout << std::endl;
+#endif
   }
+
+#ifdef DEBUG
+  std::cout << "Norms of _J_condensed after adding MDinvK2ci: l1-norm = " << _J_condensed->l1_norm()
+            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
+#endif
+
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
   {
     _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
     _J_condensed->close();
+
+#ifdef DEBUG
+    std::cout << "row_id_cond_mp = ";
+    for (auto i : row_id_cond_mp)
+      std::cout << "(" << i.first << "," << i.second << ") ";
+    std::cout << std::endl;
+
+    std::cout << "col_id_cond_u2c_mp = ";
+    for (auto i : col_id_cond_u2c_mp)
+      std::cout << "(" << i.first << "," << i.second << ") ";
+    std::cout << std::endl;
+#endif
   }
 
 #ifdef DEBUG
-  std::cout << "Norm of _J_condensed is: " << _J_condensed->l1_norm() << std::endl;
+  std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
+            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
 #endif
 }
 
@@ -561,77 +619,6 @@ DualMortarPreconditioner::init()
         Preconditioner<Number>::build_preconditioner(MoosePreconditioner::_communicator);
 
   _is_initialized = true;
-
-  // std::cout<<"global row =";
-  // for (auto i : _grows)
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global col =";
-  // for (auto i : _gcols)
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global u1c =";
-  // for (auto i : _dof_sets_primary[0])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global u2c =";
-  // for (auto i : _dof_sets_secondary[0])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global lm =";
-  // for (auto i : _dof_sets_secondary[1])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global u1i =";
-  // for (auto i : _dof_sets_interior[0][_primary_subdomain])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"global u2i =";
-  // for (auto i : _dof_sets_interior[0][_secondary_subdomain])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  //
-  // std::cout<<"local row =";
-  // for (auto i : _rows)
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local col =";
-  // for (auto i : _cols)
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local u1c =";
-  // for (auto i : _local_dof_sets_primary[0])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local u2c =";
-  // for (auto i : _local_dof_sets_secondary[0])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local lm =";
-  // for (auto i : _local_dof_sets_secondary[1])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local u1i =";
-  // for (auto i : _local_dof_sets_interior[0][_primary_subdomain])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
-  //
-  // std::cout<<"local u2i =";
-  // for (auto i : _local_dof_sets_interior[0][_secondary_subdomain])
-  //   std::cout<<i<<", ";
-  // std::cout<<std::endl;
 }
 
 void
