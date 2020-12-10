@@ -389,32 +389,22 @@ DualMortarPreconditioner::condenseSystem()
   // so we only need to compute the reciprocal number of the diagonal entries
   // to save memory, no new matrix is created
 
-  // auto diagonal = NumericVector<Number>::build(MoosePreconditioner::_communicator);
-  // // Allocate storage
-  // diagonal->init(_D->get_diagonal());
-  // // Fill entries
-  // _D->get_diagonal(*diagonal);
+  auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
+  // Allocate storage
+  diag_D->init(_D->m(), _D->local_m(),false, PARALLEL);
+  // Fill entries
+  _D->get_diagonal(*diag_D);
+  _D->zero();
 
-  // std::unique_ptr<SparseMatrix<Number>> Dinv(_D->zero_clone());
-  // Dinv->print_personal();
-
-  std::vector<numeric_index_type> row_i;
-  std::vector<Number> vals;
   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-  {
-    row_i.push_back(i);
-    vals.push_back(1.0 / (*_D)(i, i));
-  }
-  _D->zero_rows(row_i, 1.0);
+    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
+      _D->set(i,i, 1.0/(*diag_D)(i));
 
-  // for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-  // {
-  //   Number value = vals[i];
-  //   std::cout<<"inner check i = "<<i<<std::endl;
-  //   _D->add(i,i,value);
-  // }
+  _D->close();
 
+#ifdef DEBUG
   _D->print_personal();
+#endif
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
@@ -491,11 +481,19 @@ DualMortarPreconditioner::condenseSystem()
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2i_mp.empty()))
+  {
     _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
+    _J_condensed->close();
+  }
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
+  {
     _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
+    _J_condensed->close();
+  }
 
-  _J_condensed->close();
+#ifdef DEBUG
+  std::cout << "Norm of _J_condensed is: " << _J_condensed->l1_norm() << std::endl;
+#endif
 }
 
 void
@@ -665,17 +663,25 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 
   getCondensedXY(y, x);
 
-  // std::cout<<"norm before apply: \n";
-  // std::cout<<_x_hat->l1_norm ()<<std::endl;
-  // std::cout<<_y_hat->l1_norm ()<<std::endl;
+#ifdef DEBUG
+  std::cout << "Before Apply: \n";
+  std::cout << "\t_x_hat norm = " << _x_hat->l1_norm() << "\n";
+  std::cout << "\t_y_hat norm = " << _y_hat->l1_norm() << "\n";
+#endif
 
   _preconditioner->apply(*_y_hat, *_x_hat);
 
-  // std::cout<<"norm after apply: \n";
-  // std::cout<<_x_hat->l1_norm ()<<std::endl;
-  // std::cout<<_y_hat->l1_norm ()<<std::endl;
+#ifdef DEBUG
+  std::cout << "After Apply: \n";
+  std::cout << "\t_x_hat norm  = " << _x_hat->l1_norm() << "\n";
+  std::cout << "\t_y_hat norm  = " << _y_hat->l1_norm() << "\n";
+#endif
 
   computeLM();
+
+#ifdef DEBUG
+  std::cout << "\t_lambda norm  = " << _lambda->l1_norm() << "\n";
+#endif
 
   // create a local copy of the vector
   std::unique_ptr<NumericVector<Number>> x_hat_localized(
@@ -725,7 +731,6 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 
   x.create_subvector(*_x_hat, _gcols);
   y.create_subvector(*_y_hat, _grows);
-
 
   _r2c = y.zero_clone();
   _r2c->init(_MDinv->n(), _MDinv->local_n(), false, PARALLEL);
@@ -791,10 +796,13 @@ DualMortarPreconditioner::computeLM()
 
   // get x2i, x2c from _x_hat
   std::vector<numeric_index_type> x2i_indices, x2c_indices;
-  for (numeric_index_type i = u1i.size() + u1c.size(); i< u1i.size() + u1c.size() + u2i.size(); ++i)
+  for (numeric_index_type i = u1i.size() + u1c.size(); i < u1i.size() + u1c.size() + u2i.size();
+       ++i)
     x2i_indices.push_back(i);
 
-  for (numeric_index_type i = u1i.size() + u1c.size() + u2i.size(); i< u1i.size() + u1c.size() + u2i.size() + u2c.size(); ++i)
+  for (numeric_index_type i = u1i.size() + u1c.size() + u2i.size();
+       i < u1i.size() + u1c.size() + u2i.size() + u2c.size();
+       ++i)
     x2c_indices.push_back(i);
 
   _x_hat->create_subvector(*_x2i, x2i_indices);
