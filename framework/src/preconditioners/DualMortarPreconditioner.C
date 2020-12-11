@@ -436,9 +436,9 @@ DualMortarPreconditioner::getInverseD()
     }
 
   _D->close();
-#ifdef DEBUG
-  _D->print_personal();
-#endif
+  // #ifdef DEBUG
+  //   _D->print_personal();
+  // #endif
 }
 
 void
@@ -679,6 +679,28 @@ DualMortarPreconditioner::init()
     std::sort(_grows.begin(), _grows.end());
     std::sort(_gcols.begin(), _gcols.end());
 
+    // vector for mappping old system indices to the new system
+    _grow_hat.resize(_dofmap->n_dofs());
+    std::fill(_grow_hat.begin(), _grow_hat.end(), libMesh::invalid_uint);
+    for (auto i : index_range(_grows))
+      _grow_hat[_grows[i]] = i;
+
+    _gcol_hat.resize(_dofmap->n_dofs());
+    std::fill(_gcol_hat.begin(), _gcol_hat.end(), libMesh::invalid_uint);
+    for (auto i : index_range(_gcols))
+      _gcol_hat[_gcols[i]] = i;
+
+#ifdef DEBUG
+    std::cout << "_grow_hat = ";
+    for (auto i : _grow_hat)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    std::cout << "_gcol_hat = ";
+    for (auto i : _gcol_hat)
+      std::cout << i << " ";
+    std::cout << std::endl;
+#endif
+
     _save_dofs = true;
   }
 
@@ -799,7 +821,7 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   mdinv_r2c_localized->init(mdinv_r2c->size(), false, SERIAL);
 
   // get _r2c from the original y
-  y.create_subvector(*_r2c, u2c_local);
+  y.create_subvector(*_r2c, u2c);
   _r2c->close();
 
   _MDinv->vector_mult(*mdinv_r2c, *_r2c);
@@ -851,14 +873,32 @@ DualMortarPreconditioner::computeLM()
 
   // get x2i, x2c from _x_hat
   std::vector<numeric_index_type> x2i_indices, x2c_indices;
-  for (numeric_index_type i = u1i.size() + u1c.size(); i < u1i.size() + u1c.size() + u2i.size();
-       ++i)
-    x2i_indices.push_back(i);
+  for (auto i : u2i)
+  {
+    if (_gcol_hat[i] == libMesh::invalid_uint)
+      mooseError("Check indices for u2i.");
+    x2i_indices.push_back(_gcol_hat[i]);
+  }
 
-  for (numeric_index_type i = u1i.size() + u1c.size() + u2i.size();
-       i < u1i.size() + u1c.size() + u2i.size() + u2c.size();
-       ++i)
-    x2c_indices.push_back(i);
+  for (auto i : u2c)
+  {
+    if (_gcol_hat[i] == libMesh::invalid_uint)
+      mooseError("Check indices for u2c.");
+    x2c_indices.push_back(_gcol_hat[i]);
+  }
+
+#ifdef DEBUG
+      std::cout
+      << "x2i_indices = ";
+  for (auto i : x2i_indices)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "x2c_indices = ";
+  for (auto i : x2c_indices)
+    std::cout << i << " ";
+  std::cout << std::endl;
+#endif
 
   _x_hat->create_subvector(*_x2i, x2i_indices);
   _x_hat->create_subvector(*_x2c, x2c_indices);
@@ -866,18 +906,29 @@ DualMortarPreconditioner::computeLM()
   _x2i->close();
   _x2c->close();
 
+#ifdef DEBUG
+  std::cout << "_x2i norm  = " << _x2i->l1_norm() << std::endl;
+  std::cout << "_x2c norm  = " << _x2c->l1_norm() << std::endl;
+#endif
+
   std::unique_ptr<NumericVector<Number>> vec = _r2c->zero_clone(), tmp = _r2c->clone();
   // vec=_K2ci*_x2i;
   _K2ci->vector_mult(*vec, *_x2i);
   (*tmp) -= (*vec);
+  vec->close();
+  tmp->close();
+#ifdef DEBUG
+  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+#endif
   // vec=_K2cc*_x2c;
   _K2cc->vector_mult(*vec, *_x2c);
   (*tmp) -= (*vec);
-
-  _D->vector_mult(*_lambda, *tmp);
-
   vec->close();
   tmp->close();
+#ifdef DEBUG
+  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+#endif
+  _D->vector_mult(*_lambda, *tmp);
   _lambda->close();
 }
 

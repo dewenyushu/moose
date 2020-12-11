@@ -134,6 +134,9 @@ protected:
   /// Set of dofs in the interior of subdomains
   std::vector<std::map<SubdomainID, std::vector<dof_id_type>>> _local_dof_sets_interior;
 
+  /// vectors for mapping _matrix indices to _J_condensed indices
+  std::vector<numeric_index_type> _grow_hat, _gcol_hat;
+
   /// Submatrices (_1 -> primary subdomain; _2 -> secondary subdomain; _i -> interior; _c -> contact interface)
   std::unique_ptr<PetscMatrix<Number>> _K2ci, _K2cc, _D, _M, _MDinv;
 

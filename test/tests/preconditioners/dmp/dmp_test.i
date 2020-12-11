@@ -112,6 +112,15 @@
   solve_type = 'NEWTON'
 
   petsc_options = '-snes_converged_reason -ksp_converged_reason'
+  # petsc_options_iname = '-pc_factor_shift_type -pc_factor_shift_amount -pc_factor_mat_solver_type'
+  # petsc_options_value = 'nonzero 1e-8 superlu_dist'
+
+  # petsc_options = '-snes_converged_reason -ksp_converged_reason -ksp_view_mat -snes_view' # -pc_svd_monitor'
+  # petsc_options_iname = '-pc_factor_shift_type -pc_factor_shift_amount -pc_factor_mat_solver_type'
+  # petsc_options_value = 'nonzero 1e-8 superlu_dist'
+
+  # petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
+  # petsc_options_value = 'lu nonzero 1e-8'
 
   l_max_its = 100
   nl_max_its = 2
