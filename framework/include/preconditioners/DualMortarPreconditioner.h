@@ -47,6 +47,11 @@ public:
   void condenseSystem();
 
   /**
+   * invert _D matrix assuming its diagonal structure
+   */
+  void getInverseD();
+
+  /**
    * Get dofs for variable in subdomains
    */
   void getDofVarSubdomain();
@@ -124,6 +129,8 @@ protected:
   std::vector<std::vector<dof_id_type>> _local_dof_sets_primary;
   /// Set of dofs on the interface
   std::vector<std::vector<dof_id_type>> _local_dof_sets_secondary;
+  std::vector<std::vector<dof_id_type>>
+      _local_dof_sets_secondary_unsorted; // save an unsorted copy indices
   /// Set of dofs in the interior of subdomains
   std::vector<std::map<SubdomainID, std::vector<dof_id_type>>> _local_dof_sets_interior;
 
