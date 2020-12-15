@@ -19,7 +19,6 @@ class FunctionPathEllipsoidHeatSource : public Material
 {
 public:
   static InputParameters validParams();
-
   FunctionPathEllipsoidHeatSource(const InputParameters & parameters);
 
 protected:

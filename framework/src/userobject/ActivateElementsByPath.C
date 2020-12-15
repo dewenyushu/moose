@@ -48,6 +48,8 @@ ActivateElementsByPath::isElementActivated()
   Real y_t = _function_y ? _function_y->value(_t, dummy) : 0.0;
   Real z_t = _function_z ? _function_z->value(_t, dummy) : 0.0;
 
-  // activate element when element is close to the point
-  return _current_elem->close_to_point(Point(x_t, y_t, z_t), _activate_distance);
+  // activate element when centroid of the element is close to the point
+  auto distance_vec = _current_elem->centroid() - Point(x_t, y_t, z_t);
+
+  return distance_vec.norm() < _activate_distance;
 }
