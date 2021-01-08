@@ -95,8 +95,8 @@
 []
 
 [Preconditioning]
-  [./dmp]
-    type = DMP
+  [./pdmp]
+    type = PDMP
     full = true
     secondary_subdomain = 1
     secondary_boundary = 10

@@ -25,26 +25,31 @@
 
 // Forward declarations
 class NonlinearSystemBase;
-class DualMortarPreconditioner;
+class ParallelDualMortarPreconditioner;
 
 template <>
-InputParameters validParams<DualMortarPreconditioner>();
+InputParameters validParams<ParallelDualMortarPreconditioner>();
 
 /**
  * Interface for condensing out LMs for the dual mortar approach.
  */
-class DualMortarPreconditioner : public MoosePreconditioner, public Preconditioner<Number>
+class ParallelDualMortarPreconditioner : public MoosePreconditioner, public Preconditioner<Number>
 {
 public:
   static InputParameters validParams();
 
-  DualMortarPreconditioner(const InputParameters & params);
-  virtual ~DualMortarPreconditioner();
+  ParallelDualMortarPreconditioner(const InputParameters & params);
+  virtual ~ParallelDualMortarPreconditioner();
 
   /**
    * Reconstruct the equation system
    */
   void condenseSystem();
+
+  /**
+   * invert _D matrix assuming its diagonal structure
+   */
+  void getInverseD();
 
   /**
    * Get dofs for variable in subdomains
@@ -68,6 +73,14 @@ public:
    * Get condensed x and y
    */
   void getCondensedXY(const NumericVector<Number> & y, NumericVector<Number> & x);
+
+  /**
+   * Create submatrix and permute
+   */
+  void createSubmatrixAndPermute(SparseMatrix<Number> & mat,
+                                 const std::vector<numeric_index_type> & rows,
+                                 const std::vector<numeric_index_type> & cols,
+                                 SparseMatrix<Number> & submat);
 
   /**
    * Compute Lagrange multipliers using updated solution vector
@@ -124,8 +137,13 @@ protected:
   std::vector<std::vector<dof_id_type>> _local_dof_sets_primary;
   /// Set of dofs on the interface
   std::vector<std::vector<dof_id_type>> _local_dof_sets_secondary;
+  std::vector<std::vector<dof_id_type>>
+      _local_dof_sets_secondary_unsorted; // save an unsorted copy indices
   /// Set of dofs in the interior of subdomains
   std::vector<std::map<SubdomainID, std::vector<dof_id_type>>> _local_dof_sets_interior;
+
+  /// vectors for mapping _matrix indices to _J_condensed indices
+  std::vector<numeric_index_type> _grow_hat, _gcol_hat;
 
   /// Submatrices (_1 -> primary subdomain; _2 -> secondary subdomain; _i -> interior; _c -> contact interface)
   std::unique_ptr<PetscMatrix<Number>> _K2ci, _K2cc, _D, _M, _MDinv;

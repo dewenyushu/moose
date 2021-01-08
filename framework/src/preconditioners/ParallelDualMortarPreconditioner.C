@@ -7,7 +7,7 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "DualMortarPreconditioner.h"
+#include "ParallelDualMortarPreconditioner.h"
 
 // MOOSE includes
 #include "FEProblem.h"
@@ -33,16 +33,16 @@
 #include "libmesh/parallel_object.h"
 #include "libmesh/boundary_info.h"
 
-registerMooseObjectAliased("MooseApp", DualMortarPreconditioner, "DMP");
+registerMooseObjectAliased("MooseApp", ParallelDualMortarPreconditioner, "PDMP");
 
-defineLegacyParams(DualMortarPreconditioner);
+defineLegacyParams(ParallelDualMortarPreconditioner);
 
 InputParameters
-DualMortarPreconditioner::validParams()
+ParallelDualMortarPreconditioner::validParams()
 {
   InputParameters params = MoosePreconditioner::validParams();
 
-  params.addClassDescription("Dual mortar preconditioner (DMP) condenses out the Lagrange "
+  params.addClassDescription("Dual mortar preconditioner (PDMP) condenses out the Lagrange "
                              "multipliers from the Jacobian matrix "
                              "and recover a system with only the primal unkowns in order to allow "
                              "for a broader range of solvers/preconditioners.");
@@ -75,7 +75,7 @@ DualMortarPreconditioner::validParams()
   return params;
 }
 
-DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & params)
+ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputParameters & params)
   : MoosePreconditioner(params),
     Preconditioner<Number>(MoosePreconditioner::_communicator),
     _nl(_fe_problem.getNonlinearSystemBase()),
@@ -109,7 +109,7 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
   // PC type
   const std::vector<std::string> & pc_type = getParam<std::vector<std::string>>("preconditioner");
   if (pc_type.size() > 1)
-    mooseWarning("We only use one preconditioner type in DMP, the ",
+    mooseWarning("We only use one preconditioner type in PDMP, the ",
                  pc_type[0],
                  " preconditioner is utilized.");
   _pre_type = Utility::string_to_enum<PreconditionerType>(pc_type[0]);
@@ -167,10 +167,10 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
   _nl.attachPreconditioner(this);
 }
 
-DualMortarPreconditioner::~DualMortarPreconditioner() { this->clear(); }
+ParallelDualMortarPreconditioner::~ParallelDualMortarPreconditioner() { this->clear(); }
 
 void
-DualMortarPreconditioner::getDofVarSubdomain()
+ParallelDualMortarPreconditioner::getDofVarSubdomain()
 {
   _dof_sets.resize(_n_vars);
   for (unsigned int vn = 0; vn < _n_vars; vn++)
@@ -198,7 +198,7 @@ DualMortarPreconditioner::getDofVarSubdomain()
 }
 
 void
-DualMortarPreconditioner::getLocalDofVarSubdomain()
+ParallelDualMortarPreconditioner::getLocalDofVarSubdomain()
 {
   _local_dof_sets.resize(_n_vars);
   for (unsigned int vn = 0; vn < _n_vars; vn++)
@@ -230,7 +230,7 @@ DualMortarPreconditioner::getLocalDofVarSubdomain()
 }
 
 void
-DualMortarPreconditioner::getDofVarInterior()
+ParallelDualMortarPreconditioner::getDofVarInterior()
 {
   getDofVarSubdomain();
   _dof_sets_interior.resize(_n_vars);
@@ -259,7 +259,7 @@ DualMortarPreconditioner::getDofVarInterior()
 }
 
 void
-DualMortarPreconditioner::getLocalDofVarInterior()
+ParallelDualMortarPreconditioner::getLocalDofVarInterior()
 {
   getLocalDofVarSubdomain();
   _local_dof_sets_interior.resize(_n_vars);
@@ -288,7 +288,7 @@ DualMortarPreconditioner::getLocalDofVarInterior()
 }
 
 void
-DualMortarPreconditioner::getDofVarInterface()
+ParallelDualMortarPreconditioner::getDofVarInterface()
 {
   _dof_sets_primary.resize(_n_vars);
   _dof_sets_secondary.resize(_n_vars);
@@ -320,14 +320,18 @@ DualMortarPreconditioner::getDofVarInterface()
             _dof_sets_primary[vn].push_back(*it);
       }
     }
+    // sort indices
+    // std::sort(_dof_sets_primary[vn].begin(), _dof_sets_primary[vn].end());
+    // std::sort(_dof_sets_secondary[vn].begin(), _dof_sets_secondary[vn].end());
   }
 }
 
 void
-DualMortarPreconditioner::getLocalDofVarInterface()
+ParallelDualMortarPreconditioner::getLocalDofVarInterface()
 {
   _local_dof_sets_primary.resize(_n_vars);
   _local_dof_sets_secondary.resize(_n_vars);
+  _local_dof_sets_secondary_unsorted.resize(_n_vars);
   for (unsigned int vn = 0; vn < _n_vars; vn++)
   {
     // loop over boundary nodes
@@ -360,11 +364,86 @@ DualMortarPreconditioner::getLocalDofVarInterface()
             _local_dof_sets_primary[vn].push_back(*it);
       }
     }
+    // save a unsorted copy for the lower_D dofs
+    _local_dof_sets_secondary_unsorted[vn].resize(_local_dof_sets_secondary[vn].size());
+    _local_dof_sets_secondary_unsorted[vn] = _local_dof_sets_secondary[vn];
+    // sort indices
+    // std::sort(_local_dof_sets_primary[vn].begin(), _local_dof_sets_primary[vn].end());
+    // std::sort(_local_dof_sets_secondary[vn].begin(), _local_dof_sets_secondary[vn].end());
   }
 }
 
 void
-DualMortarPreconditioner::condenseSystem()
+ParallelDualMortarPreconditioner::getInverseD()
+{
+  // sorted indices
+  std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
+  std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
+
+  // unorted indices
+  std::vector<dof_id_type> u2c_unst = _local_dof_sets_secondary_unsorted[0];
+  std::vector<dof_id_type> lm_unst = _local_dof_sets_secondary_unsorted[1];
+
+  std::vector<dof_id_type>::iterator it;
+
+  // create a map from sorted to unsorted indices
+  std::map<numeric_index_type, numeric_index_type> u2c_unst2st, lm_unst2st;
+  for (auto i : index_range(u2c_unst))
+  {
+    it = std::find(u2c.begin(), u2c.end(), u2c_unst[i]);
+    u2c_unst2st.insert(std::make_pair(i, std::distance(u2c.begin(), it)));
+  }
+  for (auto i : index_range(lm))
+  {
+    it = std::find(lm.begin(), lm.end(), lm_unst[i]);
+    lm_unst2st.insert(std::make_pair(i, std::distance(lm.begin(), it)));
+  }
+
+#ifdef DEBUG
+  std::cout << "u2c_unst2st = ";
+  for (auto i : u2c_unst2st)
+    std::cout << "( " << i.first << ", " << i.second << " ), ";
+  std::cout << std::endl;
+
+  std::cout << "lm_unst2st = ";
+  for (auto i : lm_unst2st)
+    std::cout << "( " << i.first << ", " << i.second << " ), ";
+  std::cout << std::endl;
+#endif
+
+  createSubmatrixAndPermute(*_matrix, lm, u2c, *_D);
+  // _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
+  _D->get_transpose(*_D); // obtain _D
+
+  auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
+  diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
+
+  // extract correct diagonal terms and save in diag_D
+  for (auto i = _D->row_start(); i < _D->row_stop(); ++i)
+  {
+    auto st_idx_row = lm_unst2st[i];
+    auto st_idx_col = u2c_unst2st[i];
+    diag_D->set(st_idx_row, 1.0 / (*_D)(st_idx_row, st_idx_col));
+  }
+
+  _D->zero();
+
+  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
+    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
+    {
+      auto st_idx_row = lm_unst2st[i];
+      auto st_idx_col = u2c_unst2st[i];
+      _D->set(st_idx_row, st_idx_col, (*diag_D)(i));
+    }
+
+  _D->close();
+  // #ifdef DEBUG
+  //   _D->print_personal();
+  // #endif
+}
+
+void
+ParallelDualMortarPreconditioner::condenseSystem()
 {
   std::vector<dof_id_type> u1c = _local_dof_sets_primary[0];
   std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
@@ -374,33 +453,23 @@ DualMortarPreconditioner::condenseSystem()
   std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
   std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
 
-  _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
-  _D->get_transpose(*_D);                  // obtain _D
-  _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
+  createSubmatrixAndPermute(*_matrix, lm, u1c, *_M);
+  // _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
-  _matrix->create_submatrix(*_MDinv, u1c, u2c);
+  createSubmatrixAndPermute(*_matrix, u1c, u2c, *_MDinv);
+  // _matrix->create_submatrix(*_MDinv, u1c, u2c);
   _M->get_transpose(*_M);
 
-  _matrix->create_submatrix(*_K2ci, u2c, u2i);
-  _matrix->create_submatrix(*_K2cc, u2c, u2c);
+  createSubmatrixAndPermute(*_matrix, u2c, u2i, *_K2ci);
+  // _matrix->create_submatrix(*_K2ci, u2c, u2i);
+  createSubmatrixAndPermute(*_matrix, u2c, u2c, *_K2cc);
+  // _matrix->create_submatrix(*_K2cc, u2c, u2c);
 
   // invert _D:
   // _D should be strictly diagonal if dual_mortar approach is utilized
   // so we only need to compute the reciprocal number of the diagonal entries
   // to save memory, no new matrix is created
-
-  auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
-  // Allocate storage
-  diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
-  // Fill entries
-  _D->get_diagonal(*diag_D);
-  _D->zero();
-
-  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
-      _D->set(i, i, 1.0 / (*diag_D)(i));
-
-  _D->close();
+  getInverseD();
 
 #ifdef DEBUG
   _D->print_personal();
@@ -422,7 +491,8 @@ DualMortarPreconditioner::condenseSystem()
 #endif
 
   // initialize _J_condensed
-  _matrix->create_submatrix(*_J_condensed, _rows, _cols);
+  createSubmatrixAndPermute(*_matrix, _rows, _cols, *_J_condensed);
+  // _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
 #ifdef DEBUG
   // _J_condensed->print_personal();
@@ -435,10 +505,13 @@ DualMortarPreconditioner::condenseSystem()
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
       libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
       MDinvK2cc(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator));
-  _matrix->create_submatrix(
-      *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
-  _matrix->create_submatrix(
-      *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
+
+  createSubmatrixAndPermute(*_matrix, u1c, u2i, *MDinvK2ci);
+  // _matrix->create_submatrix(
+  //     *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
+  createSubmatrixAndPermute(*_matrix, u1c, u2c, *MDinvK2cc);
+  // _matrix->create_submatrix(
+  //     *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
   _MDinv->matrix_matrix_mult(*_K2cc, *MDinvK2cc);
 
@@ -556,7 +629,7 @@ DualMortarPreconditioner::condenseSystem()
 }
 
 void
-DualMortarPreconditioner::init()
+ParallelDualMortarPreconditioner::init()
 {
   TIME_SECTION(_init_timer);
   if (!_save_dofs)
@@ -590,6 +663,10 @@ DualMortarPreconditioner::init()
     _cols.insert(_cols.end(), u2i.begin(), u2i.end());
     _cols.insert(_cols.end(), u2c.begin(), u2c.end());
 
+    // sort the rows and cols
+    // std::sort(_rows.begin(), _rows.end());
+    // std::sort(_cols.begin(), _cols.end());
+
     // get global row and col dofs for the condensed Jacobian
     u1c = _dof_sets_primary[0];
     u2c = _dof_sets_secondary[0];
@@ -612,14 +689,37 @@ DualMortarPreconditioner::init()
     _gcols.insert(_gcols.end(), u2i.begin(), u2i.end());
     _gcols.insert(_gcols.end(), u2c.begin(), u2c.end());
 
+    // sort the rows and cols
+    // std::sort(_grows.begin(), _grows.end());
+    // std::sort(_gcols.begin(), _gcols.end());
+
+    // vector for mappping old system indices to the new system
+    _grow_hat.resize(_dofmap->n_dofs());
+    std::fill(_grow_hat.begin(), _grow_hat.end(), libMesh::invalid_uint);
+    for (auto i : index_range(_grows))
+      _grow_hat[_grows[i]] = i;
+
+    _gcol_hat.resize(_dofmap->n_dofs());
+    std::fill(_gcol_hat.begin(), _gcol_hat.end(), libMesh::invalid_uint);
+    for (auto i : index_range(_gcols))
+      _gcol_hat[_gcols[i]] = i;
+
 #ifdef DEBUG
     std::cout << "_grows = ";
     for (auto i : _grows)
       std::cout << i << " ";
     std::cout << std::endl;
+    std::cout << "_grow_hat = ";
+    for (auto i : _grow_hat)
+      std::cout << i << " ";
+    std::cout << std::endl;
 
     std::cout << "_gcols = ";
     for (auto i : _gcols)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    std::cout << "_gcol_hat = ";
+    for (auto i : _gcol_hat)
       std::cout << i << " ";
     std::cout << std::endl;
 #endif
@@ -635,7 +735,7 @@ DualMortarPreconditioner::init()
 }
 
 void
-DualMortarPreconditioner::print_node_info()
+ParallelDualMortarPreconditioner::print_node_info()
 {
   NodeRange * range = _mesh->getActiveNodeRange();
   for (const auto & node : *range)
@@ -645,7 +745,7 @@ DualMortarPreconditioner::print_node_info()
 }
 
 void
-DualMortarPreconditioner::setup()
+ParallelDualMortarPreconditioner::setup()
 {
   condenseSystem();
 
@@ -655,7 +755,7 @@ DualMortarPreconditioner::setup()
 }
 
 void
-DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<Number> & x)
+ParallelDualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<Number> & x)
 {
   TIME_SECTION(_apply_timer);
 
@@ -717,7 +817,8 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 }
 
 void
-DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, NumericVector<Number> & x)
+ParallelDualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y,
+                                                 NumericVector<Number> & x)
 {
   std::vector<dof_id_type> u1c = _dof_sets_primary[0];
   std::vector<dof_id_type> u2c = _dof_sets_secondary[0];
@@ -744,7 +845,7 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   mdinv_r2c_localized->init(mdinv_r2c->size(), false, SERIAL);
 
   // get _r2c from the original y
-  y.create_subvector(*_r2c, u2c_local);
+  y.create_subvector(*_r2c, u2c);
   _r2c->close();
 
   _MDinv->vector_mult(*mdinv_r2c, *_r2c);
@@ -775,7 +876,7 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 }
 
 void
-DualMortarPreconditioner::computeLM()
+ParallelDualMortarPreconditioner::computeLM()
 {
   std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
 
@@ -796,14 +897,19 @@ DualMortarPreconditioner::computeLM()
 
   // get x2i, x2c from _x_hat
   std::vector<numeric_index_type> x2i_indices, x2c_indices;
-  for (numeric_index_type i = u1i.size() + u1c.size(); i < u1i.size() + u1c.size() + u2i.size();
-       ++i)
-    x2i_indices.push_back(i);
+  for (auto i : u2i)
+  {
+    if (_gcol_hat[i] == libMesh::invalid_uint)
+      mooseError("Check indices for u2i.");
+    x2i_indices.push_back(_gcol_hat[i]);
+  }
 
-  for (numeric_index_type i = u1i.size() + u1c.size() + u2i.size();
-       i < u1i.size() + u1c.size() + u2i.size() + u2c.size();
-       ++i)
-    x2c_indices.push_back(i);
+  for (auto i : u2c)
+  {
+    if (_gcol_hat[i] == libMesh::invalid_uint)
+      mooseError("Check indices for u2c.");
+    x2c_indices.push_back(_gcol_hat[i]);
+  }
 
 #ifdef DEBUG
   std::cout << "x2i_indices = ";
@@ -832,27 +938,70 @@ DualMortarPreconditioner::computeLM()
   // vec=_K2ci*_x2i;
   _K2ci->vector_mult(*vec, *_x2i);
   (*tmp) -= (*vec);
-
+  vec->close();
+  tmp->close();
 #ifdef DEBUG
   std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
 #endif
-
   // vec=_K2cc*_x2c;
   _K2cc->vector_mult(*vec, *_x2c);
   (*tmp) -= (*vec);
-
+  vec->close();
+  tmp->close();
 #ifdef DEBUG
   std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
 #endif
-
   _D->vector_mult(*_lambda, *tmp);
-
-  vec->close();
-  tmp->close();
   _lambda->close();
 }
 
 void
-DualMortarPreconditioner::clear()
+ParallelDualMortarPreconditioner::clear()
 {
+}
+
+void
+ParallelDualMortarPreconditioner::createSubmatrixAndPermute(
+    SparseMatrix<Number> & mat,
+    const std::vector<numeric_index_type> & rows,
+    const std::vector<numeric_index_type> & cols,
+    SparseMatrix<Number> & submat)
+{
+  std::vector<numeric_index_type> srt_rows = rows;
+  std::sort(srt_rows.begin(), srt_rows.end());
+  std::vector<numeric_index_type> srt_cols = cols;
+  std::sort(srt_cols.begin(), srt_cols.end());
+
+  std::vector<numeric_index_type> rows_permute, cols_permute;
+
+  for (auto i : index_range(rows))
+  {
+    auto it = find(srt_rows.begin(), srt_rows.end(), rows[i]);
+    if (it != srt_rows.end())
+      rows_permute.push_back(it - srt_rows.begin());
+  }
+
+  for (auto i : index_range(cols))
+  {
+    auto it = find(srt_cols.begin(), srt_cols.end(), cols[i]);
+    if (it != srt_cols.end())
+      cols_permute.push_back(it - srt_cols.begin());
+  }
+
+  mat.create_submatrix(submat, srt_rows, srt_cols);
+
+#ifdef DEBUG
+  std::cout << "rows_permute = ";
+  for (auto i : rows_permute)
+    std::cout << i <<" ";
+  std::cout << std::endl;
+
+  std::cout << "cols_permute = ";
+  for (auto i : cols_permute)
+    std::cout << i <<" ";
+  std::cout << std::endl;
+#endif
+  submat.create_permute_matrix(rows_permute, cols_permute);
+
+  submat.close();
 }
