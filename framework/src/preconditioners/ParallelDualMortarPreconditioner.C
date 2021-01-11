@@ -414,12 +414,8 @@ ParallelDualMortarPreconditioner::getInverseD()
   std::cout << std::endl;
 #endif
 
-#ifdef DEBUG
-  std::cout << "Create _D and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, lm, u2c, glm, gu2c, *_D);
-  // _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
-  _D->get_transpose(*_D); // obtain _D
+  _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
+  _D->get_transpose(*_D);                  // obtain _D
 
   auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
   diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
@@ -468,31 +464,19 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::vector<dof_id_type> gu1i = _dof_sets_interior[0][_primary_subdomain];
   std::vector<dof_id_type> gu2i = _dof_sets_interior[0][_secondary_subdomain];
 
-#ifdef DEBUG
-  std::cout << "Create _M and permute\n";
-#endif
-
-  createSubmatrixAndPermute(*_matrix, lm, u1c, glm, gu1c, *_M);
-  // _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
+  _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
 #ifdef DEBUG
-  std::cout << "Create _MDinv and permute\n";
+  std::cout << "_M = \n";
+  _M->print_personal();
 #endif
-  createSubmatrixAndPermute(*_matrix, u1c, u2c, gu1c, gu2c, *_MDinv);
-  // _matrix->create_submatrix(*_MDinv, u1c, u2c);
+
+  _matrix->create_submatrix(*_MDinv, u1c, u2c);
   _M->get_transpose(*_M);
 
-#ifdef DEBUG
-  std::cout << "Create _K2ci and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, u2c, u2i, gu2c, gu2i, *_K2ci);
-  // _matrix->create_submatrix(*_K2ci, u2c, u2i);
+  _matrix->create_submatrix(*_K2ci, u2c, u2i);
 
-#ifdef DEBUG
-  std::cout << "Create _K2cc and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, u2c, u2c, gu2c, gu2c, *_K2cc);
-  // _matrix->create_submatrix(*_K2cc, u2c, u2c);
+  _matrix->create_submatrix(*_K2cc, u2c, u2c);
 
   // invert _D:
   // _D should be strictly diagonal if dual_mortar approach is utilized
@@ -501,11 +485,17 @@ ParallelDualMortarPreconditioner::condenseSystem()
   getInverseD();
 
 #ifdef DEBUG
+  std::cout << "_D = \n";
   _D->print_personal();
 #endif
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
+
+#ifdef DEBUG
+  std::cout << "_MDinv = \n";
+  _MDinv->print_personal();
+#endif
 
 #ifdef DEBUG
   std::cout << "_rows = ";
@@ -520,11 +510,8 @@ ParallelDualMortarPreconditioner::condenseSystem()
 #endif
 
 // initialize _J_condensed
-#ifdef DEBUG
-  std::cout << "Create _J_condensed and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, _rows, _cols, _grows, _gcols, *_J_condensed);
-  // _matrix->create_submatrix(*_J_condensed, _rows, _cols);
+
+  _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
 #ifdef DEBUG
   // _J_condensed->print_personal();
@@ -537,18 +524,12 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
       libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
       MDinvK2cc(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator));
-#ifdef DEBUG
-  std::cout << "Create MDinvK2ci and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, u1c, u2i, gu1c, gu2i, *MDinvK2ci);
-// _matrix->create_submatrix(
-//     *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
-#ifdef DEBUG
-  std::cout << "Create MDinvK2cc and permute\n";
-#endif
-  createSubmatrixAndPermute(*_matrix, u1c, u2c, gu1c, gu2c, *MDinvK2cc);
-  // _matrix->create_submatrix(
-  //     *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
+
+  _matrix->create_submatrix(
+      *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
+
+  _matrix->create_submatrix(
+      *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
   _MDinv->matrix_matrix_mult(*_K2cc, *MDinvK2cc);
 
@@ -1020,40 +1001,111 @@ ParallelDualMortarPreconditioner::createSubmatrixAndPermute(
   std::vector<numeric_index_type> srt_gcols = gcols;
   std::sort(srt_gcols.begin(), srt_gcols.end());
 
-  std::vector<numeric_index_type> rows_permute, cols_permute;
-
-  for (auto i : index_range(rows))
-  {
-    auto it = find(srt_grows.begin(), srt_grows.end(), rows[i]);
-    if (it != srt_grows.end())
-      rows_permute.push_back(it - srt_grows.begin());
-  }
-
-  for (auto i : index_range(cols))
-  {
-    auto it = find(srt_gcols.begin(), srt_gcols.end(), cols[i]);
-    if (it != srt_gcols.end())
-      cols_permute.push_back(it - srt_gcols.begin());
-  }
+  std::vector<numeric_index_type> rows_permute, cols_permute, grows_permute, gcols_permute;
 
   mat.create_submatrix(submat, srt_rows, srt_cols);
+  submat.close();
+
+  // for (auto i : index_range(rows))
+  // {
+  //   auto it = find(srt_grows.begin(), srt_grows.end(), rows[i]);
+  //   if (it != srt_grows.end())
+  //     rows_permute.push_back(it - srt_grows.begin());
+  // }
+  //
+  // for (auto i : index_range(cols))
+  // {
+  //   auto it = find(srt_gcols.begin(), srt_gcols.end(), cols[i]);
+  //   if (it != srt_gcols.end())
+  //     cols_permute.push_back(it - srt_gcols.begin());
+  // }
+
+  for (auto i : index_range(grows))
+  {
+    auto it = find(srt_grows.begin(), srt_grows.end(), grows[i]);
+    if (it != srt_grows.end())
+    {
+      auto idx = it - srt_grows.begin();
+      grows_permute.push_back(idx);
+      if (idx >= submat.row_start() && idx < submat.row_stop())
+        rows_permute.push_back(idx);
+    }
+  }
+
+  for (auto i : index_range(gcols))
+  {
+    auto it = find(srt_gcols.begin(), srt_gcols.end(), gcols[i]);
+    if (it != srt_gcols.end())
+    {
+      auto idx = it - srt_gcols.begin();
+      gcols_permute.push_back(idx);
+      if (idx >= submat.row_start() && idx < submat.row_stop())
+        cols_permute.push_back(idx);
+    }
+  }
 
 #ifdef DEBUG
-  std::cout << "rows = ";
-  for (auto i : rows)
-    std::cout << i << " ";
-  std::cout << std::endl;
-  std::cout << "rows_permute = ";
-  for (auto i : rows_permute)
-    std::cout << i << " ";
-  std::cout << std::endl;
+  std::cout << "Before permute = \n";
+  // std::cout<<mat<<std::endl;
+  if (submat.m() <= 8 && submat.n() <= 8)
+    submat.print_personal();
+#endif
 
-  std::cout << "cols = ";
-  for (auto i : cols)
-    std::cout << i << " ";
-  std::cout << std::endl;
-  std::cout << "cols_permute = ";
-  for (auto i : cols_permute)
+#ifdef DEBUG
+  if (rows != srt_rows || grows != srt_grows)
+  {
+    std::cout << "rows = ";
+    for (auto i : rows)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    // std::cout << "srt_rows = ";
+    // for (auto i : srt_rows)
+    //   std::cout << i << " ";
+    // std::cout << std::endl;
+    //
+    // std::cout << "grows = ";
+    // for (auto i : grows)
+    //   std::cout << i << " ";
+    // std::cout << std::endl;
+    std::cout << "srt_grows = ";
+    for (auto i : srt_grows)
+      std::cout << i << " ";
+    std::cout << std::endl;
+
+    std::cout << "rows_permute = ";
+    for (auto i : rows_permute)
+      std::cout << i << " ";
+    std::cout << std::endl;
+  }
+
+  if (cols != srt_cols || gcols != srt_gcols)
+  {
+    std::cout << "cols = ";
+    for (auto i : cols)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    // std::cout << "srt_cols = ";
+    // for (auto i : srt_cols)
+    //   std::cout << i << " ";
+    // std::cout << std::endl;
+    //
+    std::cout << "gcols = ";
+    for (auto i : gcols)
+      std::cout << i << " ";
+    std::cout << std::endl;
+    // std::cout << "srt_gcols = ";
+    // for (auto i : srt_gcols)
+    //   std::cout << i << " ";
+    // std::cout << std::endl;
+
+    std::cout << "cols_permute = ";
+    for (auto i : cols_permute)
+      std::cout << i << " ";
+    std::cout << std::endl;
+  }
+
+  std::cout << "local rows = ";
+  for (auto i = submat.row_start(); i < submat.row_stop(); ++i)
     std::cout << i << " ";
   std::cout << std::endl;
 #endif
@@ -1061,4 +1113,10 @@ ParallelDualMortarPreconditioner::createSubmatrixAndPermute(
   submat.create_permute_matrix(rows_permute, cols_permute);
 
   submat.close();
+
+#ifdef DEBUG
+  std::cout << "After permute = \n";
+  if (submat.m() <= 8 && submat.n() <= 8)
+    submat.print_personal();
+#endif
 }

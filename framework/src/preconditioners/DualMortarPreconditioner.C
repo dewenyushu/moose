@@ -379,6 +379,12 @@ DualMortarPreconditioner::condenseSystem()
   _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
   _matrix->create_submatrix(*_MDinv, u1c, u2c);
+
+#ifdef DEBUG
+  std::cout << "_M = \n";
+  _M->print_personal();
+#endif
+
   _M->get_transpose(*_M);
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
@@ -403,11 +409,17 @@ DualMortarPreconditioner::condenseSystem()
   _D->close();
 
 #ifdef DEBUG
+  std::cout << "_D = \n";
   _D->print_personal();
 #endif
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
+
+#ifdef DEBUG
+  std::cout << "_MDinv = \n";
+  _MDinv->print_personal();
+#endif
 
 #ifdef DEBUG
   std::cout << "_rows = ";
