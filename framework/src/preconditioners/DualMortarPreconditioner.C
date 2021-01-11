@@ -446,8 +446,12 @@ DualMortarPreconditioner::condenseSystem()
   MDinvK2cc->close();
 
 #ifdef DEBUG
+  std::cout << "Submatrix MDinvK2ci =\n";
+  MDinvK2ci->print_personal();
   std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
             << "; infinity-norm = " << MDinvK2ci->linfty_norm() << std::endl;
+  std::cout << "Submatrix MDinvK2cc =\n";
+  MDinvK2cc->print_personal();
   std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
             << "; infinity-norm = " << MDinvK2cc->linfty_norm() << std::endl;
 #endif

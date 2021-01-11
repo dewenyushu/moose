@@ -80,6 +80,8 @@ public:
   void createSubmatrixAndPermute(SparseMatrix<Number> & mat,
                                  const std::vector<numeric_index_type> & rows,
                                  const std::vector<numeric_index_type> & cols,
+                                 const std::vector<numeric_index_type> & grows,
+                                 const std::vector<numeric_index_type> & gcols,
                                  SparseMatrix<Number> & submat);
 
   /**

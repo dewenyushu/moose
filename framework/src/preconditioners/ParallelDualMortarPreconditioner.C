@@ -379,6 +379,9 @@ ParallelDualMortarPreconditioner::getInverseD()
   // sorted indices
   std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
   std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
+  // global indices
+  std::vector<dof_id_type> gu2c = _dof_sets_secondary[0];
+  std::vector<dof_id_type> glm = _dof_sets_secondary[1];
 
   // unorted indices
   std::vector<dof_id_type> u2c_unst = _local_dof_sets_secondary_unsorted[0];
@@ -411,7 +414,10 @@ ParallelDualMortarPreconditioner::getInverseD()
   std::cout << std::endl;
 #endif
 
-  createSubmatrixAndPermute(*_matrix, lm, u2c, *_D);
+#ifdef DEBUG
+  std::cout << "Create _D and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, lm, u2c, glm, gu2c, *_D);
   // _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
   _D->get_transpose(*_D); // obtain _D
 
@@ -453,16 +459,39 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::vector<dof_id_type> u1i = _local_dof_sets_interior[0][_primary_subdomain];
   std::vector<dof_id_type> u2i = _local_dof_sets_interior[0][_secondary_subdomain];
 
-  createSubmatrixAndPermute(*_matrix, lm, u1c, *_M);
+  // global indices
+  std::vector<dof_id_type> gu1c = _dof_sets_primary[0];
+  std::vector<dof_id_type> gu2c = _dof_sets_secondary[0];
+
+  std::vector<dof_id_type> glm = _dof_sets_secondary[1];
+
+  std::vector<dof_id_type> gu1i = _dof_sets_interior[0][_primary_subdomain];
+  std::vector<dof_id_type> gu2i = _dof_sets_interior[0][_secondary_subdomain];
+
+#ifdef DEBUG
+  std::cout << "Create _M and permute\n";
+#endif
+
+  createSubmatrixAndPermute(*_matrix, lm, u1c, glm, gu1c, *_M);
   // _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
-  createSubmatrixAndPermute(*_matrix, u1c, u2c, *_MDinv);
+#ifdef DEBUG
+  std::cout << "Create _MDinv and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, u1c, u2c, gu1c, gu2c, *_MDinv);
   // _matrix->create_submatrix(*_MDinv, u1c, u2c);
   _M->get_transpose(*_M);
 
-  createSubmatrixAndPermute(*_matrix, u2c, u2i, *_K2ci);
+#ifdef DEBUG
+  std::cout << "Create _K2ci and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, u2c, u2i, gu2c, gu2i, *_K2ci);
   // _matrix->create_submatrix(*_K2ci, u2c, u2i);
-  createSubmatrixAndPermute(*_matrix, u2c, u2c, *_K2cc);
+
+#ifdef DEBUG
+  std::cout << "Create _K2cc and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, u2c, u2c, gu2c, gu2c, *_K2cc);
   // _matrix->create_submatrix(*_K2cc, u2c, u2c);
 
   // invert _D:
@@ -490,8 +519,11 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::cout << std::endl;
 #endif
 
-  // initialize _J_condensed
-  createSubmatrixAndPermute(*_matrix, _rows, _cols, *_J_condensed);
+// initialize _J_condensed
+#ifdef DEBUG
+  std::cout << "Create _J_condensed and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, _rows, _cols, _grows, _gcols, *_J_condensed);
   // _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
 #ifdef DEBUG
@@ -505,11 +537,16 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::unique_ptr<PetscMatrix<Number>> MDinvK2ci(
       libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
       MDinvK2cc(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator));
-
-  createSubmatrixAndPermute(*_matrix, u1c, u2i, *MDinvK2ci);
-  // _matrix->create_submatrix(
-  //     *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
-  createSubmatrixAndPermute(*_matrix, u1c, u2c, *MDinvK2cc);
+#ifdef DEBUG
+  std::cout << "Create MDinvK2ci and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, u1c, u2i, gu1c, gu2i, *MDinvK2ci);
+// _matrix->create_submatrix(
+//     *MDinvK2ci, u1c, u2i); // get MDinvK2ci initialized (should use empty initializer here)
+#ifdef DEBUG
+  std::cout << "Create MDinvK2cc and permute\n";
+#endif
+  createSubmatrixAndPermute(*_matrix, u1c, u2c, gu1c, gu2c, *MDinvK2cc);
   // _matrix->create_submatrix(
   //     *MDinvK2cc, u1c, u2c); // get MDinvK2cc initialized (should use empty initializer here)
   _MDinv->matrix_matrix_mult(*_K2ci, *MDinvK2ci);
@@ -519,8 +556,12 @@ ParallelDualMortarPreconditioner::condenseSystem()
   MDinvK2cc->close();
 
 #ifdef DEBUG
+  std::cout << "Submatrix MDinvK2ci =\n";
+  MDinvK2ci->print_personal();
   std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
             << "; infinity-norm = " << MDinvK2ci->linfty_norm() << std::endl;
+  std::cout << "Submatrix MDinvK2cc =\n";
+  MDinvK2cc->print_personal();
   std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
             << "; infinity-norm = " << MDinvK2cc->linfty_norm() << std::endl;
 #endif
@@ -533,14 +574,14 @@ ParallelDualMortarPreconditioner::condenseSystem()
       row_id_cond_u2c_mp, col_id_cond_u2i_mp, col_id_cond_u2c_mp;
 
   // need global indices
-  std::vector<dof_id_type> u2c_global = _dof_sets_secondary[0];
-  std::vector<dof_id_type> u2i_global = _dof_sets_interior[0][_secondary_subdomain];
-  std::vector<dof_id_type> u1c_global = _dof_sets_primary[0];
+  // std::vector<dof_id_type> gu2c = _dof_sets_secondary[0];
+  // std::vector<dof_id_type> gu2i = _dof_sets_interior[0][_secondary_subdomain];
+  // std::vector<dof_id_type> gu1c = _dof_sets_primary[0];
 
-  for (auto it : index_range(u1c_global))
+  for (auto it : index_range(gu1c))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_row = find(_grows.begin(), _grows.end(), u1c_global[it]);
+    auto it_row = find(_grows.begin(), _grows.end(), gu1c[it]);
     if (it_row != _grows.end())
     {
       numeric_index_type gid = std::distance(_grows.begin(), it_row);
@@ -551,34 +592,34 @@ ParallelDualMortarPreconditioner::condenseSystem()
         row_id_cond_u2c_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", u1c[it], " does not exist in the rows of the condensed system");
+      mooseError("DOF ", gu1c[it], " does not exist in the rows of the condensed system");
   }
 
   // global cols
-  for (auto it : index_range(u2i_global))
+  for (auto it : index_range(gu2i))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_gcols.begin(), _gcols.end(), u2i_global[it]);
+    auto it_col = find(_gcols.begin(), _gcols.end(), gu2i[it]);
     if (it_col != _gcols.end())
     {
       numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2i_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", u2i_global[it], " does not exist in the columns of the condensed system");
+      mooseError("DOF ", gu2i[it], " does not exist in the columns of the condensed system");
   }
 
-  for (auto it : index_range(u2c_global))
+  for (auto it : index_range(gu2c))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_col = find(_gcols.begin(), _gcols.end(), u2c_global[it]);
+    auto it_col = find(_gcols.begin(), _gcols.end(), gu2c[it]);
     if (it_col != _gcols.end())
     {
       numeric_index_type gid = std::distance(_gcols.begin(), it_col);
       col_id_cond_u2c_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", u2c_global[it], " does not exist in the columns of the condensed system");
+      mooseError("DOF ", gu2c[it], " does not exist in the columns of the condensed system");
   }
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -965,6 +1006,8 @@ ParallelDualMortarPreconditioner::createSubmatrixAndPermute(
     SparseMatrix<Number> & mat,
     const std::vector<numeric_index_type> & rows,
     const std::vector<numeric_index_type> & cols,
+    const std::vector<numeric_index_type> & grows,
+    const std::vector<numeric_index_type> & gcols,
     SparseMatrix<Number> & submat)
 {
   std::vector<numeric_index_type> srt_rows = rows;
@@ -972,35 +1015,49 @@ ParallelDualMortarPreconditioner::createSubmatrixAndPermute(
   std::vector<numeric_index_type> srt_cols = cols;
   std::sort(srt_cols.begin(), srt_cols.end());
 
+  std::vector<numeric_index_type> srt_grows = grows;
+  std::sort(srt_grows.begin(), srt_grows.end());
+  std::vector<numeric_index_type> srt_gcols = gcols;
+  std::sort(srt_gcols.begin(), srt_gcols.end());
+
   std::vector<numeric_index_type> rows_permute, cols_permute;
 
   for (auto i : index_range(rows))
   {
-    auto it = find(srt_rows.begin(), srt_rows.end(), rows[i]);
-    if (it != srt_rows.end())
-      rows_permute.push_back(it - srt_rows.begin());
+    auto it = find(srt_grows.begin(), srt_grows.end(), rows[i]);
+    if (it != srt_grows.end())
+      rows_permute.push_back(it - srt_grows.begin());
   }
 
   for (auto i : index_range(cols))
   {
-    auto it = find(srt_cols.begin(), srt_cols.end(), cols[i]);
-    if (it != srt_cols.end())
-      cols_permute.push_back(it - srt_cols.begin());
+    auto it = find(srt_gcols.begin(), srt_gcols.end(), cols[i]);
+    if (it != srt_gcols.end())
+      cols_permute.push_back(it - srt_gcols.begin());
   }
 
   mat.create_submatrix(submat, srt_rows, srt_cols);
 
 #ifdef DEBUG
+  std::cout << "rows = ";
+  for (auto i : rows)
+    std::cout << i << " ";
+  std::cout << std::endl;
   std::cout << "rows_permute = ";
   for (auto i : rows_permute)
-    std::cout << i <<" ";
+    std::cout << i << " ";
   std::cout << std::endl;
 
+  std::cout << "cols = ";
+  for (auto i : cols)
+    std::cout << i << " ";
+  std::cout << std::endl;
   std::cout << "cols_permute = ";
   for (auto i : cols_permute)
-    std::cout << i <<" ";
+    std::cout << i << " ";
   std::cout << std::endl;
 #endif
+
   submat.create_permute_matrix(rows_permute, cols_permute);
 
   submat.close();
