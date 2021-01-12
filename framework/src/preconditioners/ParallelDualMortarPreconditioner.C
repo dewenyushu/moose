@@ -292,6 +292,7 @@ ParallelDualMortarPreconditioner::getDofVarInterface()
 {
   _dof_sets_primary.resize(_n_vars);
   _dof_sets_secondary.resize(_n_vars);
+  _dof_sets_secondary_unsorted.resize(_n_vars);
   for (unsigned int vn = 0; vn < _n_vars; vn++)
   {
     // loop over boundary nodes
@@ -320,9 +321,12 @@ ParallelDualMortarPreconditioner::getDofVarInterface()
             _dof_sets_primary[vn].push_back(*it);
       }
     }
+    // save an unsorted copy of the indices
+    _dof_sets_secondary_unsorted[vn].resize(_dof_sets_secondary[vn].size());
+    _dof_sets_secondary_unsorted[vn] = _dof_sets_secondary[vn];
     // sort indices
-    // std::sort(_dof_sets_primary[vn].begin(), _dof_sets_primary[vn].end());
-    // std::sort(_dof_sets_secondary[vn].begin(), _dof_sets_secondary[vn].end());
+    std::sort(_dof_sets_primary[vn].begin(), _dof_sets_primary[vn].end());
+    std::sort(_dof_sets_secondary[vn].begin(), _dof_sets_secondary[vn].end());
   }
 }
 
@@ -368,8 +372,8 @@ ParallelDualMortarPreconditioner::getLocalDofVarInterface()
     _local_dof_sets_secondary_unsorted[vn].resize(_local_dof_sets_secondary[vn].size());
     _local_dof_sets_secondary_unsorted[vn] = _local_dof_sets_secondary[vn];
     // sort indices
-    // std::sort(_local_dof_sets_primary[vn].begin(), _local_dof_sets_primary[vn].end());
-    // std::sort(_local_dof_sets_secondary[vn].begin(), _local_dof_sets_secondary[vn].end());
+    std::sort(_local_dof_sets_primary[vn].begin(), _local_dof_sets_primary[vn].end());
+    std::sort(_local_dof_sets_secondary[vn].begin(), _local_dof_sets_secondary[vn].end());
   }
 }
 
@@ -387,19 +391,35 @@ ParallelDualMortarPreconditioner::getInverseD()
   std::vector<dof_id_type> u2c_unst = _local_dof_sets_secondary_unsorted[0];
   std::vector<dof_id_type> lm_unst = _local_dof_sets_secondary_unsorted[1];
 
+  std::vector<dof_id_type> gu2c_unst = _dof_sets_secondary_unsorted[0];
+  std::vector<dof_id_type> glm_unst = _dof_sets_secondary_unsorted[1];
+
   std::vector<dof_id_type>::iterator it;
 
   // create a map from sorted to unsorted indices
   std::map<numeric_index_type, numeric_index_type> u2c_unst2st, lm_unst2st;
-  for (auto i : index_range(u2c_unst))
+  for (auto i : index_range(gu2c_unst))
   {
-    it = std::find(u2c.begin(), u2c.end(), u2c_unst[i]);
-    u2c_unst2st.insert(std::make_pair(i, std::distance(u2c.begin(), it)));
+    it = std::find(gu2c.begin(), gu2c.end(), gu2c_unst[i]);
+    u2c_unst2st.insert(std::make_pair(i, std::distance(gu2c.begin(), it)));
   }
-  for (auto i : index_range(lm))
+  for (auto i : index_range(glm_unst))
   {
-    it = std::find(lm.begin(), lm.end(), lm_unst[i]);
-    lm_unst2st.insert(std::make_pair(i, std::distance(lm.begin(), it)));
+    it = std::find(glm.begin(), glm.end(), glm_unst[i]);
+    lm_unst2st.insert(std::make_pair(i, std::distance(glm.begin(), it)));
+  }
+
+  std::map<numeric_index_type, std::vector<numeric_index_type>> unst2st;
+  if (u2c_unst.size() != lm_unst.size())
+    mooseError("u2c and lm do not have same local sizes..");
+  for (auto i : index_range(glm_unst))
+  {
+    auto it_u2c = std::find(gu2c.begin(), gu2c.end(), gu2c_unst[i]);
+    auto it_lm = std::find(glm.begin(), glm.end(), glm_unst[i]);
+    std::vector<numeric_index_type> vec;
+    vec.push_back(std::distance(gu2c.begin(), it_u2c));
+    vec.push_back(std::distance(glm.begin(), it_lm));
+    unst2st.insert(std::make_pair(i, vec));
   }
 
 #ifdef DEBUG
@@ -412,36 +432,80 @@ ParallelDualMortarPreconditioner::getInverseD()
   for (auto i : lm_unst2st)
     std::cout << "( " << i.first << ", " << i.second << " ), ";
   std::cout << std::endl;
+
+  std::cout << "unst2st = \n";
+  for (auto i : unst2st)
+    std::cout << "\t" << i.first << "th item ( " << i.second[0] << ", " << i.second[1] << " ); \n";
+  std::cout << std::endl;
 #endif
 
   _matrix->create_submatrix(*_D, lm, u2c); // _D = _Dt
-  _D->get_transpose(*_D);                  // obtain _D
 
+#ifdef DEBUG
+  std::cout << "check -- finish creating _D \n";
+#endif
+  _D->get_transpose(*_D); // obtain _D
+#ifdef DEBUG
+  std::cout << "check -- finish transposing _D \n";
+#endif
   auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
   diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
 
-  // extract correct diagonal terms and save in diag_D
+#ifdef DEBUG
+  std::cout << "local rows of _D = ";
   for (auto i = _D->row_start(); i < _D->row_stop(); ++i)
-  {
-    auto st_idx_row = lm_unst2st[i];
-    auto st_idx_col = u2c_unst2st[i];
-    diag_D->set(st_idx_row, 1.0 / (*_D)(st_idx_row, st_idx_col));
-  }
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "local rows of diag_D = ";
+  for (auto i = diag_D->first_local_index(); i < diag_D->last_local_index(); ++i)
+    std::cout << i << " ";
+  std::cout << std::endl;
+#endif
+
+  // extract correct diagonal terms and save in diag_D
+  // for (auto i = _D->row_start(); i < _D->row_stop(); ++i)
+  // {
+  //   auto st_idx_row = lm_unst2st[i];
+  //   auto st_idx_col = u2c_unst2st[i];
+  //   diag_D->set(st_idx_row, 1.0 / (*_D)(st_idx_row, st_idx_col));
+  // }
+
+  for (auto i : unst2st)
+    if (diag_D->is_local(i.second[1]))
+      diag_D->set(i.second[1], 1.0 / (*_D)(i.second[1], i.second[0]));
+
+#ifdef DEBUG
+  std::cout << "check -- finish extracting diagonal of _D \n";
+#endif
 
   _D->zero();
 
-  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
-    {
-      auto st_idx_row = lm_unst2st[i];
-      auto st_idx_col = u2c_unst2st[i];
-      _D->set(st_idx_row, st_idx_col, (*diag_D)(i));
-    }
+#ifdef DEBUG
+  std::cout << "check -- finish zeroing out _D \n";
+#endif
+
+  //   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
+  //     if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
+  //     {
+  //       auto st_idx_row = lm_unst2st[i];
+  //       auto st_idx_col = u2c_unst2st[i];
+  //       _D->set(st_idx_row, st_idx_col, (*diag_D)(i));
+  // #ifdef DEBUG
+  //       std::cout << "check -- setting _D  ( " << i << " )\n";
+  // #endif
+  //     }
+
+  for (auto i : unst2st)
+    if (diag_D->is_local(i.first))
+      if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i.first), 0.0))
+        _D->set(i.second[1], i.second[0], (*diag_D)(i.first));
 
   _D->close();
-  // #ifdef DEBUG
-  //   _D->print_personal();
-  // #endif
+#ifdef DEBUG
+  std::cout << "_Dinv = \n";
+  _D->print_personal();
+#endif
 }
 
 void
@@ -466,13 +530,13 @@ ParallelDualMortarPreconditioner::condenseSystem()
 
   _matrix->create_submatrix(*_M, lm, u1c); // _M = _Mt
 
-#ifdef DEBUG
-  std::cout << "_M = \n";
-  _M->print_personal();
-#endif
-
   _matrix->create_submatrix(*_MDinv, u1c, u2c);
   _M->get_transpose(*_M);
+
+#ifdef DEBUG
+  std::cout << "_M_transpose = \n";
+  _M->print_personal();
+#endif
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
 
@@ -483,11 +547,6 @@ ParallelDualMortarPreconditioner::condenseSystem()
   // so we only need to compute the reciprocal number of the diagonal entries
   // to save memory, no new matrix is created
   getInverseD();
-
-#ifdef DEBUG
-  std::cout << "_D = \n";
-  _D->print_personal();
-#endif
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
@@ -509,7 +568,7 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::cout << std::endl;
 #endif
 
-// initialize _J_condensed
+  // initialize _J_condensed
 
   _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
@@ -622,8 +681,9 @@ ParallelDualMortarPreconditioner::condenseSystem()
   }
 
 #ifdef DEBUG
-  std::cout << "Norms of _J_condensed after adding MDinvK2ci: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
+  std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
+            << "; infinity-norm = " << _J_condensed->linfty_norm()
+            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
 #endif
 
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
@@ -646,7 +706,10 @@ ParallelDualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
+            << "; infinity-norm = " << _J_condensed->linfty_norm()
+            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
+
+  // _J_condensed->print_personal();
 #endif
 }
 
@@ -686,8 +749,8 @@ ParallelDualMortarPreconditioner::init()
     _cols.insert(_cols.end(), u2c.begin(), u2c.end());
 
     // sort the rows and cols
-    // std::sort(_rows.begin(), _rows.end());
-    // std::sort(_cols.begin(), _cols.end());
+    std::sort(_rows.begin(), _rows.end());
+    std::sort(_cols.begin(), _cols.end());
 
     // get global row and col dofs for the condensed Jacobian
     u1c = _dof_sets_primary[0];
@@ -712,8 +775,8 @@ ParallelDualMortarPreconditioner::init()
     _gcols.insert(_gcols.end(), u2c.begin(), u2c.end());
 
     // sort the rows and cols
-    // std::sort(_grows.begin(), _grows.end());
-    // std::sort(_gcols.begin(), _gcols.end());
+    std::sort(_grows.begin(), _grows.end());
+    std::sort(_gcols.begin(), _gcols.end());
 
     // vector for mappping old system indices to the new system
     _grow_hat.resize(_dofmap->n_dofs());
@@ -787,22 +850,24 @@ ParallelDualMortarPreconditioner::apply(const NumericVector<Number> & y, Numeric
 
 #ifdef DEBUG
   std::cout << "Before Apply: \n";
-  std::cout << "\t_x_hat norm = " << _x_hat->l1_norm() << "\n";
-  std::cout << "\t_y_hat norm = " << _y_hat->l1_norm() << "\n";
+  std::cout << "\tx norm = " << x.l2_norm() << "\n";
+  std::cout << "\ty norm = " << y.l2_norm() << "\n";
+  std::cout << "\t_x_hat norm = " << _x_hat->l2_norm() << "\n";
+  std::cout << "\t_y_hat norm = " << _y_hat->l2_norm() << "\n";
 #endif
 
   _preconditioner->apply(*_y_hat, *_x_hat);
 
 #ifdef DEBUG
   std::cout << "After Apply: \n";
-  std::cout << "\t_x_hat norm  = " << _x_hat->l1_norm() << "\n";
-  std::cout << "\t_y_hat norm  = " << _y_hat->l1_norm() << "\n";
+  std::cout << "\t_x_hat norm  = " << _x_hat->l2_norm() << "\n";
+  std::cout << "\t_y_hat norm  = " << _y_hat->l2_norm() << "\n";
 #endif
 
   computeLM();
 
 #ifdef DEBUG
-  std::cout << "\t_lambda norm  = " << _lambda->l1_norm() << "\n";
+  std::cout << "\t_lambda norm  = " << _lambda->l2_norm() << "\n";
 #endif
 
   // create a local copy of the vector
@@ -952,8 +1017,8 @@ ParallelDualMortarPreconditioner::computeLM()
   _x2c->close();
 
 #ifdef DEBUG
-  std::cout << "_x2i norm  = " << _x2i->l1_norm() << std::endl;
-  std::cout << "_x2c norm  = " << _x2c->l1_norm() << std::endl;
+  std::cout << "_x2i norm  = " << _x2i->l2_norm() << std::endl;
+  std::cout << "_x2c norm  = " << _x2c->l2_norm() << std::endl;
 #endif
 
   std::unique_ptr<NumericVector<Number>> vec = _r2c->zero_clone(), tmp = _r2c->clone();
@@ -963,7 +1028,7 @@ ParallelDualMortarPreconditioner::computeLM()
   vec->close();
   tmp->close();
 #ifdef DEBUG
-  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+  std::cout << "tmp norm  = " << tmp->l2_norm() << std::endl;
 #endif
   // vec=_K2cc*_x2c;
   _K2cc->vector_mult(*vec, *_x2c);
@@ -971,7 +1036,7 @@ ParallelDualMortarPreconditioner::computeLM()
   vec->close();
   tmp->close();
 #ifdef DEBUG
-  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+  std::cout << "tmp norm  = " << tmp->l2_norm() << std::endl;
 #endif
   _D->vector_mult(*_lambda, *tmp);
   _lambda->close();

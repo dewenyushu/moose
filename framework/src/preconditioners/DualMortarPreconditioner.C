@@ -380,12 +380,12 @@ DualMortarPreconditioner::condenseSystem()
 
   _matrix->create_submatrix(*_MDinv, u1c, u2c);
 
+  _M->get_transpose(*_M);
+
 #ifdef DEBUG
-  std::cout << "_M = \n";
+  std::cout << "_M_transpose = \n";
   _M->print_personal();
 #endif
-
-  _M->get_transpose(*_M);
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
   _matrix->create_submatrix(*_K2cc, u2c, u2c);
@@ -409,7 +409,7 @@ DualMortarPreconditioner::condenseSystem()
   _D->close();
 
 #ifdef DEBUG
-  std::cout << "_D = \n";
+  std::cout << "_Dinv = \n";
   _D->print_personal();
 #endif
 
@@ -543,8 +543,9 @@ DualMortarPreconditioner::condenseSystem()
   }
 
 #ifdef DEBUG
-  std::cout << "Norms of _J_condensed after adding MDinvK2ci: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
+  std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
+            << "; infinity-norm = " << _J_condensed->linfty_norm()
+            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
 #endif
 
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
@@ -567,7 +568,10 @@ DualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm() << std::endl;
+            << "; infinity-norm = " << _J_condensed->linfty_norm()
+            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
+
+  // _J_condensed->print_personal();
 #endif
 }
 
@@ -681,22 +685,24 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 
 #ifdef DEBUG
   std::cout << "Before Apply: \n";
-  std::cout << "\t_x_hat norm = " << _x_hat->l1_norm() << "\n";
-  std::cout << "\t_y_hat norm = " << _y_hat->l1_norm() << "\n";
+  std::cout << "\tx norm = " << x.l2_norm() << "\n";
+  std::cout << "\ty norm = " << y.l2_norm() << "\n";
+  std::cout << "\t_x_hat norm = " << _x_hat->l2_norm() << "\n";
+  std::cout << "\t_y_hat norm = " << _y_hat->l2_norm() << "\n";
 #endif
 
   _preconditioner->apply(*_y_hat, *_x_hat);
 
 #ifdef DEBUG
   std::cout << "After Apply: \n";
-  std::cout << "\t_x_hat norm  = " << _x_hat->l1_norm() << "\n";
-  std::cout << "\t_y_hat norm  = " << _y_hat->l1_norm() << "\n";
+  std::cout << "\t_x_hat norm  = " << _x_hat->l2_norm() << "\n";
+  std::cout << "\t_y_hat norm  = " << _y_hat->l2_norm() << "\n";
 #endif
 
   computeLM();
 
 #ifdef DEBUG
-  std::cout << "\t_lambda norm  = " << _lambda->l1_norm() << "\n";
+  std::cout << "\t_lambda norm  = " << _lambda->l2_norm() << "\n";
 #endif
 
   // create a local copy of the vector
@@ -840,8 +846,8 @@ DualMortarPreconditioner::computeLM()
   _x2c->close();
 
 #ifdef DEBUG
-  std::cout << "_x2i norm  = " << _x2i->l1_norm() << std::endl;
-  std::cout << "_x2c norm  = " << _x2c->l1_norm() << std::endl;
+  std::cout << "_x2i norm  = " << _x2i->l2_norm() << std::endl;
+  std::cout << "_x2c norm  = " << _x2c->l2_norm() << std::endl;
 #endif
 
   std::unique_ptr<NumericVector<Number>> vec = _r2c->zero_clone(), tmp = _r2c->clone();
@@ -850,7 +856,7 @@ DualMortarPreconditioner::computeLM()
   (*tmp) -= (*vec);
 
 #ifdef DEBUG
-  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+  std::cout << "tmp norm  = " << tmp->l2_norm() << std::endl;
 #endif
 
   // vec=_K2cc*_x2c;
@@ -858,7 +864,7 @@ DualMortarPreconditioner::computeLM()
   (*tmp) -= (*vec);
 
 #ifdef DEBUG
-  std::cout << "tmp norm  = " << tmp->l1_norm() << std::endl;
+  std::cout << "tmp norm  = " << tmp->l2_norm() << std::endl;
 #endif
 
   _D->vector_mult(*_lambda, *tmp);
