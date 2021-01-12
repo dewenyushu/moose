@@ -154,6 +154,9 @@ protected:
   std::vector<numeric_index_type> _rows, _cols; // local row and col dofs for the condensed system:
                                                 // rows-> all dofs except u2c; cols-> all u dofs
   std::vector<numeric_index_type> _grows, _gcols;
+  std::vector<numeric_index_type> _grows_unsrt, _gcols_unsrt;
+
+  std::map<numeric_index_type, numeric_index_type> _lm_to_u2c;
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;
 
