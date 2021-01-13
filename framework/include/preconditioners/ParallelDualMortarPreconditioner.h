@@ -47,11 +47,6 @@ public:
   void condenseSystem();
 
   /**
-   * invert _D matrix assuming its diagonal structure
-   */
-  void getInverseD();
-
-  /**
    * Get dofs for variable in subdomains
    */
   void getDofVarSubdomain();
@@ -73,16 +68,6 @@ public:
    * Get condensed x and y
    */
   void getCondensedXY(const NumericVector<Number> & y, NumericVector<Number> & x);
-
-  /**
-   * Create submatrix and permute
-   */
-  void createSubmatrixAndPermute(SparseMatrix<Number> & mat,
-                                 const std::vector<numeric_index_type> & rows,
-                                 const std::vector<numeric_index_type> & cols,
-                                 const std::vector<numeric_index_type> & grows,
-                                 const std::vector<numeric_index_type> & gcols,
-                                 SparseMatrix<Number> & submat);
 
   /**
    * Compute Lagrange multipliers using updated solution vector
