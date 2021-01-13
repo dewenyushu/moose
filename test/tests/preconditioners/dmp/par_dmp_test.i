@@ -2,6 +2,7 @@
   [./original_file_mesh]
     type = FileMeshGenerator
     file = non_conform_2blocks.e
+    # file = dmp_2blocks_coarse.e
   [../]
   [slave]
     input = original_file_mesh
@@ -102,7 +103,7 @@
     secondary_boundary = 10
     primary_subdomain = 2
     primary_boundary = 20
-    preconditioner = 'AMG'
+    preconditioner = 'LU'
   [../]
 []
 
@@ -111,7 +112,7 @@
   type = Steady
   solve_type = 'NEWTON'
 
-  petsc_options = '-snes_converged_reason -ksp_converged_reason'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_view'
   # petsc_options_iname = '-pc_factor_shift_type -pc_factor_shift_amount -pc_factor_mat_solver_type'
   # petsc_options_value = 'nonzero 1e-8 superlu_dist'
 
@@ -122,6 +123,9 @@
   # petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   # petsc_options_value = 'lu nonzero 1e-8'
 
+  # petsc_options_iname = ' -pc_factor_shift_type -pc_factor_shift_amount'
+  # petsc_options_value = ' nonzero 1e-8'
+
   l_max_its = 10
   nl_max_its = 1
 
@@ -131,4 +135,9 @@
 
 [Outputs]
   csv = true
+
+  # [dofmap]
+  #   type = DOFMap
+  #   execute_on = 'initial'
+  # []
 []

@@ -551,6 +551,8 @@ ParallelDualMortarPreconditioner::condenseSystem()
 {
   std::vector<dof_id_type> u1c = _local_dof_sets_primary[0];
   std::vector<dof_id_type> u2c = _local_dof_sets_secondary[0];
+  // sort u2c for creating the Submatrices
+  // std::sort(u2c.begin(), u2c.end());
 
   std::vector<dof_id_type> lm = _local_dof_sets_secondary[1];
 
@@ -667,7 +669,7 @@ ParallelDualMortarPreconditioner::condenseSystem()
   _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
 #ifdef DEBUG
-  // _J_condensed->print_personal();
+  _J_condensed->print_personal();
   std::cout << "Norms of _J_condensed after cureate_submatrix: l1-norm = "
             << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
             << std::endl;
@@ -690,13 +692,13 @@ ParallelDualMortarPreconditioner::condenseSystem()
   MDinvK2cc->close();
 
 #ifdef DEBUG
-  // std::cout << "Submatrix MDinvK2ci =\n";
-  // MDinvK2ci->print_personal();
+  std::cout << "Submatrix MDinvK2ci =\n";
+  MDinvK2ci->print_personal();
   std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
             << "; infinity-norm = " << MDinvK2ci->linfty_norm()
             << "; Frobenius-norm = " << MDinvK2ci->frobenius_norm() << std::endl;
-  // std::cout << "Submatrix MDinvK2cc =\n";
-  // MDinvK2cc->print_personal();
+  std::cout << "Submatrix MDinvK2cc =\n";
+  MDinvK2cc->print_personal();
   std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
             << "; infinity-norm = " << MDinvK2cc->linfty_norm()
             << "; Frobenius-norm = " << MDinvK2cc->frobenius_norm() << std::endl;
@@ -709,10 +711,32 @@ ParallelDualMortarPreconditioner::condenseSystem()
   std::map<numeric_index_type, numeric_index_type> row_id_cond_mp, row_id_cond_u2i_mp,
       row_id_cond_u2c_mp, col_id_cond_u2i_mp, col_id_cond_u2c_mp;
 
-  // need global indices
-  // std::vector<dof_id_type> gu2c = _dof_sets_secondary[0];
-  // std::vector<dof_id_type> gu2i = _dof_sets_interior[0][_secondary_subdomain];
-  // std::vector<dof_id_type> gu1c = _dof_sets_primary[0];
+#ifdef DEBUG
+  std::cout << "grows = ";
+  for (auto i : _grows)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "gcols = ";
+  for (auto i : _gcols)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "gu2c = ";
+  for (auto i : gu2c)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "gu2i = ";
+  for (auto i : gu2i)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "gu1c = ";
+  for (auto i : gu1c)
+    std::cout << i << " ";
+  std::cout << std::endl;
+#endif
 
   for (auto it : index_range(gu1c))
   {
@@ -759,46 +783,48 @@ ParallelDualMortarPreconditioner::condenseSystem()
   }
 
   MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-  if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2i_mp.empty()))
-  {
-    _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
-    _J_condensed->close();
-    // #ifdef DEBUG
-    //     std::cout << "row_id_cond_mp = ";
-    //     for (auto i : row_id_cond_mp)
-    //       std::cout << "(" << i.first << "," << i.second << ") ";
-    //     std::cout << std::endl;
-    //
-    //     std::cout << "col_id_cond_u2i_mp = ";
-    //     for (auto i : col_id_cond_u2i_mp)
-    //       std::cout << "(" << i.first << "," << i.second << ") ";
-    //     std::cout << std::endl;
-    // #endif
-  }
+  // if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2i_mp.empty()))
+  // {
+  _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
+  _J_condensed->close();
+  // }
+#ifdef DEBUG
+  std::cout << "row_id_cond_u2i_mp = ";
+  for (auto i : row_id_cond_u2i_mp)
+    std::cout << "(" << i.first << "," << i.second << ") ";
+  std::cout << std::endl;
+
+  std::cout << "col_id_cond_u2i_mp = ";
+  for (auto i : col_id_cond_u2i_mp)
+    std::cout << "(" << i.first << "," << i.second << ") ";
+  std::cout << std::endl;
+#endif
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
             << "; infinity-norm = " << _J_condensed->linfty_norm()
             << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
+
+  _J_condensed->print_personal();
 #endif
 
-  if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
-  {
-    _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
-    _J_condensed->close();
+  // if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
+  // {
+  _J_condensed->add_sparse_matrix(*MDinvK2cc, row_id_cond_u2c_mp, col_id_cond_u2c_mp, -1.0);
+  _J_condensed->close();
+  // }
 
-    // #ifdef DEBUG
-    //     std::cout << "row_id_cond_mp = ";
-    //     for (auto i : row_id_cond_mp)
-    //       std::cout << "(" << i.first << "," << i.second << ") ";
-    //     std::cout << std::endl;
-    //
-    //     std::cout << "col_id_cond_u2c_mp = ";
-    //     for (auto i : col_id_cond_u2c_mp)
-    //       std::cout << "(" << i.first << "," << i.second << ") ";
-    //     std::cout << std::endl;
-    // #endif
-  }
+#ifdef DEBUG
+  std::cout << "row_id_cond_u2c_mp = ";
+  for (auto i : row_id_cond_u2c_mp)
+    std::cout << "(" << i.first << "," << i.second << ") ";
+  std::cout << std::endl;
+
+  std::cout << "col_id_cond_u2c_mp = ";
+  for (auto i : col_id_cond_u2c_mp)
+    std::cout << "(" << i.first << "," << i.second << ") ";
+  std::cout << std::endl;
+#endif
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
