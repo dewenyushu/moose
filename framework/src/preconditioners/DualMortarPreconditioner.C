@@ -380,11 +380,11 @@ DualMortarPreconditioner::condenseSystem()
   _matrix->create_submatrix(*_MDinv, u1c, u2c);
 
 #ifdef DEBUG
-  std::cout << "_M = \n";
-  _M->print_personal();
+  // std::cout << "_M = \n";
+  // _M->print_personal();
   std::cout << "Norms of _M_transpose: l1-norm = " << _M->l1_norm()
-            << "; infinity-norm = " << _M->linfty_norm()
-            << "; frobenius_norm = " << _M->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _M->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _M->frobenius_norm() << std::endl;
 #endif
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
@@ -392,11 +392,17 @@ DualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _K2ci: l1-norm = " << _K2ci->l1_norm()
-            << "; infinity-norm = " << _K2ci->linfty_norm()
-            << "; frobenius_norm = " << _K2ci->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _K2ci->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _K2ci->frobenius_norm() << std::endl;
   std::cout << "Norms of _K2cc: l1-norm = " << _K2cc->l1_norm()
-            << "; infinity-norm = " << _K2cc->linfty_norm()
-            << "; frobenius_norm = " << _K2cc->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _K2cc->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _K2cc->frobenius_norm() << std::endl;
+#endif
+
+#ifdef DEBUG
+  std::cout << "Norms of _D: l1-norm = " << _D->l1_norm()
+            << "; infinity-norm = " << _D->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _D->frobenius_norm() << std::endl;
 #endif
 
   // invert _D:
@@ -418,19 +424,19 @@ DualMortarPreconditioner::condenseSystem()
   _D->close();
 
 #ifdef DEBUG
-  std::cout << "_Dinv = \n";
-  _D->print_personal();
+  // std::cout << "_Dinv = \n";
+  // _D->print_personal();
 #endif
 
   // compute MDinv=_M*_D
   _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
 
 #ifdef DEBUG
-  std::cout << "_MDinv =\n";
-  _MDinv->print_personal();
+  // std::cout << "_MDinv =\n";
+  // _MDinv->print_personal();
   std::cout << "Norms of _MDinv: l1-norm = " << _MDinv->l1_norm()
-            << "; infinity-norm = " << _MDinv->linfty_norm()
-            << "; frobenius_norm = " << _MDinv->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _MDinv->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _MDinv->frobenius_norm() << std::endl;
 #endif
 
   // initialize _J_condensed
@@ -441,7 +447,7 @@ DualMortarPreconditioner::condenseSystem()
             << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
             << std::endl;
 
-  _J_condensed->print_personal();
+  // _J_condensed->print_personal();
 #endif
 
   // compute changed parts: MDinv*K2ci, MDinv*K2cc
@@ -459,16 +465,16 @@ DualMortarPreconditioner::condenseSystem()
   MDinvK2cc->close();
 
 #ifdef DEBUG
-  std::cout << "Submatrix MDinvK2ci =\n";
-  MDinvK2ci->print_personal();
+  // std::cout << "Submatrix MDinvK2ci =\n";
+  // MDinvK2ci->print_personal();
   std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
-            << "; infinity-norm = " << MDinvK2ci->linfty_norm()
-            << "; Frobenius-norm = " << MDinvK2ci->frobenius_norm() << std::endl;
-  std::cout << "Submatrix MDinvK2cc =\n";
-  MDinvK2cc->print_personal();
+            << "; infinity-norm = " << MDinvK2ci->linfty_norm()<<"\n";
+            // << "; Frobenius-norm = " << MDinvK2ci->frobenius_norm() << std::endl;
+  // std::cout << "Submatrix MDinvK2cc =\n";
+  // MDinvK2cc->print_personal();
   std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
-            << "; infinity-norm = " << MDinvK2cc->linfty_norm()
-            << "; Frobenius-norm = " << MDinvK2cc->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << MDinvK2cc->linfty_norm()<<"\n";
+            // << "; Frobenius-norm = " << MDinvK2cc->frobenius_norm() << std::endl;
 #endif
 
   // add changed parts to _J_condensed
@@ -574,9 +580,9 @@ DualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm()
-            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
-  _J_condensed->print_personal();
+            << "; infinity-norm = " << _J_condensed->linfty_norm()<<"\n";
+            // << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
+  // _J_condensed->print_personal();
 #endif
 
   if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2c_mp.empty()))
@@ -599,8 +605,8 @@ DualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after adding MDinvK2cc: l1-norm = " << _J_condensed->l1_norm()
-            << "; infinity-norm = " << _J_condensed->linfty_norm()
-            << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _J_condensed->linfty_norm()<<"\n";
+            // << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
 
   // _J_condensed->print_personal();
   // _J_condensed->print_matlab("J_unsorted.mat");
@@ -759,14 +765,16 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
   for (dof_id_type id1 = 0; id1 < _gcols.size(); ++id1)
   {
     dof_id_type id0 = _gcols[id1]; // id in the original system
-    if (x.is_local(id0))
+    // if (x.is_local(id0))
+    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
       x.set(id0, (*x_hat_localized)(id1));
   }
 
   for (dof_id_type id1 = 0; id1 < lm.size(); ++id1)
   {
     dof_id_type id0 = lm[id1]; // id in the original system
-    if (x.is_local(id0))
+    // if (x.is_local(id0))
+    if (id0 >= x.first_local_index() && id0 < x.last_local_index())
       x.set(id0, (*lambda_localized)(id1));
   }
 
@@ -826,7 +834,8 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 
     if (it_row != u1c.end())
     {
-      if (_y_hat->is_local(idx))
+      // if (_y_hat->is_local(idx))
+      if (idx >= _y_hat->first_local_index() && idx < _y_hat->last_local_index())
       {
         Number temp = (*_y_hat)(idx);
         _y_hat->set(idx, temp - (*mdinv_r2c_localized)(std::distance(u1c.begin(), it_row)));
