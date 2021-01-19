@@ -444,9 +444,9 @@ DualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _J_condensed after cureate_submatrix: l1-norm = "
-            << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
-            << std::endl;
-
+            << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()<<"\n";
+            // <<  "; frobenius_norm = " << _J_condensed->frobenius_norm()
+            // << std::endl;
   // _J_condensed->print_personal();
 #endif
 

@@ -1,8 +1,8 @@
 [Mesh]
   [./original_file_mesh]
     type = FileMeshGenerator
-    # file = non_conform_2blocks.e
-    file = dmp_2blocks_coarse.e
+    file = non_conform_2blocks.e
+    # file = dmp_2blocks_coarse.e
   [../]
   [slave]
     input = original_file_mesh
@@ -103,7 +103,7 @@
     secondary_boundary = 10
     primary_subdomain = 2
     primary_boundary = 20
-    preconditioner = 'LU'
+    preconditioner = 'AMG'
   [../]
 []
 

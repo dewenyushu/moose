@@ -476,14 +476,12 @@ ParallelDualMortarPreconditioner::condenseSystem()
 
   _matrix->create_submatrix(*_M, u1c, lm);
 
-  // _matrix->create_submatrix(*_MDinv, u1c, lm);
-
 #ifdef DEBUG
   // std::cout << "_M = \n";
   // _M->print_personal();
   std::cout << "Norms of _M_transpose: l1-norm = " << _M->l1_norm()
-            << "; infinity-norm = " << _M->linfty_norm()<<"\n";
-            // << "; frobenius_norm = " << _M->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _M->linfty_norm() << "\n";
+  // << "; frobenius_norm = " << _M->frobenius_norm() << std::endl;
 #endif
 
   _matrix->create_submatrix(*_K2ci, u2c, u2i);
@@ -491,11 +489,11 @@ ParallelDualMortarPreconditioner::condenseSystem()
 
 #ifdef DEBUG
   std::cout << "Norms of _K2ci: l1-norm = " << _K2ci->l1_norm()
-            << "; infinity-norm = " << _K2ci->linfty_norm()<<"\n";
-            // << "; frobenius_norm = " << _K2ci->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _K2ci->linfty_norm() << "\n";
+  // << "; frobenius_norm = " << _K2ci->frobenius_norm() << std::endl;
   std::cout << "Norms of _K2cc: l1-norm = " << _K2cc->l1_norm()
-            << "; infinity-norm = " << _K2cc->linfty_norm()<<"\n";
-            // << "; frobenius_norm = " << _K2cc->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _K2cc->linfty_norm() << "\n";
+  // << "; frobenius_norm = " << _K2cc->frobenius_norm() << std::endl;
 #endif
 
   // invert _D:
@@ -505,8 +503,8 @@ ParallelDualMortarPreconditioner::condenseSystem()
   _matrix->create_submatrix(*_D, u2c, lm);
 #ifdef DEBUG
   std::cout << "Norms of _D: l1-norm = " << _D->l1_norm()
-            << "; infinity-norm = " << _D->linfty_norm()<<"\n";
-            // << "; frobenius_norm = " << _D->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _D->linfty_norm() << "\n";
+  // << "; frobenius_norm = " << _D->frobenius_norm() << std::endl;
 #endif
   auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
   // Allocate storage
@@ -534,19 +532,21 @@ ParallelDualMortarPreconditioner::condenseSystem()
   // std::cout << "_MDinv =\n";
   // _MDinv->print_personal();
   std::cout << "Norms of _MDinv: l1-norm = " << _MDinv->l1_norm()
-            << "; infinity-norm = " << _MDinv->linfty_norm()<<"\n";
-            // << "; frobenius_norm = " << _MDinv->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << _MDinv->linfty_norm() << "\n";
+  // << "; frobenius_norm = " << _MDinv->frobenius_norm() << std::endl;
 #endif
 
   // initialize _J_condensed
-
-  _matrix->create_submatrix(*_J_condensed, _rows, _cols);
+  _J_condensed->init(_grows.size(), _gcols.size(), _rows.size(), _cols.size());
+  MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  _matrix->create_submatrix_nosort(*_J_condensed, _grows, _gcols);
+  // _matrix->create_submatrix(*_J_condensed, _rows, _cols);
 
 #ifdef DEBUG
-  // _J_condensed->print_personal();
   std::cout << "Norms of _J_condensed after cureate_submatrix: l1-norm = "
-            << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
-            << std::endl;
+            << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()<<"\n";
+            // << "; frobenius_norm = " << _J_condensed->frobenius_norm() << std::endl;
+  // _J_condensed->print_personal();
 #endif
 
   // compute changed parts: MDinv*K2ci, MDinv*K2cc
@@ -569,13 +569,13 @@ ParallelDualMortarPreconditioner::condenseSystem()
   // std::cout << "Submatrix MDinvK2ci =\n";
   // MDinvK2ci->print_personal();
   std::cout << "Norms of MDinvK2ci: l1-norm = " << MDinvK2ci->l1_norm()
-            << "; infinity-norm = " << MDinvK2ci->linfty_norm()<<"\n";
-            // << "; Frobenius-norm = " << MDinvK2ci->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << MDinvK2ci->linfty_norm() << "\n";
+  // << "; Frobenius-norm = " << MDinvK2ci->frobenius_norm() << std::endl;
   // std::cout << "Submatrix MDinvK2cc =\n";
   // MDinvK2cc->print_personal();
   std::cout << "Norms of MDinvK2cc: l1-norm = " << MDinvK2cc->l1_norm()
-            << "; infinity-norm = " << MDinvK2cc->linfty_norm()<<"\n";
-            // << "; Frobenius-norm = " << MDinvK2cc->frobenius_norm() << std::endl;
+            << "; infinity-norm = " << MDinvK2cc->linfty_norm() << "\n";
+  // << "; Frobenius-norm = " << MDinvK2cc->frobenius_norm() << std::endl;
 #endif
 
   // add changed parts to _J_condensed
@@ -656,7 +656,6 @@ ParallelDualMortarPreconditioner::condenseSystem()
       mooseError("DOF ", gu2c[it], " does not exist in the columns of the condensed system");
   }
 
-  MatSetOption(_J_condensed->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   // if ((!row_id_cond_mp.empty()) && (!col_id_cond_u2i_mp.empty()))
   // {
   _J_condensed->add_sparse_matrix(*MDinvK2ci, row_id_cond_u2i_mp, col_id_cond_u2i_mp, -1.0);
@@ -705,7 +704,7 @@ ParallelDualMortarPreconditioner::condenseSystem()
             << "; infinity-norm = " << _J_condensed->linfty_norm()<<"\n";
             // << "; Frobenius-norm = " << _J_condensed->frobenius_norm() << std::endl;
 
-  // _J_condensed->print_personal();
+  _J_condensed->print_personal();
   // _matrix->print_matlab("J_original.mat");
   // _J_condensed->print_matlab("J_sorted.mat");
 #endif
@@ -765,8 +764,9 @@ ParallelDualMortarPreconditioner::init()
     _grows.insert(_grows.end(), u1i.begin(), u1i.end());
     _grows.insert(_grows.end(), u1c.begin(), u1c.end());
     _grows.insert(_grows.end(), u2i.begin(), u2i.end());
-    _grows.insert(_grows.end(), lm.begin(), lm.end());
     std::sort(_grows.begin(), _grows.end());
+    _grows.insert(_grows.end(), lm.begin(), lm.end());
+
     // get global col dofs
     _gcols.reserve(_dofmap->n_dofs() - lm.size());
     _gcols.insert(_gcols.end(), u1i.begin(), u1i.end());
