@@ -71,9 +71,10 @@ ParallelDualMortarPreconditioner::validParams()
   params.addRequiredParam<SubdomainID>("primary_subdomain", "Primary subdomain.");
   params.addRequiredParam<SubdomainID>("secondary_subdomain", "Secondary subdomain.");
   params.addRequiredParam<std::vector<std::string>>("preconditioner", "Preconditioner type.");
-  params.addRequiredParam<std::string>("variable",
-                                       "Name of the variable that is to be condensed out. Usually "
-                                       "this will be the Lagrange multiplier variable.");
+  params.addRequiredParam<std::vector<std::string>>(
+      "variable",
+      "Name of the variable(s) that is to be condensed out. Usually "
+      "this will be the Lagrange multiplier variable(s).");
   return params;
 }
 
@@ -84,9 +85,7 @@ ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputPa
     _mesh(&_fe_problem.mesh()),
     _dofmap(&_nl.system().get_dof_map()),
     _n_vars(_nl.nVariables()),
-    _var_name(getParam<std::string>("variable")),
-    _var_id(_nl.system().has_variable(_var_name) ? _nl.system().variable_number(_var_name)
-                                                 : libMesh::invalid_uint),
+    _var_names(getParam<std::vector<std::string>>("variable")),
     _D(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _M(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _MDinv(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
@@ -113,12 +112,21 @@ ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputPa
     mooseError("Secondary boundary ID ", _secondary_boundary, " does not exist.");
   if (_mesh->getBoundaryIDs().find(_primary_boundary) == _mesh->getBoundaryIDs().end())
     mooseError("Secondary boundary ID ", _primary_boundary, " does not exist.");
-  if (_var_id == libMesh::invalid_uint)
-    paramError("variable", "variable does not exist in the system.");
+
+  // get variable ids from the variable names
+  for (auto var_name : _var_names)
+  {
+    if (!_nl.system().has_variable(var_name))
+      paramError("variable", var_name, "does not exist in the system");
+    unsigned int id = _nl.system().variable_number(var_name);
+    _var_ids.push_back(id);
+  }
 
 #ifdef DEBUG
-  std::cout << "LM variable ID = " << _var_id << std::endl;
-  std::cout << "LM variable name = " << _var_name << std::endl;
+  std::vector<unsigned int> all_variable_numbers;
+  _nl.system().get_all_variable_numbers(all_variable_numbers);
+  for (auto i : all_variable_numbers)
+    std::cout << "ID = " << i << "; name = " << _nl.system().variable_name(i) << std::endl;
 #endif
 
   // PC type
@@ -188,17 +196,18 @@ void
 ParallelDualMortarPreconditioner::getDofToCondense()
 {
   NodeRange * active_nodes = _mesh->getActiveNodeRange();
-  for (const auto & node : *active_nodes)
-  {
-    std::vector<dof_id_type> di;
-    _dofmap->dof_indices(node, di, _var_id);
-    for (auto index : di)
+  for (auto var_id : _var_ids)
+    for (const auto & node : *active_nodes)
     {
-      _glm.push_back(index);
-      if (_dofmap->local_index(index))
-        _lm.push_back(index);
+      std::vector<dof_id_type> di;
+      _dofmap->dof_indices(node, di, var_id);
+      for (auto index : di)
+      {
+        _glm.push_back(index);
+        if (_dofmap->local_index(index))
+          _lm.push_back(index);
+      }
     }
-  }
   std::sort(_glm.begin(), _glm.end());
   std::sort(_lm.begin(), _lm.end());
 }
@@ -209,7 +218,7 @@ ParallelDualMortarPreconditioner::getDofContact()
   for (unsigned int vn = 0; vn < _n_vars; vn++)
   {
     // exclude the lagrange multiplier dofs
-    if (vn == _var_id)
+    if (std::find(_var_ids.begin(), _var_ids.end(), vn) != _var_ids.end())
       continue;
     // loop over boundary nodes
     ConstBndNodeRange & range = *_mesh->getBoundaryNodeRange();
@@ -235,7 +244,7 @@ ParallelDualMortarPreconditioner::getDofContact()
         _dofmap->dof_indices(node_bdry, di, vn);
         // get corresponding dof of lm on the secondary boundary
         std::vector<dof_id_type> di_lm;
-        _dofmap->dof_indices(node_bdry, di_lm, _var_id);
+        _dofmap->dof_indices(node_bdry, di_lm, _var_ids[0]); // FIX ME!!
         libmesh_assert(di_lm.size() == di.size());
         for (auto i : index_range(di))
         {
@@ -337,7 +346,7 @@ ParallelDualMortarPreconditioner::init()
 
     std::cout << "_map_glm_gu2c = ";
     for (auto i : _map_glm_gu2c)
-      std::cout << "(" << i.first << ", " << i.second << ") \n";
+      std::cout << "(" << i.first << ", " << i.second << "), ";
     std::cout << std::endl;
 
     std::cout << "_grows = ";
@@ -360,10 +369,9 @@ ParallelDualMortarPreconditioner::init()
       std::cout << i << " ";
     std::cout << std::endl;
 
-
     std::cout << "_map_gu2c_to_order = ";
     for (auto i : _map_gu2c_to_order)
-      std::cout << "(" << i.first << ", " << i.second << ") \n";
+      std::cout << "(" << i.first << ", " << i.second << "), ";
     std::cout << std::endl;
 #endif
 
