@@ -75,6 +75,10 @@ ParallelDualMortarPreconditioner::validParams()
       "variable",
       "Name of the variable(s) that is to be condensed out. Usually "
       "this will be the Lagrange multiplier variable(s).");
+  params.addRequiredParam<std::vector<std::string>>(
+      "coupled_variable",
+      "Name of the variable(s) that couples with the Lagrange multipliers. Usually this is the "
+      "primary variable that we would like to solve.");
   return params;
 }
 
@@ -86,6 +90,7 @@ ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputPa
     _dofmap(&_nl.system().get_dof_map()),
     _n_vars(_nl.nVariables()),
     _var_names(getParam<std::vector<std::string>>("variable")),
+    _cp_var_names(getParam<std::vector<std::string>>("coupled_variable")),
     _D(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _M(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _MDinv(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
@@ -113,13 +118,25 @@ ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputPa
   if (_mesh->getBoundaryIDs().find(_primary_boundary) == _mesh->getBoundaryIDs().end())
     mooseError("Secondary boundary ID ", _primary_boundary, " does not exist.");
 
+  if (_var_names.size() != _cp_var_names.size())
+    paramError("coupled_variable", "coupled_variable should have the same size as the variable.");
+
   // get variable ids from the variable names
   for (auto var_name : _var_names)
   {
     if (!_nl.system().has_variable(var_name))
-      paramError("variable", var_name, "does not exist in the system");
+      paramError("variable ", var_name, " does not exist in the system");
     unsigned int id = _nl.system().variable_number(var_name);
     _var_ids.push_back(id);
+  }
+
+  // get coupled variable ids from the coupled variable names
+  for (auto var_name : _cp_var_names)
+  {
+    if (!_nl.system().has_variable(var_name))
+      paramError("coupled_variable ", var_name, " does not exist in the system");
+    unsigned int id = _nl.system().variable_number(var_name);
+    _cp_var_ids.push_back(id);
   }
 
 #ifdef DEBUG
@@ -127,6 +144,14 @@ ParallelDualMortarPreconditioner::ParallelDualMortarPreconditioner(const InputPa
   _nl.system().get_all_variable_numbers(all_variable_numbers);
   for (auto i : all_variable_numbers)
     std::cout << "ID = " << i << "; name = " << _nl.system().variable_name(i) << std::endl;
+
+  std::cout << "variable:\n";
+  for (auto i : index_range(_var_names))
+    std::cout << "ID = " << _var_ids[i] << "; name = " << _var_names[i] << std::endl;
+
+  std::cout << "coupled variable:\n";
+  for (auto i : index_range(_cp_var_names))
+    std::cout << "ID = " << _cp_var_ids[i] << "; name = " << _cp_var_names[i] << std::endl;
 #endif
 
   // PC type

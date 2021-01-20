@@ -100,6 +100,7 @@
     type = PDMP
     full = true
     variable = 'lm'
+    coupled_variable = 'u'
     secondary_subdomain = 1
     secondary_boundary = 10
     primary_subdomain = 2

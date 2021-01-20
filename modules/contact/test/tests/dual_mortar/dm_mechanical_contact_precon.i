@@ -96,7 +96,7 @@ refine = 0
     use_dual = true
 
     formulation = mortar
-    model = frictionless
+    model = coulomb
   [../]
 []
 
@@ -126,12 +126,13 @@ refine = 0
   [./pdmp]
     type = PDMP
     full = true
-    variable = 'leftright_normal_lm'
+    variable = 'leftright_normal_lm leftright_tangential_lm'
+    coupled_variable = 'disp_x disp_y'
     secondary_subdomain = 1
     secondary_boundary = 10
     primary_subdomain = 2
     primary_boundary = 20
-    preconditioner = 'LU'
+    preconditioner = 'AMG'
   [../]
 []
 
@@ -145,6 +146,12 @@ refine = 0
   #
   # petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   # petsc_options_value = 'lu NONZERO   1e-15'
+
+  # petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
+  # petsc_options_value = 'lu NONZERO   1e-15'
+
+  # petsc_options_iname = '-pc_type -pc_hypre_type'
+  # petsc_options_value = 'hypre    boomeramg'
 
   dt = 0.2
   dtmin = 1e-4

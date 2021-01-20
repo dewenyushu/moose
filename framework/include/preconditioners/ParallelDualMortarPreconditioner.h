@@ -116,6 +116,9 @@ protected:
   /// Name and ID of the variable that is to be condensed out (usually the Lagrange multiplier variable)
   const std::vector<std::string> _var_names;
   std::vector<unsigned int> _var_ids;
+  // Name and ID of the corresponding coupled variable
+  const std::vector<std::string> _cp_var_names;
+  std::vector<unsigned int> _cp_var_ids;
 
   /// Submatrices (_1 -> primary subdomain; _2 -> secondary subdomain; _i -> interior; _c -> contact interface)
   std::unique_ptr<PetscMatrix<Number>> _D, _M, _MDinv, _u2c_rows;
