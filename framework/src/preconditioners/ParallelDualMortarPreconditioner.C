@@ -240,21 +240,22 @@ ParallelDualMortarPreconditioner::getDofToCondense()
 void
 ParallelDualMortarPreconditioner::getDofContact()
 {
-  for (unsigned int vn = 0; vn < _n_vars; vn++)
+  // loop over boundary nodes
+  ConstBndNodeRange & range = *_mesh->getBoundaryNodeRange();
+  std::vector<dof_id_type> di;
+  for (const auto & bnode : range)
   {
-    // exclude the lagrange multiplier dofs
-    if (std::find(_var_ids.begin(), _var_ids.end(), vn) != _var_ids.end())
-      continue;
-    // loop over boundary nodes
-    ConstBndNodeRange & range = *_mesh->getBoundaryNodeRange();
-    std::vector<dof_id_type> di;
-    for (const auto & bnode : range)
+    const Node * node_bdry = bnode->_node;
+    BoundaryID boundary_id = bnode->_bnd_id;
+    // save dofs on the primary boundary without condensed variable dofs
+    // usually condensed variable dofs should not exist on the primary boundary, too
+    if (boundary_id == _primary_boundary)
     {
-      const Node * node_bdry = bnode->_node;
-      BoundaryID boundary_id = bnode->_bnd_id;
-
-      if (boundary_id == _primary_boundary)
+      for (unsigned int vn = 0; vn < _n_vars; vn++)
       {
+        // exclude the lagrange multiplier dofs
+        if (std::find(_var_ids.begin(), _var_ids.end(), vn) != _var_ids.end())
+          continue;
         _dofmap->dof_indices(node_bdry, di, vn);
         for (auto index : di)
         {
@@ -263,21 +264,31 @@ ParallelDualMortarPreconditioner::getDofContact()
             _u1c.push_back(index);
         }
       }
+    }
 
-      if (boundary_id == _secondary_boundary)
+    if (boundary_id == _secondary_boundary)
+    {
+      // loop through coupled variable ids
+      for (auto i : index_range(_cp_var_ids))
       {
+        auto cp_vn = _cp_var_ids[i];
+        auto vn = _var_ids[i];
+        // get coupled var dof
+        std::vector<dof_id_type> cp_di;
+        _dofmap->dof_indices(node_bdry, cp_di, cp_vn);
+        // get corresponding lm dof
         _dofmap->dof_indices(node_bdry, di, vn);
-        // get corresponding dof of lm on the secondary boundary
-        std::vector<dof_id_type> di_lm;
-        _dofmap->dof_indices(node_bdry, di_lm, _var_ids[0]); // FIX ME!!
-        libmesh_assert(di_lm.size() == di.size());
-        for (auto i : index_range(di))
+        if (cp_di.size() != di.size())
+          mooseError("variable and coupled variable do not have the same number of dof on node ",
+                     node_bdry->id(),
+                     ".");
+        for (auto i : index_range(cp_di))
         {
-          _gu2c.push_back(di[i]);
-          _map_glm_gu2c.insert(std::make_pair(di_lm[i], di[i]));
-          _map_gu2c_glm.insert(std::make_pair(di[i], di_lm[i]));
-          if (_dofmap->local_index(di[i]))
-            _u2c.push_back(di[i]);
+          _gu2c.push_back(cp_di[i]);
+          if (_dofmap->local_index(cp_di[i]))
+            _u2c.push_back(cp_di[i]);
+          _map_glm_gu2c.insert(std::make_pair(di[i], cp_di[i]));
+          _map_gu2c_glm.insert(std::make_pair(cp_di[i], di[i]));
         }
       }
     }
