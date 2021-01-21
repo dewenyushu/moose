@@ -125,7 +125,7 @@ refine = 0
     secondary_boundary = 10
     primary_subdomain = 2
     primary_boundary = 20
-    preconditioner = 'AMG'
+    preconditioner = 'LU'
   [../]
 []
 
@@ -151,6 +151,9 @@ refine = 0
   [./comp]
     type = CSV
     show = 'contact normal_lm avg_disp_x avg_disp_y max_disp_x max_disp_y min_disp_x min_disp_y'
+  [../]
+  [./ex]
+    type = Exodus
   [../]
 []
 
