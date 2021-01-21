@@ -173,8 +173,11 @@ vy = 0.1
   petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   petsc_options_value = 'lu NONZERO   1e-15'
 
+  # petsc_options_iname = '-pc_type'
+  # petsc_options_value = 'lu'
+
   dt = 0.2
-  dtmin = 1e-4
+  dtmin = 0.2
   end_time = 0.2
 
   l_max_its = 100

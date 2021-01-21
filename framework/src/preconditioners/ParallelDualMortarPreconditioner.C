@@ -406,7 +406,6 @@ ParallelDualMortarPreconditioner::init()
       std::cout << "(" << i.first << ", " << i.second << "), ";
     std::cout << std::endl;
 
-
     print_node_info();
 #endif
 
@@ -526,7 +525,7 @@ ParallelDualMortarPreconditioner::condenseSystem()
             << _J_condensed->l1_norm() << "; infinity-norm = " << _J_condensed->linfty_norm()
             << "\n";
   // << "; frobenius_norm = " << _J_condensed->frobenius_norm() << std::endl;
-  // _J_condensed->print_personal();
+  // _matrix->print_personal();
 #endif
 
   // compute changed parts: MDinv* [K2ci, K2cc]
@@ -597,7 +596,7 @@ ParallelDualMortarPreconditioner::setup()
 
   // make sure diagonal entries are not empty
   for (auto i = _J_condensed->row_start(); i < _J_condensed->row_stop(); ++i)
-    _J_condensed->add(i, i, 0.0);
+      _J_condensed->add(i, i, 0.0);
   _J_condensed->close();
 
   _preconditioner->set_matrix(*_J_condensed);

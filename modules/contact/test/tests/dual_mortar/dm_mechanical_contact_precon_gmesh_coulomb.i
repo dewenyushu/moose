@@ -36,8 +36,8 @@ vy = 0.1
     xmax = 1
     ymin = -1
     ymax = 1
-    nx = 2
-    ny = 4
+    nx = 3
+    ny = 3
     elem_type = QUAD4
   [../]
   [right_block_sidesets]
@@ -161,13 +161,13 @@ vy = 0.1
   [./pdmp]
     type = PDMP
     full = true
-    variable = 'leftright_normal_lm leftright_tangential_lm'
-    coupled_variable = 'disp_x disp_y'
+    variable = 'leftright_normal_lm'
+    coupled_variable = 'disp_x'
     secondary_subdomain = 1
     secondary_boundary = 11
     primary_subdomain = 2
     primary_boundary = 23
-    preconditioner = 'LU'
+    preconditioner = 'AMG'
   [../]
 []
 
@@ -176,12 +176,15 @@ vy = 0.1
   solve_type = 'NEWTON'
 
   petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_view'
+  #
+  # petsc_options_iname = '-pc_factor_shift_type -pc_factor_shift_amount'
+  # petsc_options_value = 'NONZERO   1e-15'
 
   dt = 0.2
   dtmin = 0.2
   end_time = 0.2
 
-  l_max_its = 5
+  l_max_its = 20
 
   nl_max_its = 8
   nl_rel_tol = 1e-6

@@ -167,7 +167,7 @@ vy = 0.1
     secondary_boundary = 11
     primary_subdomain = 2
     primary_boundary = 23
-    preconditioner = 'LU'
+    preconditioner = 'AMG'
   [../]
 []
 
@@ -181,7 +181,7 @@ vy = 0.1
   dtmin = 0.2
   end_time = 0.2
 
-  l_max_its = 5
+  l_max_its = 20
 
   nl_max_its = 8
   nl_rel_tol = 1e-6
