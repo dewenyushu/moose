@@ -247,15 +247,11 @@ ParallelDualMortarPreconditioner::getDofContact()
   {
     const Node * node_bdry = bnode->_node;
     BoundaryID boundary_id = bnode->_bnd_id;
-    // save dofs on the primary boundary without condensed variable dofs
-    // usually condensed variable dofs should not exist on the primary boundary, too
+    // save dofs on the primary boundary for the coupled variable dofs
     if (boundary_id == _primary_boundary)
     {
-      for (unsigned int vn = 0; vn < _n_vars; vn++)
+      for (auto vn : _cp_var_ids)
       {
-        // exclude the lagrange multiplier dofs
-        if (std::find(_var_ids.begin(), _var_ids.end(), vn) != _var_ids.end())
-          continue;
         _dofmap->dof_indices(node_bdry, di, vn);
         for (auto index : di)
         {
@@ -409,6 +405,9 @@ ParallelDualMortarPreconditioner::init()
     for (auto i : _map_gu2c_to_order)
       std::cout << "(" << i.first << ", " << i.second << "), ";
     std::cout << std::endl;
+
+
+    print_node_info();
 #endif
 
     _save_dofs = true;
