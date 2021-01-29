@@ -1,19 +1,61 @@
 offset = 0.001
 vy = 0.1
 
-refine = 0
-
 [GlobalParams]
   displacements = 'disp_x disp_y'
   volumetric_locking_correction = true
 []
 
 [Mesh]
-  [./original_file_mesh]
-    type = FileMeshGenerator
-    file = long_short_blocks.e
+  [./left_block]
+    type = GeneratedMeshGenerator
+    dim = 2
+    xmin = -1
+    xmax = 0
+    ymin = -1
+    ymax = 0
+    nx = 1
+    ny = 1
+    elem_type = QUAD4
   [../]
-  uniform_refine =  ${refine}
+  [./left_block_sidesets]
+    type = RenameBoundaryGenerator
+    input = left_block
+    old_boundary_id = '0 1 2 3'
+    new_boundary_id = '10 11 12 13'
+  [../]
+  [./left_block_id]
+    type = SubdomainIDGenerator
+    input = left_block_sidesets
+    subdomain_id = 1
+  [../]
+  [./right_block]
+    type = GeneratedMeshGenerator
+    dim = 2
+    xmin = 0
+    xmax = 1
+    ymin = -1
+    ymax = 1
+    nx = 1
+    ny = 1
+    elem_type = QUAD4
+  [../]
+  [right_block_sidesets]
+    type = RenameBoundaryGenerator
+    input = right_block
+    old_boundary_id = '0 1 2 3'
+    new_boundary_id = '20 21 22 23'
+  []
+  [./right_block_id]
+    type = SubdomainIDGenerator
+    input = right_block_sidesets
+    subdomain_id = 2
+  [../]
+
+  [./combined_mesh]
+    type = MeshCollectionGenerator
+    inputs = 'left_block_id right_block_id'
+  [../]
 []
 
 [Modules/TensorMechanics/Master]
@@ -40,25 +82,25 @@ refine = 0
   [./push_left_x]
     type = FunctionDirichletBC
     variable = disp_x
-    boundary = 30
+    boundary = 13
     function = horizontal_movement
   [../]
   [./fix_right_x]
     type = DirichletBC
     variable = disp_x
-    boundary = 40
+    boundary = 21
     value = 0.0
   [../]
   [./fix_right_y]
     type = DirichletBC
     variable = disp_y
-    boundary = '40'
+    boundary = 21
     value = 0.0
   [../]
   [./push_left_y]
     type = FunctionDirichletBC
     variable = disp_y
-    boundary = '30'
+    boundary = 13
     function = vertical_movement
   [../]
 []
@@ -89,9 +131,9 @@ refine = 0
 
 [Contact]
   [leftright]
-    mesh = original_file_mesh
-    secondary = 10
-    primary = 20
+    mesh = combined_mesh
+    secondary = '11'
+    primary = '23'
 
     use_dual = true
 
@@ -122,10 +164,10 @@ refine = 0
     variable = 'leftright_normal_lm'
     coupled_variable = 'disp_x'
     secondary_subdomain = 1
-    secondary_boundary = 10
+    secondary_boundary = 11
     primary_subdomain = 2
-    primary_boundary = 20
-    preconditioner = 'LU'
+    primary_boundary = 23
+    preconditioner = 'AMG'
   [../]
 []
 
@@ -139,7 +181,7 @@ refine = 0
   dtmin = 0.2
   end_time = 0.2
 
-  l_max_its = 5
+  l_max_its = 20
 
   nl_max_its = 8
   nl_rel_tol = 1e-6
@@ -147,13 +189,10 @@ refine = 0
 []
 
 [Outputs]
-  file_base = ./dm_contact_out
+  file_base = ./dm_contact_gmesh_out
   [./comp]
     type = CSV
     show = 'contact normal_lm avg_disp_x avg_disp_y max_disp_x max_disp_y min_disp_x min_disp_y'
-  [../]
-  [./ex]
-    type = Exodus
   [../]
 []
 
@@ -167,7 +206,7 @@ refine = 0
   [./normal_lm]
     type = ElementAverageValue
     variable = leftright_normal_lm
-    block = '4'
+    block = leftright_secondary_subdomain
   [../]
   [./avg_disp_x]
     type = ElementAverageValue
