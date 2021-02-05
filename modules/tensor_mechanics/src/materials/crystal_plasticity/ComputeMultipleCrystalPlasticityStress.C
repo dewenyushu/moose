@@ -9,9 +9,12 @@
 
 #include "ComputeMultipleCrystalPlasticityStress.h"
 
+#include "CrystalPlasticityStressUpdateBase.h"
 #include "libmesh/utility.h"
 #include "Conversion.h"
 #include "MooseException.h"
+
+registerMooseObject("TensorMechanicsApp", ComputeMultipleCrystalPlasticityStress);
 
 InputParameters
 ComputeMultipleCrystalPlasticityStress::validParams()
@@ -26,40 +29,26 @@ ComputeMultipleCrystalPlasticityStress::validParams()
       "Optional parameter that allows the user to define multiple mechanics material systems on "
       "the same block, i.e. for multiple phases");
 
+  params.addRequiredParam<std::vector<MaterialName>>(
+      "crystal_plasticity_models",
+      "The material objects to use to calculate crystal plasticity stress and strains.");
+
   // The return stress increment classes are intended to be iterative materials, so must set compute
   // = false for all inheriting classes
   params.set<bool>("compute") = false;
   params.suppressParameter<bool>("compute");
 
-  params.addRequiredParam<unsigned int>(
-      "number_slip_systems",
-      "The total number of possible active slip systems for the crystalline material");
-  params.addRequiredParam<FileName>("slip_sys_file_name",
-                                    "Name of the file containing the slip systems");
-  params.addParam<Real>("number_cross_slip_directions",
-                        0,
-                        "Quanity of unique slip directions, used to determine cross slip familes");
-  params.addParam<Real>("number_cross_slip_planes",
-                        0,
-                        "Quanity of slip planes belonging to a single cross slip direction; used "
-                        "to determine cross slip families");
-
-  params.addParam<Real>("rtol", 1e-6, "Constitutive stress residual relative tolerance");
-  params.addParam<Real>("abs_tol", 1e-6, "Constitutive stress residual absolute tolerance");
-  params.addParam<Real>(
-      "stol", 1e-2, "Constitutive internal state variable relative change tolerance");
-  params.addParam<Real>("slip_increment_tolerance", 2e-2, "Maximum allowable slip in an increment");
-  params.addParam<Real>(
-      "resistance_tol", 1.0e-2, "Constitutive slip system resistance residual tolerance");
-  params.addParam<Real>(
-      "zero_tol", 1e-12, "Tolerance for residual check when variable value is zero");
-  params.addParam<unsigned int>("maxiter", 100, "Maximum number of iterations for stress update");
-  params.addParam<unsigned int>(
-      "maxiter_state_variable", 100, "Maximum number of iterations for state variable update");
   MooseEnum tan_mod_options("exact none", "none");
   params.addParam<MooseEnum>("tan_mod_type",
                              tan_mod_options,
                              "Type of tangent moduli for preconditioner: default elastic");
+  params.addParam<Real>("rtol", 1e-6, "Constitutive stress residual relative tolerance");
+  params.addParam<Real>("abs_tol", 1e-6, "Constitutive stress residual absolute tolerance");
+  params.addParam<Real>(
+      "stol", 1e-2, "Constitutive internal state variable relative change tolerance");
+  params.addParam<unsigned int>("maxiter", 100, "Maximum number of iterations for stress update");
+  params.addParam<unsigned int>(
+      "maxiter_state_variable", 100, "Maximum number of iterations for state variable update");
   params.addParam<unsigned int>(
       "maximum_substep_iteration", 1, "Maximum number of substep iteration");
   params.addParam<bool>("use_line_search", false, "Use line search in constitutive update");
@@ -77,20 +66,14 @@ ComputeMultipleCrystalPlasticityStress::validParams()
 ComputeMultipleCrystalPlasticityStress::ComputeMultipleCrystalPlasticityStress(
     const InputParameters & parameters)
   : ComputeFiniteStrainElasticStress(parameters),
+    _num_models(getParam<std::vector<MaterialName>>("crystal_plasticity_models").size()),
+
     _base_name(isParamValid("base_name") ? getParam<std::string>("base_name") + "_" : ""),
     _elasticity_tensor(getMaterialPropertyByName<RankFourTensor>(_base_name + "elasticity_tensor")),
-
-    _number_slip_systems(getParam<unsigned int>("number_slip_systems")),
-    _slip_sys_file_name(getParam<FileName>("slip_sys_file_name")),
-    _number_cross_slip_directions(getParam<Real>("number_cross_slip_directions")),
-    _number_cross_slip_planes(getParam<Real>("number_cross_slip_planes")),
 
     _rtol(getParam<Real>("rtol")),
     _abs_tol(getParam<Real>("abs_tol")),
     _rel_state_var_tol(getParam<Real>("stol")),
-    _slip_incr_tol(getParam<Real>("slip_increment_tolerance")),
-    _resistance_tol(getParam<Real>("resistance_tol")),
-    _zero_tol(getParam<Real>("zero_tol")),
     _maxiter(getParam<unsigned int>("maxiter")),
     _maxiterg(getParam<unsigned int>("maxiter_state_variable")),
     _tan_mod_type(getParam<MooseEnum>("tan_mod_type")),
@@ -108,26 +91,12 @@ ComputeMultipleCrystalPlasticityStress::ComputeMultipleCrystalPlasticityStress(
     _pk2_old(getMaterialPropertyOld<RankTwoTensor>("pk2")),
     _total_lagrangian_strain(
         declareProperty<RankTwoTensor>("total_lagrangian_strain")), // Lagrangian strain
-
-    _slip_direction(_number_slip_systems * LIBMESH_DIM),
-    _slip_plane_normal(_number_slip_systems * LIBMESH_DIM),
-    _flow_direction(declareProperty<std::vector<RankTwoTensor>>("flow_direction")),
-    _tau(declareProperty<std::vector<Real>>("applied_shear_stress")),
     _update_rotation(declareProperty<RankTwoTensor>("update_rot")),
     _crysrot(getMaterialProperty<RankTwoTensor>(
         "crysrot")) // defined in the elasticity tensor classes for crystal plasticity
 {
   _error_tolerance = false;
-  _substep_dt = 0.0;
   _delta_deformation_gradient.zero();
-
-  getSlipSystems();
-  sortCrossSlipFamilies();
-
-  if (parameters.isParamSetByUser("number_cross_slip_directions"))
-    _calculate_cross_slip = true;
-  else
-    _calculate_cross_slip = false;
 }
 
 void
@@ -137,19 +106,54 @@ ComputeMultipleCrystalPlasticityStress::initQpStatefulProperties()
   _plastic_deformation_gradient[_qp].addIa(1.0);
 
   _pk2[_qp].zero();
-  _tau[_qp].resize(_number_slip_systems);
 
   _total_lagrangian_strain[_qp].zero();
 
   _update_rotation[_qp].zero();
   _update_rotation[_qp].addIa(1.0);
 
-  _flow_direction[_qp].resize(_number_slip_systems);
-  for (unsigned int i = 0; i < _number_slip_systems; ++i)
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->initQpStatefulProperties();
+}
+
+void
+ComputeMultipleCrystalPlasticityStress::initialSetup()
+{
+  std::vector<MaterialName> model_names =
+      getParam<std::vector<MaterialName>>("crystal_plasticity_models");
+
+  for (unsigned int i = 0; i < _num_models; ++i)
   {
-    _flow_direction[_qp][i].zero();
-    _tau[_qp][i] = 0.0;
+    CrystalPlasticityStressUpdateBase * model =
+        dynamic_cast<CrystalPlasticityStressUpdateBase *>(&getMaterialByName(model_names[i]));
+
+    if (model)
+    {
+      _models.push_back(model);
+      /// check a bunch of stuff here if necessary in order to make sure that the model is compatible with this class
+    }
+    else
+      mooseError("Model " + model_names[i] +
+                 " is not compatible with ComputeCrystalPlasticityStress");
   }
+}
+
+void
+ComputeMultipleCrystalPlasticityStress::computeQpStress()
+{
+  RankTwoTensor stress_new;
+  RankFourTensor jacobian_mult;
+
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->setQp(_qp);
+
+  updateStress(stress_new, jacobian_mult);
+
+  _elastic_strain[_qp].zero();
+  _stress[_qp] = stress_new;
+
+  // Compute dstress_dstrain
+  _Jacobian_mult[_qp] = jacobian_mult; // This is NOT the exact jacobian
 }
 
 void
@@ -170,18 +174,18 @@ ComputeMultipleCrystalPlasticityStress::updateStress(RankTwoTensor & cauchy_stre
 
   _delta_deformation_gradient = _deformation_gradient[_qp] - _temporary_deformation_gradient_old;
 
-  // Loop through all models
-  // Saves the old stateful properties that are modified during sub stepping
-
-  // Calculate the schmid tensor for the current state of the crystal lattice
-  calculateFlowDirection();
+  // Loop through all models and calculate the schmid tensor for the current state of the crystal
+  // lattice
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->calculateFlowDirection(_crysrot[_qp]);
 
   do
   {
     _error_tolerance = false;
     preSolveQp();
 
-    _substep_dt = _dt / num_substep;
+    for (unsigned int i = 0; i < _num_models; ++i)
+      _models[i]->setSubstepDt(_dt / num_substep);
 
     for (unsigned int istep = 0; istep < num_substep; ++istep)
     {
@@ -209,8 +213,8 @@ ComputeMultipleCrystalPlasticityStress::updateStress(RankTwoTensor & cauchy_stre
 void
 ComputeMultipleCrystalPlasticityStress::preSolveQp()
 {
-  // Loop through all models
-  setInitialConstitutiveVariableValues();
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->setInitialConstitutiveVariableValues();
 
   _pk2[_qp] = _pk2_old[_qp];
   _inverse_plastic_deformation_grad_old = _plastic_deformation_gradient_old[_qp].inverse();
@@ -219,8 +223,8 @@ ComputeMultipleCrystalPlasticityStress::preSolveQp()
 void
 ComputeMultipleCrystalPlasticityStress::solveQp()
 {
-  // loop through all models
-  setSubstepConstitutiveVariableValues();
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->setSubstepConstitutiveVariableValues();
 
   _inverse_plastic_deformation_grad = _inverse_plastic_deformation_grad_old;
 
@@ -228,8 +232,8 @@ ComputeMultipleCrystalPlasticityStress::solveQp()
   if (_error_tolerance)
     return; // pop back up and take a smaller substep
 
-  // loop through all models
-  updateSubstepConstitutiveVariableValues();
+  for (unsigned int i = 0; i < _num_models; ++i)
+    _models[i]->updateSubstepConstitutiveVariableValues();
 
   // save off the old F^{p} inverse now that have converged on the stress and state variables
   _inverse_plastic_deformation_grad_old = _inverse_plastic_deformation_grad;
@@ -273,24 +277,28 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
         _inverse_plastic_deformation_grad.inverse(); // the postSoveStress
 
     // Update slip system resistance and state variable after the stress has been finalized
-    updateConstitutiveSlipSystemResistanceAndVariables(_error_tolerance);
-    if (_error_tolerance)
-      return;
-
-    iter_flag = areConstitutiveStateVariablesConverged(); // returns false if values are converged
-                                                          // and good to go
-
-    if (iter_flag)
+    for (unsigned int i = 0; i < _num_models; ++i)
     {
+      _models[i]->updateConstitutiveSlipSystemResistanceAndVariables(_error_tolerance);
+      if (_error_tolerance)
+        return;
+
+      iter_flag =
+          _models[i]->areConstitutiveStateVariablesConverged(); // returns false if values are
+                                                                // converged and good to go
+
+      if (iter_flag)
+      {
 #ifdef DEBUG
-      mooseWarning("ComputeMultipleCrystalPlasticityStress: State variables (or the system "
-                   "resistance) did not "
-                   "converge at element ",
-                   _current_elem->id(),
-                   " and qp ",
-                   _qp,
-                   "\n");
+        mooseWarning("ComputeMultipleCrystalPlasticityStress: State variables (or the system "
+                     "resistance) did not "
+                     "converge at element ",
+                     _current_elem->id(),
+                     " and qp ",
+                     _qp,
+                     "\n");
 #endif
+      }
     }
     iteration++;
   }
@@ -405,18 +413,21 @@ ComputeMultipleCrystalPlasticityStress::calculateResidualAndJacobian()
 void
 ComputeMultipleCrystalPlasticityStress::calcResidual()
 {
-  RankTwoTensor ce, elastic_strain, ce_pk2, equivalent_slip_increment, pk2_new;
+  RankTwoTensor ce, elastic_strain, ce_pk2, equivalent_slip_increment_per_model,
+      equivalent_slip_increment, pk2_new;
 
   equivalent_slip_increment.zero();
 
-  for (unsigned int i = 0; i < _number_slip_systems; ++i)
-    _tau[_qp][i] = _pk2[_qp].doubleContraction(_flow_direction[_qp][i]);
+  for (unsigned int i = 0; i < _num_models; ++i)
+  {
+    equivalent_slip_increment_per_model.zero();
+    _models[i]->calculateShearStress(_pk2[_qp]);
 
-  // loop through all models
-  // add to equivalent_slip_increment
-
-  // Call the overwritten method in the inheriting class that contains the constitutive model
-  calculateConstitutiveEquivalentSlipIncrement(equivalent_slip_increment, _error_tolerance);
+    // Call the overwritten method in the inheriting class that contains the constitutive model
+    _models[i]->calculateConstitutiveEquivalentSlipIncrement(equivalent_slip_increment_per_model,
+                                                             _error_tolerance);
+    equivalent_slip_increment += equivalent_slip_increment_per_model;
+  }
 
   if (_error_tolerance)
     return;
@@ -440,7 +451,8 @@ ComputeMultipleCrystalPlasticityStress::calcResidual()
 void
 ComputeMultipleCrystalPlasticityStress::calcJacobian()
 {
-  RankFourTensor dfedfpinv, deedfe, dfpinvdpk2;
+  // may not need to cache the dfpinvdpk2 here. need to double check
+  RankFourTensor dfedfpinv, deedfe, dfpinvdpk2, dfpinvdpk2_per_model;
 
   for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
     for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
@@ -455,40 +467,15 @@ ComputeMultipleCrystalPlasticityStress::calcJacobian()
         deedfe(i, j, k, j) = deedfe(i, j, k, j) + _elastic_deformation_gradient(k, i) * 0.5;
       }
 
-  calculateTotalPlasticDeformationGradientDerivative(dfpinvdpk2);
+  for (unsigned int i = 0; i < _num_models; ++i)
+  {
+    _models[i]->calculateTotalPlasticDeformationGradientDerivative(
+        dfpinvdpk2_per_model, _inverse_plastic_deformation_grad_old);
+    dfpinvdpk2 += dfpinvdpk2_per_model;
+  }
 
   _jacobian =
       RankFourTensor::IdentityFour() - (_elasticity_tensor[_qp] * deedfe * dfedfpinv * dfpinvdpk2);
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::calculateTotalPlasticDeformationGradientDerivative(
-    RankFourTensor & dfpinvdpk2)
-{
-  // loop through all models
-  // add to dfpinvdpk2
-  calculateConstitutivePlasticDeformationGradientDerivative(dfpinvdpk2, _flow_direction[_qp]);
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::calculateConstitutivePlasticDeformationGradientDerivative(
-    RankFourTensor & dfpinvdpk2,
-    std::vector<RankTwoTensor> & schmid_tensor,
-    unsigned int /*slip_model_number*/)
-{
-  const unsigned int number_dislocation_systems = schmid_tensor.size();
-  std::vector<Real> dslip_dtau(number_dislocation_systems, 0.0);
-  std::vector<RankTwoTensor> dtaudpk2(number_dislocation_systems);
-  std::vector<RankTwoTensor> dfpinvdslip(number_dislocation_systems);
-
-  calculateConstitutiveSlipDerivative(dslip_dtau);
-
-  for (unsigned int j = 0; j < number_dislocation_systems; ++j)
-  {
-    dtaudpk2[j] = schmid_tensor[j];
-    dfpinvdslip[j] = -_inverse_plastic_deformation_grad_old * schmid_tensor[j];
-    dfpinvdpk2 += (dfpinvdslip[j] * dslip_dtau[j] * _substep_dt).outerProduct(dtaudpk2[j]);
-  }
 }
 
 void
@@ -628,224 +615,4 @@ ComputeMultipleCrystalPlasticityStress::lineSearchUpdate(const Real & rnorm_prev
   }
   else
     mooseError("Line search method is not provided.");
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::calculateFlowDirection()
-{
-  calculateSchmidTensor(
-      _number_slip_systems, _slip_plane_normal, _slip_direction, _flow_direction[_qp]);
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::calculateSchmidTensor(
-    const unsigned int & number_dislocation_systems,
-    const DenseVector<Real> & plane_normal_vector,
-    const DenseVector<Real> & direction_vector,
-    std::vector<RankTwoTensor> & schmid_tensor)
-{
-  DenseVector<Real> local_direction_vector(LIBMESH_DIM * number_dislocation_systems),
-      local_plane_normal(LIBMESH_DIM * number_dislocation_systems);
-
-  // Update slip direction and normal with crystal orientation
-  for (unsigned int i = 0; i < number_dislocation_systems; ++i)
-  {
-    unsigned int system = i * LIBMESH_DIM;
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-    {
-      local_direction_vector(system + j) = 0.0;
-      for (unsigned int k = 0; k < LIBMESH_DIM; ++k)
-      {
-        local_direction_vector(system + j) =
-            local_direction_vector(system + j) + _crysrot[_qp](j, k) * direction_vector(system + k);
-      }
-    }
-
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-    {
-      local_plane_normal(system + j) = 0.0;
-      for (unsigned int k = 0; k < LIBMESH_DIM; ++k)
-        local_plane_normal(system + j) =
-            local_plane_normal(system + j) + _crysrot[_qp](j, k) * plane_normal_vector(system + k);
-    }
-  }
-
-  // Calculate Schmid tensor and resolved shear stresses
-  for (unsigned int i = 0; i < number_dislocation_systems; ++i)
-  {
-    unsigned int system = i * LIBMESH_DIM;
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      for (unsigned int k = 0; k < LIBMESH_DIM; ++k)
-      {
-        schmid_tensor[i](j, k) =
-            local_direction_vector(system + j) * local_plane_normal(system + k);
-      }
-  }
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::getSlipSystems()
-{
-  bool orthonormal_error = false;
-
-  getPlaneNormalAndDirectionVectors(_slip_sys_file_name,
-                                    _number_slip_systems,
-                                    _slip_plane_normal,
-                                    _slip_direction,
-                                    orthonormal_error);
-
-  if (orthonormal_error)
-    mooseError("ComputeMultipleCrystalPlasticityStress Error: The slip system file contains a slip "
-               "direction and "
-               "plane normal pair that are not orthonormal");
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::getPlaneNormalAndDirectionVectors(
-    const FileName & vector_file_name,
-    const unsigned int & number_dislocation_systems,
-    DenseVector<Real> & plane_normal_vector,
-    DenseVector<Real> & direction_vector,
-    bool & orthonormal_error)
-{
-  Real vec[LIBMESH_DIM];
-  std::ifstream fileslipsys;
-
-  MooseUtils::checkFileReadable(vector_file_name);
-
-  fileslipsys.open(vector_file_name.c_str());
-
-  for (unsigned int i = 0; i < number_dislocation_systems; ++i)
-  {
-    // Read the plane normal
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      if (!(fileslipsys >> vec[j]))
-        mooseError("ComputeMultipleCrystalPlasticityStress Error: Premature end of file reading "
-                   "plane normal "
-                   "vectors from the file ",
-                   vector_file_name);
-
-    // Normalize the vectors
-    Real magnitude;
-    magnitude = Utility::pow<2>(vec[0]) + Utility::pow<2>(vec[1]) + Utility::pow<2>(vec[2]);
-    magnitude = std::sqrt(magnitude);
-
-    for (unsigned j = 0; j < LIBMESH_DIM; ++j)
-      plane_normal_vector(i * LIBMESH_DIM + j) = vec[j] / magnitude;
-
-    // Read the direction
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      if (!(fileslipsys >> vec[j]))
-        mooseError("ComputeMultipleCrystalPlasticityStress Error: Premature end of file reading "
-                   "direction vectors "
-                   "from the file ",
-                   vector_file_name);
-
-    // Normalize the vectors
-    magnitude = Utility::pow<2>(vec[0]) + Utility::pow<2>(vec[1]) + Utility::pow<2>(vec[2]);
-    magnitude = std::sqrt(magnitude);
-
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      direction_vector(i * LIBMESH_DIM + j) = vec[j] / magnitude;
-
-    // Check that the normalized vectors are orthonormal
-    magnitude = 0.0;
-    for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
-      magnitude += direction_vector(i * LIBMESH_DIM + j) * plane_normal_vector(i * LIBMESH_DIM + j);
-
-    if (std::abs(magnitude) > 1.0e-8)
-    {
-      orthonormal_error = true;
-      break;
-    }
-    if (orthonormal_error)
-      break;
-  }
-
-  fileslipsys.close();
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::sortCrossSlipFamilies()
-{
-  if (_number_cross_slip_directions == 0)
-  {
-    _cross_slip_familes.resize(0);
-    return;
-  }
-
-  // If cross slip does occur, then set up the system of vectors for the families
-  _cross_slip_familes.resize(_number_cross_slip_directions);
-  // and set the first index of each inner vector
-  for (unsigned int i = 0; i < _number_cross_slip_directions; ++i)
-    _cross_slip_familes[i].resize(1);
-
-  // Sort the index of the slip system based vectors into separte families
-  unsigned int family_counter = 1;
-  _cross_slip_familes[0][0] = 0;
-
-  for (unsigned int i = 1; i < _number_slip_systems; ++i)
-  {
-    for (unsigned int j = 0; j < family_counter; ++j)
-    {
-      // check to see if the slip system direction i matches any of the existing slip directions
-      // First calculate the dot product
-      Real dot_product = 0.0;
-      for (unsigned int k = 0; k < LIBMESH_DIM; ++k)
-      {
-        unsigned int check_family_index = _cross_slip_familes[j][0];
-        dot_product += std::abs(_slip_direction(check_family_index * LIBMESH_DIM + k) -
-                                _slip_direction(i * LIBMESH_DIM + k));
-      }
-      // Then check if the dot product is one, if yes, add to family and break
-      if (MooseUtils::absoluteFuzzyEqual(dot_product, 0.0))
-      {
-        _cross_slip_familes[j].push_back(i);
-        if (_cross_slip_familes[j].size() > _number_cross_slip_planes)
-          mooseError(
-              "Exceeded the number of cross slip planes allowed in a single cross slip family");
-
-        break; // exit the loop over the exisiting cross slip families and move to the next slip
-               // direction
-      }
-      // The slip system in question does not belong to an existing family
-      else if (j == (family_counter - 1) && !MooseUtils::absoluteFuzzyEqual(dot_product, 0.0))
-      {
-        if (family_counter > _number_cross_slip_directions)
-          mooseError("Exceeds the number of cross slip directions specified for this material");
-
-        _cross_slip_familes[family_counter][0] = i;
-        family_counter++;
-        break;
-      }
-    }
-  }
-
-#ifdef DEBUG
-  mooseWarning("Checking the slip system ordering now:");
-  for (unsigned int i = 0; i < _number_cross_slip_directions; ++i)
-  {
-    Moose::out << "In cross slip family " << i << std::endl;
-    for (unsigned int j = 0; j < _number_cross_slip_planes; ++j)
-      Moose::out << " is the slip direction number " << _cross_slip_familes[i][j] << std::endl;
-  }
-#endif
-}
-
-unsigned int
-ComputeMultipleCrystalPlasticityStress::indentifyCrossSlipFamily(const unsigned int index)
-{
-  for (unsigned int i = 0; i < _number_cross_slip_directions; ++i)
-    for (unsigned int j = 0; j < _number_cross_slip_planes; ++j)
-      if (_cross_slip_familes[i][j] == index)
-        return i;
-
-  // Should never reach this statement
-  mooseError("The supplied slip system index is not among the slip system families sorted.");
-}
-
-void
-ComputeMultipleCrystalPlasticityStress::setQp(unsigned int qp)
-{
-  _qp = qp;
 }

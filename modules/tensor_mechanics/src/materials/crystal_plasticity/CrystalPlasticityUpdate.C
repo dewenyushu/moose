@@ -167,6 +167,9 @@ CrystalPlasticityUpdate::updateStress(RankTwoTensor & cauchy_stress, RankFourTen
 
   _delta_deformation_gradient = _deformation_gradient[_qp] - _temporary_deformation_gradient_old;
 
+  // Loop through all models
+  // Saves the old stateful properties that are modified during sub stepping
+
   // Calculate the schmid tensor for the current state of the crystal lattice
   calculateFlowDirection();
 
@@ -203,6 +206,7 @@ CrystalPlasticityUpdate::updateStress(RankTwoTensor & cauchy_stress, RankFourTen
 void
 CrystalPlasticityUpdate::preSolveQp()
 {
+  // Loop through all models
   setInitialConstitutiveVariableValues();
 
   _pk2[_qp] = _pk2_old[_qp];
@@ -212,13 +216,16 @@ CrystalPlasticityUpdate::preSolveQp()
 void
 CrystalPlasticityUpdate::solveQp()
 {
+  // loop through all models
   setSubstepConstitutiveVariableValues();
+
   _inverse_plastic_deformation_grad = _inverse_plastic_deformation_grad_old;
 
   solveStateVariables();
   if (_error_tolerance)
     return; // pop back up and take a smaller substep
 
+  // loop through all models
   updateSubstepConstitutiveVariableValues();
 
   // save off the old F^{p} inverse now that have converged on the stress and state variables
@@ -397,6 +404,9 @@ CrystalPlasticityUpdate::calcResidual()
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
     _tau[_qp][i] = _pk2[_qp].doubleContraction(_flow_direction[_qp][i]);
 
+  // loop through all models
+  // add to equivalent_slip_increment
+
   // Call the overwritten method in the inheriting class that contains the constitutive model
   calculateConstitutiveEquivalentSlipIncrement(equivalent_slip_increment, _error_tolerance);
 
@@ -447,6 +457,8 @@ void
 CrystalPlasticityUpdate::calculateTotalPlasticDeformationGradientDerivative(
     RankFourTensor & dfpinvdpk2)
 {
+  // loop through all models
+  // add to dfpinvdpk2
   calculateConstitutivePlasticDeformationGradientDerivative(dfpinvdpk2, _flow_direction[_qp]);
 }
 
