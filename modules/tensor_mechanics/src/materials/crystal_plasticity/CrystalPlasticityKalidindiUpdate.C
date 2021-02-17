@@ -14,7 +14,7 @@ registerMooseObject("TensorMechanicsApp", CrystalPlasticityKalidindiUpdate);
 InputParameters
 CrystalPlasticityKalidindiUpdate::validParams()
 {
-  InputParameters params = CrystalPlasticityUpdate::validParams();
+  InputParameters params = CrystalPlasticityStressUpdateBase::validParams();
   params.addClassDescription("Kalidindi version of homogeneous crystal plasticity.");
   params.addParam<Real>("r", 1.0, "Latent hardening coefficient");
   params.addParam<Real>("h", 541.5, "hardening constants");
@@ -29,7 +29,7 @@ CrystalPlasticityKalidindiUpdate::validParams()
 
 CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
     const InputParameters & parameters)
-  : CrystalPlasticityUpdate(parameters),
+  : CrystalPlasticityStressUpdateBase(parameters),
     _slip_system_resistance(declareProperty<std::vector<Real>>("slip_system_resistance")),
     _slip_system_resistance_old(
         getMaterialPropertyOld<std::vector<Real>>("slip_system_resistance")),
@@ -65,7 +65,7 @@ CrystalPlasticityKalidindiUpdate::initQpStatefulProperties()
     _slip_increment[_qp][i] = 0.0;
   }
 
-  CrystalPlasticityUpdate::initQpStatefulProperties();
+  CrystalPlasticityStressUpdateBase::initQpStatefulProperties();
 }
 
 void
