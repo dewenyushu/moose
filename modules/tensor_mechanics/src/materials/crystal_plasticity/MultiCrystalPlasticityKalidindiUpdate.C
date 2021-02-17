@@ -7,14 +7,14 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "CrystalPlasticityKalidindiUpdate.h"
+#include "MultiCrystalPlasticityKalidindiUpdate.h"
 
-registerMooseObject("TensorMechanicsApp", CrystalPlasticityKalidindiUpdate);
+registerMooseObject("TensorMechanicsApp", MultiCrystalPlasticityKalidindiUpdate);
 
 InputParameters
-CrystalPlasticityKalidindiUpdate::validParams()
+MultiCrystalPlasticityKalidindiUpdate::validParams()
 {
-  InputParameters params = CrystalPlasticityUpdate::validParams();
+  InputParameters params = CrystalPlasticityStressUpdateBase::validParams();
   params.addClassDescription("Kalidindi version of homogeneous crystal plasticity.");
   params.addParam<Real>("r", 1.0, "Latent hardening coefficient");
   params.addParam<Real>("h", 541.5, "hardening constants");
@@ -27,9 +27,9 @@ CrystalPlasticityKalidindiUpdate::validParams()
   return params;
 }
 
-CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
+MultiCrystalPlasticityKalidindiUpdate::MultiCrystalPlasticityKalidindiUpdate(
     const InputParameters & parameters)
-  : CrystalPlasticityUpdate(parameters),
+  : CrystalPlasticityStressUpdateBase(parameters),
     _slip_system_resistance(declareProperty<std::vector<Real>>("slip_system_resistance")),
     _slip_system_resistance_old(
         getMaterialPropertyOld<std::vector<Real>>("slip_system_resistance")),
@@ -54,7 +54,7 @@ CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
 }
 
 void
-CrystalPlasticityKalidindiUpdate::initQpStatefulProperties()
+MultiCrystalPlasticityKalidindiUpdate::initQpStatefulProperties()
 {
   _slip_system_resistance[_qp].resize(_number_slip_systems);
   _slip_increment[_qp].resize(_number_slip_systems);
@@ -65,11 +65,11 @@ CrystalPlasticityKalidindiUpdate::initQpStatefulProperties()
     _slip_increment[_qp][i] = 0.0;
   }
 
-  CrystalPlasticityUpdate::initQpStatefulProperties();
+  CrystalPlasticityStressUpdateBase::initQpStatefulProperties();
 }
 
 void
-CrystalPlasticityKalidindiUpdate::setInitialConstitutiveVariableValues()
+MultiCrystalPlasticityKalidindiUpdate::setInitialConstitutiveVariableValues()
 {
   // Would also set old dislocation densities here if included in this model
   _slip_system_resistance[_qp] = _slip_system_resistance_old[_qp];
@@ -77,14 +77,14 @@ CrystalPlasticityKalidindiUpdate::setInitialConstitutiveVariableValues()
 }
 
 void
-CrystalPlasticityKalidindiUpdate::setSubstepConstitutiveVariableValues()
+MultiCrystalPlasticityKalidindiUpdate::setSubstepConstitutiveVariableValues()
 {
   // Would also set substepped dislocation densities here if included in this model
   _slip_system_resistance[_qp] = _previous_substep_slip_resistance;
 }
 
 void
-CrystalPlasticityKalidindiUpdate::calculateConstitutiveEquivalentSlipIncrement(
+MultiCrystalPlasticityKalidindiUpdate::calculateConstitutiveEquivalentSlipIncrement(
     RankTwoTensor & equivalent_slip_increment, bool & error_tolerance)
 {
   equivalent_slip_increment.zero();
@@ -121,7 +121,7 @@ CrystalPlasticityKalidindiUpdate::calculateConstitutiveEquivalentSlipIncrement(
 }
 
 void
-CrystalPlasticityKalidindiUpdate::calculateConstitutiveSlipDerivative(
+MultiCrystalPlasticityKalidindiUpdate::calculateConstitutiveSlipDerivative(
     std::vector<Real> & dslip_dtau, unsigned int /*slip_model_number*/)
 {
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
@@ -137,7 +137,7 @@ CrystalPlasticityKalidindiUpdate::calculateConstitutiveSlipDerivative(
 }
 
 void
-CrystalPlasticityKalidindiUpdate::updateConstitutiveSlipSystemResistanceAndVariables(
+MultiCrystalPlasticityKalidindiUpdate::updateConstitutiveSlipSystemResistanceAndVariables(
     bool & error_tolerance)
 {
   // Cache the slip system value before the update for the diff in the convergence check
@@ -147,7 +147,7 @@ CrystalPlasticityKalidindiUpdate::updateConstitutiveSlipSystemResistanceAndVaria
 }
 
 bool
-CrystalPlasticityKalidindiUpdate::areConstitutiveStateVariablesConverged()
+MultiCrystalPlasticityKalidindiUpdate::areConstitutiveStateVariablesConverged()
 {
   Real resistance_diff = 0.0;
   Real abs_prev_substep_resistance = 0.0;
@@ -167,14 +167,14 @@ CrystalPlasticityKalidindiUpdate::areConstitutiveStateVariablesConverged()
 }
 
 void
-CrystalPlasticityKalidindiUpdate::updateSubstepConstitutiveVariableValues()
+MultiCrystalPlasticityKalidindiUpdate::updateSubstepConstitutiveVariableValues()
 {
   // Would also set substepped dislocation densities here if included in this model
   _previous_substep_slip_resistance = _slip_system_resistance[_qp];
 }
 
 void
-CrystalPlasticityKalidindiUpdate::calculateSlipSystemResistance(bool & error_tolerance)
+MultiCrystalPlasticityKalidindiUpdate::calculateSlipSystemResistance(bool & error_tolerance)
 {
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
   {

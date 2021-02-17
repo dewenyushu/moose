@@ -191,9 +191,6 @@ protected:
   const Real _number_cross_slip_planes;
   ///@}
 
-  /// Type of tangent moduli calculation
-  MooseEnum _tan_mod_type;
-
   /// Slip increment tolerance
   Real _slip_incr_tol;
   /// Tolerance for change in slip system resistance over an increment

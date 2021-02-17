@@ -33,14 +33,8 @@ ComputeMultipleCrystalPlasticityStress::validParams()
       "crystal_plasticity_models",
       "The material objects to use to calculate crystal plasticity stress and strains.");
 
-  // The return stress increment classes are intended to be iterative materials, so must set compute
-  // = false for all inheriting classes
-  params.set<bool>("compute") = false;
-  params.suppressParameter<bool>("compute");
-
-  MooseEnum tan_mod_options("exact none", "none");
   params.addParam<MooseEnum>("tan_mod_type",
-                             tan_mod_options,
+                             MooseEnum("exact none", "none"),
                              "Type of tangent moduli for preconditioner: default elastic");
   params.addParam<Real>("rtol", 1e-6, "Constitutive stress residual relative tolerance");
   params.addParam<Real>("abs_tol", 1e-6, "Constitutive stress residual absolute tolerance");
@@ -56,9 +50,9 @@ ComputeMultipleCrystalPlasticityStress::validParams()
   params.addParam<Real>("line_search_tol", 0.5, "Line search bisection method tolerance");
   params.addParam<unsigned int>(
       "line_search_maxiter", 20, "Line search bisection method maximum number of iteration");
-  MooseEnum lineSearchType("CUT_HALF BISECTION", "CUT_HALF");
-  params.addParam<MooseEnum>(
-      "line_search_method", lineSearchType, "The method used in line search");
+  params.addParam<MooseEnum>("line_search_method",
+                             MooseEnum("CUT_HALF BISECTION", "CUT_HALF"),
+                             "The method used in line search");
 
   return params;
 }
@@ -76,7 +70,7 @@ ComputeMultipleCrystalPlasticityStress::ComputeMultipleCrystalPlasticityStress(
     _rel_state_var_tol(getParam<Real>("stol")),
     _maxiter(getParam<unsigned int>("maxiter")),
     _maxiterg(getParam<unsigned int>("maxiter_state_variable")),
-    _tan_mod_type(getParam<MooseEnum>("tan_mod_type")),
+    _tan_mod_type(getParam<MooseEnum>("tan_mod_type").getEnum<TangentModuliType>()),
     _max_substep_iter(getParam<unsigned int>("maximum_substep_iteration")),
     _use_line_search(getParam<bool>("use_line_search")),
     _min_line_search_step_size(getParam<Real>("min_line_search_step_size")),
@@ -113,7 +107,10 @@ ComputeMultipleCrystalPlasticityStress::initQpStatefulProperties()
   _update_rotation[_qp].addIa(1.0);
 
   for (unsigned int i = 0; i < _num_models; ++i)
+  {
+    _models[i]->setQp(_qp);
     _models[i]->initQpStatefulProperties();
+  }
 }
 
 void
@@ -483,7 +480,7 @@ ComputeMultipleCrystalPlasticityStress::calcTangentModuli(RankFourTensor & jacob
 {
   switch (_tan_mod_type)
   {
-    case 0:
+    case TangentModuliType::EXACT:
       elastoPlasticTangentModuli(jacobian_mult);
       break;
     default:

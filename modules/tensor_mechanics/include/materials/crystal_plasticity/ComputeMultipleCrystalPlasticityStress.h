@@ -142,7 +142,7 @@ protected:
   unsigned int _maxiterg;
 
   /// Type of tangent moduli calculation
-  MooseEnum _tan_mod_type;
+  const enum class TangentModuliType { EXACT, NONE } _tan_mod_type;
 
   /// Maximum number of substep iterations
   unsigned int _max_substep_iter;
@@ -160,11 +160,7 @@ protected:
   unsigned int _line_search_max_iterations;
 
   /// strain formulation
-  enum class LineSearchMethod
-  {
-    CutHalf,
-    Bisection
-  } _line_search_method;
+  const enum class LineSearchMethod { CutHalf, Bisection } _line_search_method;
 
   ///@{Plastic deformation gradient RankTwoTensor for the crystal
   MaterialProperty<RankTwoTensor> & _plastic_deformation_gradient;

@@ -21,6 +21,11 @@ CrystalPlasticityStressUpdateBase::validParams()
       "Crystal Plasticity base class: handles the Newton iteration over the stress residual and "
       "calculates the Jacobian based on constitutive laws provided by inheriting classes");
 
+  // The return stress increment classes are intended to be iterative materials, so must set compute
+  // = false for all inheriting classes
+  params.set<bool>("compute") = false;
+  params.suppressParameter<bool>("compute");
+
   params.addRequiredParam<unsigned int>(
       "number_slip_systems",
       "The total number of possible active slip systems for the crystalline material");
@@ -48,8 +53,6 @@ CrystalPlasticityStressUpdateBase::CrystalPlasticityStressUpdateBase(
     _slip_sys_file_name(getParam<FileName>("slip_sys_file_name")),
     _number_cross_slip_directions(getParam<Real>("number_cross_slip_directions")),
     _number_cross_slip_planes(getParam<Real>("number_cross_slip_planes")),
-
-    _tan_mod_type(getParam<MooseEnum>("tan_mod_type")),
     _slip_incr_tol(getParam<Real>("slip_increment_tolerance")),
     _resistance_tol(getParam<Real>("resistance_tol")),
     _zero_tol(getParam<Real>("zero_tol")),
