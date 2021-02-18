@@ -17,6 +17,9 @@ InputParameters
 CrystalPlasticityStressUpdateBase::validParams()
 {
   InputParameters params = Material::validParams();
+  params.addParam<std::string>(
+      "base_name",
+      "Optional parameter that allows the user to define multiple crystal plasticity mechanisms");
   params.addClassDescription(
       "Crystal Plasticity base class: handles the Newton iteration over the stress residual and "
       "calculates the Jacobian based on constitutive laws provided by inheriting classes");
@@ -49,6 +52,7 @@ CrystalPlasticityStressUpdateBase::validParams()
 CrystalPlasticityStressUpdateBase::CrystalPlasticityStressUpdateBase(
     const InputParameters & parameters)
   : Material(parameters),
+    _base_name(isParamValid("base_name") ? getParam<std::string>("base_name") + "_" : ""),
     _number_slip_systems(getParam<unsigned int>("number_slip_systems")),
     _slip_sys_file_name(getParam<FileName>("slip_sys_file_name")),
     _number_cross_slip_directions(getParam<Real>("number_cross_slip_directions")),
@@ -59,8 +63,8 @@ CrystalPlasticityStressUpdateBase::CrystalPlasticityStressUpdateBase(
 
     _slip_direction(_number_slip_systems * LIBMESH_DIM),
     _slip_plane_normal(_number_slip_systems * LIBMESH_DIM),
-    _flow_direction(declareProperty<std::vector<RankTwoTensor>>("flow_direction")),
-    _tau(declareProperty<std::vector<Real>>("applied_shear_stress"))
+    _flow_direction(declareProperty<std::vector<RankTwoTensor>>(_base_name + "flow_direction")),
+    _tau(declareProperty<std::vector<Real>>(_base_name + "applied_shear_stress"))
 {
   _substep_dt = 0.0;
 

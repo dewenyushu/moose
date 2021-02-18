@@ -180,6 +180,10 @@ public:
   virtual bool areConstitutiveStateVariablesConverged() { return true; }
 
 protected:
+  /// Base name prepended to all material property names to allow for
+  /// multi-material systems
+  const std::string _base_name;
+
   ///Maximum number of active slip systems for the crystalline material being modeled
   const unsigned int _number_slip_systems;
 
