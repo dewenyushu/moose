@@ -273,29 +273,30 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
     _plastic_deformation_gradient[_qp] =
         _inverse_plastic_deformation_grad.inverse(); // the postSoveStress
 
+    /// Not sure if we should check check the convergence this way
     // Update slip system resistance and state variable after the stress has been finalized
     for (unsigned int i = 0; i < _num_models; ++i)
-    {
       _models[i]->updateConstitutiveSlipSystemResistanceAndVariables(_error_tolerance);
-      if (_error_tolerance)
-        return;
 
+    if (_error_tolerance)
+      return;
+
+    for (unsigned int i = 0; i < _num_models; ++i)
       iter_flag =
           _models[i]->areConstitutiveStateVariablesConverged(); // returns false if values are
                                                                 // converged and good to go
 
-      if (iter_flag)
-      {
+    if (iter_flag)
+    {
 #ifdef DEBUG
-        mooseWarning("ComputeMultipleCrystalPlasticityStress: State variables (or the system "
-                     "resistance) did not "
-                     "converge at element ",
-                     _current_elem->id(),
-                     " and qp ",
-                     _qp,
-                     "\n");
+      mooseWarning("ComputeMultipleCrystalPlasticityStress: State variables (or the system "
+                   "resistance) did not "
+                   "converge at element ",
+                   _current_elem->id(),
+                   " and qp ",
+                   _qp,
+                   "\n");
 #endif
-      }
     }
     iteration++;
   }
@@ -425,6 +426,12 @@ ComputeMultipleCrystalPlasticityStress::calcResidual()
                                                              _error_tolerance);
     equivalent_slip_increment += equivalent_slip_increment_per_model;
   }
+
+#ifdef DEBUG
+  if (_qp == 1)
+    std::cout << "equivalent_slip_increment.L2norm() = " << equivalent_slip_increment.L2norm()
+              << std::endl;
+#endif
 
   if (_error_tolerance)
     return;
