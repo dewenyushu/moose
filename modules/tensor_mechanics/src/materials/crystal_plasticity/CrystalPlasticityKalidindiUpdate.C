@@ -136,16 +136,6 @@ CrystalPlasticityKalidindiUpdate::calculateConstitutiveSlipDerivative(
   }
 }
 
-void
-CrystalPlasticityKalidindiUpdate::updateConstitutiveSlipSystemResistanceAndVariables(
-    bool & error_tolerance)
-{
-  // Cache the slip system value before the update for the diff in the convergence check
-  _slip_resistance_before_update = _slip_system_resistance[_qp];
-
-  calculateSlipSystemResistance(error_tolerance);
-}
-
 bool
 CrystalPlasticityKalidindiUpdate::areConstitutiveStateVariablesConverged()
 {
@@ -174,7 +164,13 @@ CrystalPlasticityKalidindiUpdate::updateSubstepConstitutiveVariableValues()
 }
 
 void
-CrystalPlasticityKalidindiUpdate::calculateSlipSystemResistance(bool & error_tolerance)
+CrystalPlasticityKalidindiUpdate::cacheStateVariablesBeforeUpdate()
+{
+  _slip_resistance_before_update = _slip_system_resistance[_qp];
+}
+
+void
+CrystalPlasticityKalidindiUpdate::calculateStateVariableEvolutionRateComponent()
 {
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
   {
@@ -203,7 +199,11 @@ CrystalPlasticityKalidindiUpdate::calculateSlipSystemResistance(bool & error_tol
             std::abs(_slip_increment[_qp][j]) * _r * _hb[j]; // latent hardenign
     }
   }
+}
 
+void
+CrystalPlasticityKalidindiUpdate::updateStateVariable(bool & error_tolerance)
+{
   // Now perform the check to see if the slip system should be updated
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
   {

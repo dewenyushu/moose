@@ -171,7 +171,14 @@ public:
    * Finalizes the values of the state variables and slip system resistance
    * for the current timestep after convergence has been reached.
    */
-  virtual void updateConstitutiveSlipSystemResistanceAndVariables(bool & /*error_tolerance*/) {}
+
+  virtual void cacheStateVariablesBeforeUpdate() {}
+
+  virtual void calculateStateVariableEvolutionRateComponent() {}
+
+  virtual void updateStateVariable(bool & /*error_tolerance*/) {}
+
+  virtual void calculateSlipResistance() {}
 
   /*
    * Determines if the state variables, e.g. defect densities, have converged

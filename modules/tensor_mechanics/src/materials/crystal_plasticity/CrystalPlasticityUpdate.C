@@ -219,6 +219,8 @@ CrystalPlasticityUpdate::solveQp()
   // loop through all models
   setSubstepConstitutiveVariableValues();
 
+  // need to call calcSlipResistance here
+
   _inverse_plastic_deformation_grad = _inverse_plastic_deformation_grad_old;
 
   solveStateVariables();

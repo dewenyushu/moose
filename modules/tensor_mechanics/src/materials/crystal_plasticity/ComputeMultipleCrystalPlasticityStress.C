@@ -221,7 +221,10 @@ void
 ComputeMultipleCrystalPlasticityStress::solveQp()
 {
   for (unsigned int i = 0; i < _num_models; ++i)
+  {
     _models[i]->setSubstepConstitutiveVariableValues();
+    _models[i]->calculateSlipResistance();
+  }
 
   _inverse_plastic_deformation_grad = _inverse_plastic_deformation_grad_old;
 
@@ -276,7 +279,16 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
     /// Not sure if we should check check the convergence this way
     // Update slip system resistance and state variable after the stress has been finalized
     for (unsigned int i = 0; i < _num_models; ++i)
-      _models[i]->updateConstitutiveSlipSystemResistanceAndVariables(_error_tolerance);
+      _models[i]->cacheStateVariablesBeforeUpdate();
+
+    for (unsigned int i = 0; i < _num_models; ++i)
+      _models[i]->calculateStateVariableEvolutionRateComponent();
+
+    for (unsigned int i = 0; i < _num_models; ++i)
+      _models[i]->updateStateVariable(_error_tolerance);
+
+    for (unsigned int i = 0; i < _num_models; ++i)
+      _models[i]->calculateSlipResistance();
 
     if (_error_tolerance)
       return;

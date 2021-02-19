@@ -63,17 +63,8 @@ protected:
   virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & dslip_dtau,
                                                    unsigned int slip_model_number = 0) override;
 
-  /*
-   * Finalizes the values of the state variables and slip system resistance
-   * for the current timestep after convergence has been reached.
-   */
-  virtual void updateConstitutiveSlipSystemResistanceAndVariables(bool & error_tolerance) override;
-
-  /*
-   * Determines if the state variables, e.g. defect densities, have converged
-   * by comparing the change in the values over the iteration period.
-   */
-  virtual bool areConstitutiveStateVariablesConverged() override;
+  // Cache the slip system value before the update for the diff in the convergence check
+  virtual void cacheStateVariablesBeforeUpdate() override;
 
   /**
    * Following the Constitutive model for slip system resistance as given in
@@ -84,7 +75,19 @@ protected:
    * $\Delta g = \left| \Delta \gamma \cdot q^{\alpha \beta} \cdot h^{\beta} \right|$
    * and a convergence check is performed on the slip system resistance increment
    */
-  void calculateSlipSystemResistance(bool & error_tolerance);
+  virtual void calculateStateVariableEvolutionRateComponent() override;
+
+  /*
+   * Finalizes the values of the state variables and slip system resistance
+   * for the current timestep after convergence has been reached.
+   */
+  virtual void updateStateVariable(bool & error_tolerance) override;
+
+  /*
+   * Determines if the state variables, e.g. defect densities, have converged
+   * by comparing the change in the values over the iteration period.
+   */
+  virtual bool areConstitutiveStateVariablesConverged() override;
 
   ///@{Slip system resistance
   MaterialProperty<std::vector<Real>> & _slip_system_resistance;
