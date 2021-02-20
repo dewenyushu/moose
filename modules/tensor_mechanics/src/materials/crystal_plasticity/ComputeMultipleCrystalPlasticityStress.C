@@ -38,8 +38,6 @@ ComputeMultipleCrystalPlasticityStress::validParams()
                              "Type of tangent moduli for preconditioner: default elastic");
   params.addParam<Real>("rtol", 1e-6, "Constitutive stress residual relative tolerance");
   params.addParam<Real>("abs_tol", 1e-6, "Constitutive stress residual absolute tolerance");
-  params.addParam<Real>(
-      "stol", 1e-2, "Constitutive internal state variable relative change tolerance");
   params.addParam<unsigned int>("maxiter", 100, "Maximum number of iterations for stress update");
   params.addParam<unsigned int>(
       "maxiter_state_variable", 100, "Maximum number of iterations for state variable update");
@@ -67,7 +65,6 @@ ComputeMultipleCrystalPlasticityStress::ComputeMultipleCrystalPlasticityStress(
 
     _rtol(getParam<Real>("rtol")),
     _abs_tol(getParam<Real>("abs_tol")),
-    _rel_state_var_tol(getParam<Real>("stol")),
     _maxiter(getParam<unsigned int>("maxiter")),
     _maxiterg(getParam<unsigned int>("maxiter_state_variable")),
     _tan_mod_type(getParam<MooseEnum>("tan_mod_type").getEnum<TangentModuliType>()),
@@ -276,7 +273,6 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
     _plastic_deformation_gradient[_qp] =
         _inverse_plastic_deformation_grad.inverse(); // the postSoveStress
 
-    /// Not sure if we should check check the convergence this way
     // Update slip system resistance and state variable after the stress has been finalized
     for (unsigned int i = 0; i < _num_models; ++i)
       _models[i]->cacheStateVariablesBeforeUpdate();
@@ -294,9 +290,16 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
       return;
 
     for (unsigned int i = 0; i < _num_models; ++i)
-      iter_flag =
-          _models[i]->areConstitutiveStateVariablesConverged(); // returns false if values are
-                                                                // converged and good to go
+    {
+      // returns false if all values are converged and good to go
+      if (_models[i]->areConstitutiveStateVariablesConverged())
+      {
+        iter_flag = true;
+        break;
+      }
+      // iter_flag = false only when all models returns false
+      iter_flag = false;
+    }
 
     if (iter_flag)
     {
@@ -436,17 +439,12 @@ ComputeMultipleCrystalPlasticityStress::calcResidual()
     // Call the overwritten method in the inheriting class that contains the constitutive model
     _models[i]->calculateConstitutiveEquivalentSlipIncrement(equivalent_slip_increment_per_model,
                                                              _error_tolerance);
+
+    if (_error_tolerance)
+      return;
+
     equivalent_slip_increment += equivalent_slip_increment_per_model;
   }
-
-#ifdef DEBUG
-  if (_qp == 1)
-    std::cout << "equivalent_slip_increment.L2norm() = " << equivalent_slip_increment.L2norm()
-              << std::endl;
-#endif
-
-  if (_error_tolerance)
-    return;
 
   RankTwoTensor residual_equivalent_slip_increment =
       RankTwoTensor::Identity() - equivalent_slip_increment;

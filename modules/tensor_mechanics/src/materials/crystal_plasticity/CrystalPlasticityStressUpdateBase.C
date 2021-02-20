@@ -43,7 +43,7 @@ CrystalPlasticityStressUpdateBase::validParams()
                         "to determine cross slip families");
   params.addParam<Real>("slip_increment_tolerance", 2e-2, "Maximum allowable slip in an increment");
   params.addParam<Real>(
-      "resistance_tol", 1.0e-2, "Constitutive slip system resistance residual tolerance");
+      "resistance_tol", 1.0e-2, "Constitutive slip system resistance relative residual tolerance");
   params.addParam<Real>(
       "zero_tol", 1e-12, "Tolerance for residual check when variable value is zero");
   return params;

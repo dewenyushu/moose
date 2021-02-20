@@ -516,12 +516,6 @@ FiniteStrainUObasedCP::calcResidual()
     for (unsigned int j = 0; j < _uo_slip_rates[i]->variableSize(); ++j)
       eqv_slip_incr += (*_flow_direction[i])[_qp][j] * (*_mat_prop_slip_rates[i])[_qp][j] * _dt;
 
-#ifdef DEBUG
-  if (_qp == 1)
-    std::cout << "equivalent_slip_increment.L2norm() = " << eqv_slip_incr.L2norm()
-              << std::endl;
-#endif
-
   eqv_slip_incr = iden - eqv_slip_incr;
   _fp_inv = _fp_old_inv * eqv_slip_incr;
   _fe = _dfgrd_tmp * _fp_inv;

@@ -128,8 +128,6 @@ protected:
   Real _rtol;
   /// Stress residual equation absolute tolerance
   Real _abs_tol;
-  /// Internal variable update equation tolerance
-  Real _rel_state_var_tol;
 
   /// Residual tensor
   RankTwoTensor _residual_tensor;
