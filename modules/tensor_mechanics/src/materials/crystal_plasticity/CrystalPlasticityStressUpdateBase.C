@@ -313,28 +313,16 @@ void
 CrystalPlasticityStressUpdateBase::calculateTotalPlasticDeformationGradientDerivative(
     RankFourTensor & dfpinvdpk2, const RankTwoTensor & inverse_plastic_deformation_grad_old)
 {
-  calculateConstitutivePlasticDeformationGradientDerivative(
-      dfpinvdpk2, _flow_direction[_qp], inverse_plastic_deformation_grad_old);
-}
-
-void
-CrystalPlasticityStressUpdateBase::calculateConstitutivePlasticDeformationGradientDerivative(
-    RankFourTensor & dfpinvdpk2,
-    std::vector<RankTwoTensor> & schmid_tensor,
-    const RankTwoTensor & inverse_plastic_deformation_grad_old,
-    unsigned int /*slip_model_number*/)
-{
-  const unsigned int number_dislocation_systems = schmid_tensor.size();
-  std::vector<Real> dslip_dtau(number_dislocation_systems, 0.0);
-  std::vector<RankTwoTensor> dtaudpk2(number_dislocation_systems);
-  std::vector<RankTwoTensor> dfpinvdslip(number_dislocation_systems);
+  std::vector<Real> dslip_dtau(_number_slip_systems, 0.0);
+  std::vector<RankTwoTensor> dtaudpk2(_number_slip_systems);
+  std::vector<RankTwoTensor> dfpinvdslip(_number_slip_systems);
 
   calculateConstitutiveSlipDerivative(dslip_dtau);
 
-  for (unsigned int j = 0; j < number_dislocation_systems; ++j)
+  for (unsigned int j = 0; j < _number_slip_systems; ++j)
   {
-    dtaudpk2[j] = schmid_tensor[j];
-    dfpinvdslip[j] = -inverse_plastic_deformation_grad_old * schmid_tensor[j];
+    dtaudpk2[j] = _flow_direction[_qp][j];
+    dfpinvdslip[j] = -inverse_plastic_deformation_grad_old * _flow_direction[_qp][j];
     dfpinvdpk2 += (dfpinvdslip[j] * dslip_dtau[j] * _substep_dt).outerProduct(dtaudpk2[j]);
   }
 }

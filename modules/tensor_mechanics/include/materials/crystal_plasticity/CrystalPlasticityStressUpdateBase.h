@@ -57,25 +57,9 @@ public:
    * is intended to be an overwritten helper method for inheriting classes with
    * multiple constitutive dislocation slip mechanisms, e.g. glide and twinning,
    * $\sum_i \frac{d\mathbf{F}^P^{-1}}{d\mathbf{PK2}_i}$
-   * In this base class implementation with only dislocation glide assumed, no
-   * specific sum is necessary.
    */
   virtual void calculateTotalPlasticDeformationGradientDerivative(
       RankFourTensor & dfpinvdpk2, const RankTwoTensor & inverse_plastic_deformation_grad_old);
-
-  /**
-   * Calculates the value of $\frac{d\mathbf{F}^P^{-1}}{d\mathbf{PK2}}$ for a specific
-   * constitutive model based on the values of the Schmid tensor and number of
-   * dislocation movement systems (e.g. glide slip systems) provided by the calling
-   * class. Note that this class is written in a general manner to allow for reuse
-   * by the calling calculateTotalPlasticDeformationGradientDerivative class for
-   * a variable number of constitutive dislocation slip mechanisms.
-   */
-  void calculateConstitutivePlasticDeformationGradientDerivative(
-      RankFourTensor & dfpinvdpk2,
-      std::vector<RankTwoTensor> & schmid_tensor,
-      const RankTwoTensor & inverse_plastic_deformation_grad_old,
-      unsigned int slip_model_number = 0);
 
   /**
    * A helper method to rotate the a direction and plane normal system set into

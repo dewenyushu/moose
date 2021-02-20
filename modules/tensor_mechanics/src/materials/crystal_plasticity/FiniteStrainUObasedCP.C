@@ -558,10 +558,8 @@ FiniteStrainUObasedCP::calcJacobian()
     {
       dtaudpk2[j] = (*_flow_direction[i])[_qp][j];
       dfpinvdslip[j] = -_fp_old_inv * (*_flow_direction[i])[_qp][j];
-    }
-
-    for (unsigned int j = 0; j < nss; j++)
       dfpinvdpk2 += (dfpinvdslip[j] * dslipdtau[j] * _dt).outerProduct(dtaudpk2[j]);
+    }
   }
   _jac =
       RankFourTensor::IdentityFour() - (_elasticity_tensor[_qp] * deedfe * dfedfpinv * dfpinvdpk2);
