@@ -335,6 +335,20 @@ FiniteStrainUObasedCP::solveStatevar()
       return;
 
     iter_flag = isStateVariablesConverged();
+
+    if (iter_flag)
+    {
+#ifdef DEBUG
+      mooseWarning("FiniteStrainUObasedCP: State variables (or the system "
+                   "resistance) did not "
+                   "converge at element ",
+                   _current_elem->id(),
+                   " and qp ",
+                   _qp,
+                   "\n");
+#endif
+    }
+
     iterg++;
   }
 
@@ -447,7 +461,16 @@ FiniteStrainUObasedCP::solveStress()
   if (iter >= _maxiter)
   {
 #ifdef DEBUG
-    mooseWarning("FiniteStrainUObasedCP: Stress Integration error rmax = ", rnorm);
+    mooseWarning("FiniteStrainUObasedCP: Stress Integration error rmax = ",
+                 rnorm,
+                 " and the tolerance is ",
+                 _rtol * rnorm0,
+                 " when the rnorm0 value is ",
+                 rnorm0,
+                 " for element ",
+                 _current_elem->id(),
+                 " and qp ",
+                 _qp);
 #endif
     _err_tol = true;
   }

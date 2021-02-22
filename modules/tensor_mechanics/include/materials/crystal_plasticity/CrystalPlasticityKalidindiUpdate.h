@@ -56,9 +56,10 @@ protected:
    */
   virtual void updateSubstepConstitutiveVariableValues() override;
 
+  virtual bool calculateSlipRate() override;
+
   virtual void
-  calculateConstitutiveEquivalentSlipIncrement(RankTwoTensor & equivalent_slip_increment,
-                                               bool & error_tolerance) override;
+  calculateEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/) override;
 
   virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & dslip_dtau,
                                                    unsigned int slip_model_number = 0) override;
@@ -81,7 +82,7 @@ protected:
    * Finalizes the values of the state variables and slip system resistance
    * for the current timestep after convergence has been reached.
    */
-  virtual void updateStateVariable(bool & error_tolerance) override;
+  virtual bool updateStateVariable() override;
 
   /*
    * Determines if the state variables, e.g. defect densities, have converged
@@ -90,8 +91,8 @@ protected:
   virtual bool areConstitutiveStateVariablesConverged() override;
 
   ///@{Slip system resistance
-  MaterialProperty<std::vector<Real>> & _slip_system_resistance;
-  const MaterialProperty<std::vector<Real>> & _slip_system_resistance_old;
+  MaterialProperty<std::vector<Real>> & _slip_resistance;
+  const MaterialProperty<std::vector<Real>> & _slip_resistance_old;
   ///@}
 
   /// Current slip increment material property
@@ -121,7 +122,7 @@ protected:
   std::vector<Real> _hb;
 
   /// Increment of increased resistance for each slip system
-  std::vector<Real> _slip_system_resistance_increment;
+  std::vector<Real> _slip_resistance_increment;
 
   ///@{Varibles used in the Kalidindi 1992 slip system resistance constiutive model
   const Real _r;

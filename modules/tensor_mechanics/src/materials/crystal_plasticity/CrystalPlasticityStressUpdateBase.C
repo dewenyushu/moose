@@ -102,7 +102,7 @@ CrystalPlasticityStressUpdateBase::getSlipSystems()
                                     orthonormal_error);
 
   if (orthonormal_error)
-    mooseError("CrystalPlasticityUpdate Error: The slip system file contains a slip direction and "
+    mooseError("CrystalPlasticityStressUpdateBase Error: The slip system file contains a slip direction and "
                "plane normal pair that are not orthonormal");
 }
 
@@ -126,7 +126,7 @@ CrystalPlasticityStressUpdateBase::getPlaneNormalAndDirectionVectors(
     // Read the plane normal
     for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
       if (!(fileslipsys >> vec[j]))
-        mooseError("CrystalPlasticityUpdate Error: Premature end of file reading plane normal "
+        mooseError("CrystalPlasticityStressUpdateBase Error: Premature end of file reading plane normal "
                    "vectors from the file ",
                    vector_file_name);
 
@@ -141,7 +141,7 @@ CrystalPlasticityStressUpdateBase::getPlaneNormalAndDirectionVectors(
     // Read the direction
     for (unsigned int j = 0; j < LIBMESH_DIM; ++j)
       if (!(fileslipsys >> vec[j]))
-        mooseError("CrystalPlasticityUpdate Error: Premature end of file reading direction vectors "
+        mooseError("CrystalPlasticityStressUpdateBase Error: Premature end of file reading direction vectors "
                    "from the file ",
                    vector_file_name);
 

@@ -135,19 +135,10 @@ ComputeMultipleCrystalPlasticityStress::initialSetup()
 void
 ComputeMultipleCrystalPlasticityStress::computeQpStress()
 {
-  RankTwoTensor stress_new;
-  RankFourTensor jacobian_mult;
-
   for (unsigned int i = 0; i < _num_models; ++i)
     _models[i]->setQp(_qp);
 
-  updateStress(stress_new, jacobian_mult);
-
-  _elastic_strain[_qp].zero();
-  _stress[_qp] = stress_new;
-
-  // Compute dstress_dstrain
-  _Jacobian_mult[_qp] = jacobian_mult; // This is NOT the exact jacobian
+  updateStress(_stress[_qp], _Jacobian_mult[_qp]); // This is NOT the exact jacobian
 }
 
 void
@@ -281,7 +272,8 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
       _models[i]->calculateStateVariableEvolutionRateComponent();
 
     for (unsigned int i = 0; i < _num_models; ++i)
-      _models[i]->updateStateVariable(_error_tolerance);
+      if (!_models[i]->updateStateVariable())
+        _error_tolerance = true;
 
     for (unsigned int i = 0; i < _num_models; ++i)
       _models[i]->calculateSlipResistance();
@@ -297,8 +289,8 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
         iter_flag = true;
         break;
       }
-      // iter_flag = false only when all models returns false
-      iter_flag = false;
+      else
+        iter_flag = false; // iter_flag = false only when all models returns false
     }
 
     if (iter_flag)
@@ -436,13 +428,12 @@ ComputeMultipleCrystalPlasticityStress::calcResidual()
     equivalent_slip_increment_per_model.zero();
     _models[i]->calculateShearStress(_pk2[_qp]);
 
-    // Call the overwritten method in the inheriting class that contains the constitutive model
-    _models[i]->calculateConstitutiveEquivalentSlipIncrement(equivalent_slip_increment_per_model,
-                                                             _error_tolerance);
+    _error_tolerance = !_models[i]->calculateSlipRate();
 
     if (_error_tolerance)
       return;
 
+    _models[i]->calculateEquivalentSlipIncrement(equivalent_slip_increment_per_model);
     equivalent_slip_increment += equivalent_slip_increment_per_model;
   }
 

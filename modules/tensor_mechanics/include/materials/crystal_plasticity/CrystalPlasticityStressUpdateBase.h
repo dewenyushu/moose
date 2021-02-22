@@ -130,15 +130,13 @@ public:
   virtual void updateSubstepConstitutiveVariableValues() {}
 
   /**
-   * This virtual method is called to calculate the total slip system slip
+   * This virtual method is called to calculate the slip system slip
    * increment based on the constitutive model defined in the child class.
    * This method must be overwritten in the child class.
    */
-  virtual void
-  calculateConstitutiveEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/,
-                                               bool & /*error_tolerance*/)
-  {
-  }
+  virtual bool calculateSlipRate() = 0;
+
+  virtual void calculateEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/) {}
 
   /*
    * This virtual method is called to find the derivative of the slip increment
@@ -147,9 +145,7 @@ public:
    * in the child class.
    */
   virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & /*dslip_dtau*/,
-                                                   unsigned int /*slip_model_number*/ = 0)
-  {
-  }
+                                                   unsigned int /*slip_model_number*/ = 0) = 0;
 
   /*
    * Finalizes the values of the state variables and slip system resistance
@@ -160,7 +156,7 @@ public:
 
   virtual void calculateStateVariableEvolutionRateComponent() {}
 
-  virtual void updateStateVariable(bool & /*error_tolerance*/) {}
+  virtual bool updateStateVariable() = 0;
 
   virtual void calculateSlipResistance() {}
 
