@@ -221,9 +221,9 @@ FiniteStrainUObasedCP::computeQpStress()
 
   _delta_dfgrd = _deformation_gradient[_qp] - _dfgrd_tmp_old;
 
-  // Saves the old stateful properties that are modified during sub stepping
-  for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
-    _state_vars_old[i] = (*_mat_prop_state_vars_old[i])[_qp];
+  // // Saves the old stateful properties that are modified during sub stepping
+  // for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
+  //   _state_vars_old[i] = (*_mat_prop_state_vars_old[i])[_qp];
 
   for (unsigned int i = 0; i < _num_uo_slip_rates; ++i)
     _uo_slip_rates[i]->calcFlowDirection(_qp, (*_flow_direction[i])[_qp]);
@@ -263,7 +263,7 @@ void
 FiniteStrainUObasedCP::preSolveQp()
 {
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
-    (*_mat_prop_state_vars[i])[_qp] = _state_vars_old_stored[i] = _state_vars_old[i];
+    (*_mat_prop_state_vars[i])[_qp] = _state_vars_old_stored[i] = (*_mat_prop_state_vars_old[i])[_qp];
 
   _pk2[_qp] = _pk2_old[_qp];
   _fp_old_inv = _fp_old[_qp].inverse();

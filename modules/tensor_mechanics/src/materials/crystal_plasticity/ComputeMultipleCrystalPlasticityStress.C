@@ -159,6 +159,9 @@ ComputeMultipleCrystalPlasticityStress::updateStress(RankTwoTensor & cauchy_stre
 
   _delta_deformation_gradient = _deformation_gradient[_qp] - _temporary_deformation_gradient_old;
 
+  // Save the old stateful properties that are modified during sub stepping
+  //// Fix Me: state_var_old = state_var
+
   // Loop through all models and calculate the schmid tensor for the current state of the crystal
   // lattice
   for (unsigned int i = 0; i < _num_models; ++i)

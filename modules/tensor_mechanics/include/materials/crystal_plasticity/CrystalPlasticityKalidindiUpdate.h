@@ -91,7 +91,7 @@ protected:
    * In classes which use dislocation densities, analogous dislocation density
    * substep vectors will be required.
    */
-  std::vector<Real> _previous_substep_slip_resistance;
+  std::vector<Real> _state_var_old_stored;
 
   /**
    * Caches the value of the current slip system resistance immediately prior
@@ -101,7 +101,10 @@ protected:
    * In classes which use dislocation densities, analogous dislocation density
    * caching vectors will also be required.
    */
-  std::vector<Real> _slip_resistance_before_update;
+  std::vector<Real> _state_var_prev;
+
+
+  std::vector<Real> _state_var_old;
 
   /**
    * Slip system interaction matrix used to calculate the hardening contributions
