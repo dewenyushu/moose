@@ -61,6 +61,11 @@ CrystalPlasticityStressUpdateBase::CrystalPlasticityStressUpdateBase(
     _resistance_tol(getParam<Real>("resistance_tol")),
     _zero_tol(getParam<Real>("zero_tol")),
 
+    _slip_resistance(declareProperty<std::vector<Real>>(_base_name + "slip_resistance")),
+    _slip_resistance_old(
+        getMaterialPropertyOld<std::vector<Real>>(_base_name + "slip_resistance")),
+    _slip_increment(declareProperty<std::vector<Real>>(_base_name + "slip_increment")),
+
     _slip_direction(_number_slip_systems * LIBMESH_DIM),
     _slip_plane_normal(_number_slip_systems * LIBMESH_DIM),
     _flow_direction(declareProperty<std::vector<RankTwoTensor>>(_base_name + "flow_direction")),
@@ -88,6 +93,9 @@ CrystalPlasticityStressUpdateBase::initQpStatefulProperties()
     _flow_direction[_qp][i].zero();
     _tau[_qp][i] = 0.0;
   }
+
+  _slip_resistance[_qp].resize(_number_slip_systems);
+  _slip_increment[_qp].resize(_number_slip_systems);
 }
 
 void
@@ -325,6 +333,15 @@ CrystalPlasticityStressUpdateBase::calculateTotalPlasticDeformationGradientDeriv
     dfpinvdslip[j] = -inverse_plastic_deformation_grad_old * _flow_direction[_qp][j];
     dfpinvdpk2 += (dfpinvdslip[j] * dslip_dtau[j] * _substep_dt).outerProduct(dtaudpk2[j]);
   }
+}
+
+void
+CrystalPlasticityStressUpdateBase::calculateEquivalentSlipIncrement(
+    RankTwoTensor & equivalent_slip_increment)
+{
+  // Sum up the slip increments to find the equivalent plastic strain due to slip
+  for (unsigned int i = 0; i < _number_slip_systems; ++i)
+    equivalent_slip_increment += _flow_direction[_qp][i] * _slip_increment[_qp][i] * _substep_dt;
 }
 
 void

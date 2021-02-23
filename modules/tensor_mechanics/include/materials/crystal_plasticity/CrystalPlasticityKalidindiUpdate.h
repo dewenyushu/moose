@@ -58,11 +58,7 @@ protected:
 
   virtual bool calculateSlipRate() override;
 
-  virtual void
-  calculateEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/) override;
-
-  virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & dslip_dtau,
-                                                   unsigned int slip_model_number = 0) override;
+  virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & dslip_dtau) override;
 
   // Cache the slip system value before the update for the diff in the convergence check
   virtual void cacheStateVariablesBeforeUpdate() override;
@@ -89,14 +85,6 @@ protected:
    * by comparing the change in the values over the iteration period.
    */
   virtual bool areConstitutiveStateVariablesConverged() override;
-
-  ///@{Slip system resistance
-  MaterialProperty<std::vector<Real>> & _slip_resistance;
-  const MaterialProperty<std::vector<Real>> & _slip_resistance_old;
-  ///@}
-
-  /// Current slip increment material property
-  MaterialProperty<std::vector<Real>> & _slip_increment;
 
   /**
    * Stores the values of the slip system resistance from the previous substep

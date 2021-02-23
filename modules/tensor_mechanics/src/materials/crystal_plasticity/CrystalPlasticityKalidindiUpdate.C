@@ -30,11 +30,6 @@ CrystalPlasticityKalidindiUpdate::validParams()
 CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
     const InputParameters & parameters)
   : CrystalPlasticityStressUpdateBase(parameters),
-    _slip_resistance(declareProperty<std::vector<Real>>(_base_name + "slip_resistance")),
-    _slip_resistance_old(
-        getMaterialPropertyOld<std::vector<Real>>(_base_name + "slip_resistance")),
-    _slip_increment(declareProperty<std::vector<Real>>(_base_name + "slip_increment")),
-
     // Constitutive values
     _r(getParam<Real>("r")),
     _h(getParam<Real>("h")),
@@ -56,16 +51,13 @@ CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
 void
 CrystalPlasticityKalidindiUpdate::initQpStatefulProperties()
 {
-  _slip_resistance[_qp].resize(_number_slip_systems);
-  _slip_increment[_qp].resize(_number_slip_systems);
+  CrystalPlasticityStressUpdateBase::initQpStatefulProperties();
 
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
   {
     _slip_resistance[_qp][i] = _gss_initial;
     _slip_increment[_qp][i] = 0.0;
   }
-
-  CrystalPlasticityStressUpdateBase::initQpStatefulProperties();
 }
 
 void
@@ -106,17 +98,8 @@ CrystalPlasticityKalidindiUpdate::calculateSlipRate()
 }
 
 void
-CrystalPlasticityKalidindiUpdate::calculateEquivalentSlipIncrement(
-    RankTwoTensor & equivalent_slip_increment)
-{
-  // Sum up the slip increments to find the equivalent plastic strain due to slip
-  for (unsigned int i = 0; i < _number_slip_systems; ++i)
-    equivalent_slip_increment += _flow_direction[_qp][i] * _slip_increment[_qp][i] * _substep_dt;
-}
-
-void
 CrystalPlasticityKalidindiUpdate::calculateConstitutiveSlipDerivative(
-    std::vector<Real> & dslip_dtau, unsigned int /*slip_model_number*/)
+    std::vector<Real> & dslip_dtau)
 {
   for (unsigned int i = 0; i < _number_slip_systems; ++i)
   {

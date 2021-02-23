@@ -136,7 +136,7 @@ public:
    */
   virtual bool calculateSlipRate() = 0;
 
-  virtual void calculateEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/) {}
+  void calculateEquivalentSlipIncrement(RankTwoTensor & /*equivalent_slip_increment*/);
 
   /*
    * This virtual method is called to find the derivative of the slip increment
@@ -144,8 +144,7 @@ public:
    * constiutive model defined in the child class.  This method must be overwritten
    * in the child class.
    */
-  virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & /*dslip_dtau*/,
-                                                   unsigned int /*slip_model_number*/ = 0) = 0;
+  virtual void calculateConstitutiveSlipDerivative(std::vector<Real> & /*dslip_dtau*/) = 0;
 
   /*
    * Finalizes the values of the state variables and slip system resistance
@@ -188,6 +187,14 @@ protected:
   Real _resistance_tol;
   /// Residual tolerance when variable value is zero. Default 1e-12.
   Real _zero_tol;
+
+  ///@{Slip system resistance
+  MaterialProperty<std::vector<Real>> & _slip_resistance;
+  const MaterialProperty<std::vector<Real>> & _slip_resistance_old;
+  ///@}
+
+  /// Current slip increment material property
+  MaterialProperty<std::vector<Real>> & _slip_increment;
 
   ///@{Slip system direction and normal and associated Schmid tensors
   DenseVector<Real> _slip_direction;
