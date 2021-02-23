@@ -30,10 +30,10 @@ CrystalPlasticityKalidindiUpdate::validParams()
 CrystalPlasticityKalidindiUpdate::CrystalPlasticityKalidindiUpdate(
     const InputParameters & parameters)
   : CrystalPlasticityStressUpdateBase(parameters),
-    _slip_resistance(declareProperty<std::vector<Real>>(_base_name + "slip_system_resistance")),
+    _slip_resistance(declareProperty<std::vector<Real>>(_base_name + "slip_resistance")),
     _slip_resistance_old(
-        getMaterialPropertyOld<std::vector<Real>>(_base_name + "slip_system_resistance")),
-    _slip_increment(declareProperty<std::vector<Real>>(_base_name + "plastic_slip_increment")),
+        getMaterialPropertyOld<std::vector<Real>>(_base_name + "slip_resistance")),
+    _slip_increment(declareProperty<std::vector<Real>>(_base_name + "slip_increment")),
 
     // Constitutive values
     _r(getParam<Real>("r")),

@@ -69,14 +69,14 @@
   [./gss]
     type = MaterialStdVectorAux
     variable = gss
-    property = slip_system_resistance
+    property = slip_resistance
     index = 0
     execute_on = timestep_end
   [../]
   [./slip_inc]
    type = MaterialStdVectorAux
    variable = slip_increment
-   property = plastic_slip_increment
+   property = slip_increment
    index = 0
    execute_on = timestep_end
   [../]

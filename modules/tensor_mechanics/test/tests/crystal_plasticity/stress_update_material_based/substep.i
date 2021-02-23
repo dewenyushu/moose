@@ -49,7 +49,7 @@
   [./gss]
     type = MaterialStdVectorAux
     variable = gss
-    property = slip_system_resistance
+    property = slip_resistance
     index = 0
     execute_on = timestep_end
   [../]
