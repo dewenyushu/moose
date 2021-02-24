@@ -30,7 +30,7 @@ CrystalPlasticitySlipRateGSS::CrystalPlasticitySlipRateGSS(const InputParameters
   : CrystalPlasticitySlipRate(parameters),
     _mat_prop_state_var(
         getMaterialProperty<std::vector<Real>>(parameters.get<std::string>("uo_state_var_name"))),
-    _pk2(getMaterialPropertyByName<RankTwoTensor>("pk2")),
+    // _pk2(getMaterialPropertyByName<RankTwoTensor>("pk2")),
     _a0(_variable_size),
     _xm(_variable_size),
     _flow_direction(getMaterialProperty<std::vector<RankTwoTensor>>(_name + "_flow_direction"))
@@ -161,12 +161,15 @@ CrystalPlasticitySlipRateGSS::calcFlowDirection(unsigned int qp,
 }
 
 bool
-CrystalPlasticitySlipRateGSS::calcSlipRate(unsigned int qp, Real dt, std::vector<Real> & val) const
+CrystalPlasticitySlipRateGSS::calcSlipRate(unsigned int qp,
+                                           Real dt,
+                                           std::vector<Real> & val,
+                                           RankTwoTensor & pk2) const
 {
   DenseVector<Real> tau(_variable_size);
 
   for (unsigned int i = 0; i < _variable_size; ++i)
-    tau(i) = _pk2[qp].doubleContraction(_flow_direction[qp][i]);
+    tau(i) = pk2.doubleContraction(_flow_direction[qp][i]);
 
   for (unsigned int i = 0; i < _variable_size; ++i)
   {
@@ -187,12 +190,13 @@ CrystalPlasticitySlipRateGSS::calcSlipRate(unsigned int qp, Real dt, std::vector
 bool
 CrystalPlasticitySlipRateGSS::calcSlipRateDerivative(unsigned int qp,
                                                      Real /*dt*/,
-                                                     std::vector<Real> & val) const
+                                                     std::vector<Real> & val,
+                                                     RankTwoTensor & pk2) const
 {
   DenseVector<Real> tau(_variable_size);
 
   for (unsigned int i = 0; i < _variable_size; ++i)
-    tau(i) = _pk2[qp].doubleContraction(_flow_direction[qp][i]);
+    tau(i) = pk2.doubleContraction(_flow_direction[qp][i]);
 
   for (unsigned int i = 0; i < _variable_size; ++i)
     val[i] = _a0(i) / _xm(i) *

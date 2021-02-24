@@ -100,6 +100,8 @@ FiniteStrainUObasedCP::FiniteStrainUObasedCP(const InputParameters & parameters)
 {
   _err_tol = false;
 
+  _substep_dt = 0.0;
+
   _delta_dfgrd.zero();
 
   // resize the material properties for each userobject
@@ -212,8 +214,6 @@ FiniteStrainUObasedCP::computeQpStress()
   unsigned int substep_iter = 1;
   // Calculated from substep_iter as 2^substep_iter
   unsigned int num_substep = 1;
-  // Store original _dt; Reset at the end of solve
-  Real dt_original = _dt;
 
   _dfgrd_tmp_old = _deformation_gradient_old[_qp];
   if (_dfgrd_tmp_old.det() == 0)
@@ -234,7 +234,7 @@ FiniteStrainUObasedCP::computeQpStress()
 
     preSolveQp();
 
-    _dt = dt_original / num_substep;
+    _substep_dt = _dt/ num_substep;
 
     for (unsigned int istep = 0; istep < num_substep; ++istep)
     {
@@ -253,8 +253,6 @@ FiniteStrainUObasedCP::computeQpStress()
     if (substep_iter > _max_substep_iter && _err_tol)
       throw MooseException("FiniteStrainUObasedCP: Constitutive failure.");
   } while (_err_tol);
-
-  _dt = dt_original;
 
   postSolveQp();
 }
@@ -366,6 +364,8 @@ FiniteStrainUObasedCP::isStateVariablesConverged()
 {
   Real diff;
 
+  bool val = false;
+
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
   {
     unsigned int n = (*_mat_prop_state_vars[i])[_qp].size();
@@ -374,13 +374,14 @@ FiniteStrainUObasedCP::isStateVariablesConverged()
       diff = std::abs((*_mat_prop_state_vars[i])[_qp][j] - _state_vars_prev[i][j]);
 
       if (std::abs(_state_vars_old_stored[i][j]) < _zero_tol && diff > _zero_tol)
-        return true;
+        val = true;
       if (std::abs(_state_vars_old_stored[i][j]) > _zero_tol &&
           diff > _stol * std::abs(_state_vars_old_stored[i][j]))
-        return true;
+        val = true;
     }
   }
-  return false;
+
+  return val;
 }
 
 void
@@ -495,7 +496,7 @@ FiniteStrainUObasedCP::updateSlipSystemResistanceAndStateVariable()
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
   {
     if (!_uo_state_vars[i]->updateStateVariable(
-            _qp, _dt, (*_mat_prop_state_vars[i])[_qp], _state_vars_old_stored[i]))
+            _qp, _substep_dt, (*_mat_prop_state_vars[i])[_qp], _state_vars_old_stored[i]))
       _err_tol = true;
   }
 
@@ -518,7 +519,7 @@ FiniteStrainUObasedCP::getSlipRates()
 {
   for (unsigned int i = 0; i < _num_uo_slip_rates; ++i)
   {
-    if (!_uo_slip_rates[i]->calcSlipRate(_qp, _dt, (*_mat_prop_slip_rates[i])[_qp]))
+    if (!_uo_slip_rates[i]->calcSlipRate(_qp, _substep_dt, (*_mat_prop_slip_rates[i])[_qp], _pk2[_qp]))
     {
       _err_tol = true;
       return;
@@ -537,7 +538,7 @@ FiniteStrainUObasedCP::calcResidual()
 
   for (unsigned int i = 0; i < _num_uo_slip_rates; ++i)
     for (unsigned int j = 0; j < _uo_slip_rates[i]->variableSize(); ++j)
-      eqv_slip_incr += (*_flow_direction[i])[_qp][j] * (*_mat_prop_slip_rates[i])[_qp][j] * _dt;
+      eqv_slip_incr += (*_flow_direction[i])[_qp][j] * (*_mat_prop_slip_rates[i])[_qp][j] * _substep_dt;
 
   eqv_slip_incr = iden - eqv_slip_incr;
   _fp_inv = _fp_old_inv * eqv_slip_incr;
@@ -576,12 +577,12 @@ FiniteStrainUObasedCP::calcJacobian()
     std::vector<RankTwoTensor> dtaudpk2(nss), dfpinvdslip(nss);
     std::vector<Real> dslipdtau;
     dslipdtau.resize(nss);
-    _uo_slip_rates[i]->calcSlipRateDerivative(_qp, _dt, dslipdtau);
+    _uo_slip_rates[i]->calcSlipRateDerivative(_qp, _substep_dt, dslipdtau, _pk2[_qp]);
     for (unsigned int j = 0; j < nss; j++)
     {
       dtaudpk2[j] = (*_flow_direction[i])[_qp][j];
       dfpinvdslip[j] = -_fp_old_inv * (*_flow_direction[i])[_qp][j];
-      dfpinvdpk2 += (dfpinvdslip[j] * dslipdtau[j] * _dt).outerProduct(dtaudpk2[j]);
+      dfpinvdpk2 += (dfpinvdslip[j] * dslipdtau[j] * _substep_dt).outerProduct(dtaudpk2[j]);
     }
   }
   _jac =

@@ -160,7 +160,7 @@ ComputeMultipleCrystalPlasticityStress::updateStress(RankTwoTensor & cauchy_stre
   _delta_deformation_gradient = _deformation_gradient[_qp] - _temporary_deformation_gradient_old;
 
   // Save the old stateful properties that are modified during sub stepping
-  //// Fix Me: state_var_old = state_var
+  //// Fix Me: state_var_old =
 
   // Loop through all models and calculate the schmid tensor for the current state of the crystal
   // lattice
@@ -284,16 +284,17 @@ ComputeMultipleCrystalPlasticityStress::solveStateVariables()
     if (_error_tolerance)
       return;
 
+    // iter_flag = false; // iter_flag = false only when all models returns false
     for (unsigned int i = 0; i < _num_models; ++i)
     {
-      // returns false if all values are converged and good to go
-      if (_models[i]->areConstitutiveStateVariablesConverged())
-      {
-        iter_flag = true;
-        break;
-      }
-      else
-        iter_flag = false; // iter_flag = false only when all models returns false
+      // // returns false if all values are converged and good to go
+      // if (_models[i]->areConstitutiveStateVariablesConverged())
+      // {
+      //   iter_flag = true;
+      //   break;
+      // }
+
+      iter_flag = _models[i]->areConstitutiveStateVariablesConverged();
     }
 
     if (iter_flag)
@@ -440,10 +441,9 @@ ComputeMultipleCrystalPlasticityStress::calcResidual()
     equivalent_slip_increment += equivalent_slip_increment_per_model;
   }
 
-  RankTwoTensor residual_equivalent_slip_increment =
-      RankTwoTensor::Identity() - equivalent_slip_increment;
+  equivalent_slip_increment = RankTwoTensor::Identity() - equivalent_slip_increment;
   _inverse_plastic_deformation_grad =
-      _inverse_plastic_deformation_grad_old * residual_equivalent_slip_increment;
+      _inverse_plastic_deformation_grad_old * equivalent_slip_increment;
 
   _elastic_deformation_gradient =
       _temporary_deformation_gradient * _inverse_plastic_deformation_grad;
