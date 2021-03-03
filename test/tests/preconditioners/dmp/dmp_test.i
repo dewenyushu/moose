@@ -100,11 +100,8 @@
     full = true
     variable = 'lm'
     coupled_variable = 'u'
-    secondary_subdomain = 1
-    secondary_boundary = 10
-    primary_subdomain = 2
-    primary_boundary = 20
     preconditioner = 'AMG'
+    is_diagonal = true
   [../]
 []
 

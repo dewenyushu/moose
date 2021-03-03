@@ -21,8 +21,8 @@ vy = 0.1
   [./left_block_sidesets]
     type = RenameBoundaryGenerator
     input = left_block
-    old_boundary_id = '0 1 2 3'
-    new_boundary_id = '10 11 12 13'
+    old_boundary = '0 1 2 3'
+    new_boundary = '10 11 12 13'
   [../]
   [./left_block_id]
     type = SubdomainIDGenerator
@@ -43,8 +43,8 @@ vy = 0.1
   [right_block_sidesets]
     type = RenameBoundaryGenerator
     input = right_block
-    old_boundary_id = '0 1 2 3'
-    new_boundary_id = '20 21 22 23'
+    old_boundary = '0 1 2 3'
+    new_boundary = '20 21 22 23'
   []
   [./right_block_id]
     type = SubdomainIDGenerator
@@ -168,7 +168,7 @@ vy = 0.1
   type = Transient
   solve_type = 'NEWTON'
 
-  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew -snes_fd'
+  petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_ksp_ew'
 
   petsc_options_iname = '-pc_type -pc_factor_shift_type -pc_factor_shift_amount'
   petsc_options_value = 'lu NONZERO   1e-15'

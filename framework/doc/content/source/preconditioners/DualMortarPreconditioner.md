@@ -17,12 +17,29 @@ The Dual Mortar Preconditioner (DMP) is designed to allow the usage of scalable 
 []
 ```
 
+Or setting the `use_dual = true` in the `Contact` block when we are using mortar-based contact:
+
+```
+[Contact]
+  [leftright]
+    mesh = combined_mesh
+    secondary = '11'
+    primary = '23'
+
+    use_dual = true
+
+    formulation = mortar
+    model = frictionless
+  [../]
+[]
+```
+
 ## Example Input File Syntax
 
 !listing moose/test/tests/preconditioners/dmp/dmp_test.i block=Preconditioning
 
 
-This initial implementation of DMP works for `EqualValueConstraint` and requires the information about the primary and secondary subdomains. Making it compatible for more complicated problems, such as mortar-based thermal and mechanical contact, remains an ongoing effort.
+This initial implementation of DMP allows usage of +boomeramg+ for `EqualValueConstraint` and has been tested to work for small-scale mortar-based mechanical and thermal-mechanical contact problems.
 
 !syntax parameters /Preconditioning/DMP
 

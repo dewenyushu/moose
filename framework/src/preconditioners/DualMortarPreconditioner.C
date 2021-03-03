@@ -33,6 +33,8 @@
 #include "libmesh/parallel_object.h"
 #include "libmesh/boundary_info.h"
 
+#include <petscmat.h>
+
 registerMooseObjectAliased("MooseApp", DualMortarPreconditioner, "DMP");
 
 defineLegacyParams(DualMortarPreconditioner);
@@ -65,11 +67,17 @@ DualMortarPreconditioner::validParams()
                         "Set to true if you want the full set of couplings.  Simply "
                         "for convenience so you don't have to set every "
                         "off_diag_row and off_diag_column combination.");
-  params.addRequiredParam<BoundaryID>("primary_boundary", "Primary side of the contact interface.");
-  params.addRequiredParam<BoundaryID>("secondary_boundary",
-                                      "Secondary side of the contact interface.");
-  params.addRequiredParam<SubdomainID>("primary_subdomain", "Primary subdomain.");
-  params.addRequiredParam<SubdomainID>("secondary_subdomain", "Secondary subdomain.");
+
+  params.addParam<bool>("is_diagonal",
+                        false,
+                        "Set to true if you are sure the coupling matrix between variable and "
+                        "coupled variable is strict diagonal. This will speedup the linear solve. "
+                        "Otherwise set to false to ensure linear solve accuracy.");
+  params.addParam<bool>(
+      "adaptive_condensation",
+      true,
+      "By default DMP will check the Jacobian and only condense the rows with zero diagonals. Set "
+      "to false if you want to condense out all the specified variable dofs.");
   params.addRequiredParam<std::vector<std::string>>("preconditioner", "Preconditioner type.");
   params.addRequiredParam<std::vector<std::string>>(
       "variable",
@@ -88,6 +96,8 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
     _nl(_fe_problem.getNonlinearSystemBase()),
     _mesh(&_fe_problem.mesh()),
     _dofmap(&_nl.system().get_dof_map()),
+    _is_diagonal(getParam<bool>("is_diagonal")),
+    _adaptive_condensation(getParam<bool>("adaptive_condensation")),
     _n_vars(_nl.nVariables()),
     _var_names(getParam<std::vector<std::string>>("variable")),
     _cp_var_names(getParam<std::vector<std::string>>("coupled_variable")),
@@ -100,24 +110,11 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
     _y_hat(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _r2c(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _lambda(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
-    _primary_boundary(getParam<BoundaryID>("primary_boundary")),
-    _secondary_boundary(getParam<BoundaryID>("secondary_boundary")),
-    _primary_subdomain(getParam<SubdomainID>("primary_subdomain")),
-    _secondary_subdomain(getParam<SubdomainID>("secondary_subdomain")),
     _save_dofs(false),
+    _need_condense(true),
     _init_timer(registerTimedSection("init", 2)),
     _apply_timer(registerTimedSection("apply", 1))
 {
-  // check if SubdomainID & BoundaryID & variable name are valid
-  if (_mesh->meshSubdomains().find(_secondary_subdomain) == _mesh->meshSubdomains().end())
-    mooseError("secondary subdomain ID ", _secondary_subdomain, " does not exist.");
-  if (_mesh->meshSubdomains().find(_primary_subdomain) == _mesh->meshSubdomains().end())
-    mooseError("primary subdomain ID ", _primary_subdomain, " does not exist.");
-  if (_mesh->getBoundaryIDs().find(_secondary_boundary) == _mesh->getBoundaryIDs().end())
-    mooseError("Secondary boundary ID ", _secondary_boundary, " does not exist.");
-  if (_mesh->getBoundaryIDs().find(_primary_boundary) == _mesh->getBoundaryIDs().end())
-    mooseError("Secondary boundary ID ", _primary_boundary, " does not exist.");
-
   if (_var_names.size() != _cp_var_names.size())
     paramError("coupled_variable", "coupled_variable should have the same size as the variable.");
 
@@ -205,78 +202,78 @@ DualMortarPreconditioner::~DualMortarPreconditioner() { this->clear(); }
 void
 DualMortarPreconditioner::getDofToCondense()
 {
+  // clean the containers if we want to update the dofs
+  if (!_glm.empty())
+    _glm.clear();
+  if (!_lm.empty())
+    _lm.clear();
+  if (!_gu2c.empty())
+    _gu2c.clear();
+  if (!_u2c.empty())
+    _u2c.clear();
+  if (!_map_glm_gu2c.empty())
+    _map_glm_gu2c.clear();
+  if (!_map_gu2c_glm.empty())
+    _map_gu2c_glm.clear();
+  if (!_map_gu2c_to_order.empty())
+    _map_gu2c_to_order.clear();
+
   NodeRange * active_nodes = _mesh->getActiveNodeRange();
-  for (auto var_id : _var_ids)
+
+  // loop through the variable ids
+  for (auto vn : index_range(_var_ids))
     for (const auto & node : *active_nodes)
     {
       std::vector<dof_id_type> di;
+      std::vector<dof_id_type> cp_di;
+      auto var_id = _var_ids[vn];
+      auto cp_var_id = _cp_var_ids[vn];
+      // get var and cp_var dofs associated with this node
       _dofmap->dof_indices(node, di, var_id);
-      for (auto index : di)
+      // skip when di is empty
+      if (di.empty())
+        continue;
+      _dofmap->dof_indices(node, cp_di, cp_var_id);
+      if (cp_di.size() != di.size())
+        mooseError("variable and coupled variable do not have the same number of dof on node ",
+                   node->id(),
+                   ".");
+      for (auto i : index_range(di))
       {
-        _glm.push_back(index);
-        if (_dofmap->local_index(index))
-          _lm.push_back(index);
+        // when we have adaptive condensation, skip when di does not contain any indices in
+        // _zero_rows
+        if (std::find(_zero_rows.begin(), _zero_rows.end(), di[i]) == _zero_rows.end() &&
+            _adaptive_condensation)
+          break;
+        _glm.push_back(di[i]);
+        if (_dofmap->local_index(di[i]))
+          _lm.push_back(di[i]);
+
+        // save the corresponding coupled dof indices
+        _gu2c.push_back(cp_di[i]);
+        if (_dofmap->local_index(cp_di[i]))
+          _u2c.push_back(cp_di[i]);
+        _map_glm_gu2c.insert(std::make_pair(di[i], cp_di[i]));
+        _map_gu2c_glm.insert(std::make_pair(cp_di[i], di[i]));
       }
     }
+
+  // check if we endup with none dof to condense
+  if (_glm.empty())
+  {
+    _need_condense = false;
+#ifdef DEBUG
+    mooseWarning("The variable provided do not have a saddle-point character. DMP will "
+                 "continue without condensing the dofs.");
+#endif
+    return;
+  }
+  else
+    _need_condense = true;
+
   std::sort(_glm.begin(), _glm.end());
   std::sort(_lm.begin(), _lm.end());
-}
 
-void
-DualMortarPreconditioner::getDofInterface()
-{
-  // loop over boundary nodes
-  ConstBndNodeRange & range = *_mesh->getBoundaryNodeRange();
-  std::vector<dof_id_type> di;
-  for (const auto & bnode : range)
-  {
-    const Node * node_bdry = bnode->_node;
-    BoundaryID boundary_id = bnode->_bnd_id;
-    // save dofs on the primary boundary for the coupled variable dofs
-    if (boundary_id == _primary_boundary)
-    {
-      for (auto vn : _cp_var_ids)
-      {
-        _dofmap->dof_indices(node_bdry, di, vn);
-        for (auto index : di)
-        {
-          _gu1c.push_back(index);
-          if (_dofmap->local_index(index))
-            _u1c.push_back(index);
-        }
-      }
-    }
-
-    if (boundary_id == _secondary_boundary)
-    {
-      // loop through coupled variable ids
-      for (auto i : index_range(_cp_var_ids))
-      {
-        auto cp_vn = _cp_var_ids[i];
-        auto vn = _var_ids[i];
-        // get coupled var dof
-        std::vector<dof_id_type> cp_di;
-        _dofmap->dof_indices(node_bdry, cp_di, cp_vn);
-        // get corresponding lm dof
-        _dofmap->dof_indices(node_bdry, di, vn);
-        if (cp_di.size() != di.size())
-          mooseError("variable and coupled variable do not have the same number of dof on node ",
-                     node_bdry->id(),
-                     ".");
-        for (auto i : index_range(cp_di))
-        {
-          _gu2c.push_back(cp_di[i]);
-          if (_dofmap->local_index(cp_di[i]))
-            _u2c.push_back(cp_di[i]);
-          _map_glm_gu2c.insert(std::make_pair(di[i], cp_di[i]));
-          _map_gu2c_glm.insert(std::make_pair(cp_di[i], di[i]));
-        }
-      }
-    }
-  }
-
-  std::sort(_gu1c.begin(), _gu1c.end());
-  std::sort(_u1c.begin(), _u1c.end());
   std::sort(_gu2c.begin(), _gu2c.end());
   std::sort(_u2c.begin(), _u2c.end());
 
@@ -287,6 +284,15 @@ DualMortarPreconditioner::getDofInterface()
 void
 DualMortarPreconditioner::getDofColRow()
 {
+  // clean the containers if we want to update the dofs
+  if (!_grows.empty())
+    _grows.clear();
+  if (!_rows.empty())
+    _rows.clear();
+  if (!_gcols.empty())
+    _gcols.clear();
+  if (!_cols.empty())
+    _cols.clear();
   // row: all without u2c
   // col: all without lm
   for (numeric_index_type i = 0; i < _dofmap->n_dofs(); ++i)
@@ -321,17 +327,6 @@ void
 DualMortarPreconditioner::init()
 {
   TIME_SECTION(_init_timer);
-  if (!_save_dofs)
-  {
-    // save necessary dofs
-    getDofToCondense();
-    getDofInterface();
-
-    // get condensed dofs for rows and cols
-    getDofColRow();
-
-    _save_dofs = true;
-  }
 
   if (!_preconditioner)
     _preconditioner =
@@ -344,35 +339,40 @@ void
 DualMortarPreconditioner::condenseSystem()
 {
   // extract _M from the original matrix
-  _matrix->create_submatrix(*_M, _u1c, _lm);
+  _matrix->create_submatrix(*_M, _rows, _lm);
 
   // get the row associated with u2c
   _u2c_rows->init(_gu2c.size(), _gcols.size(), _u2c.size(), _cols.size());
   MatSetOption(_u2c_rows->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   _matrix->create_submatrix_nosort(*_u2c_rows, _gu2c, _gcols);
 
-  // invert _D:
-  // _D should be strictly diagonal if dual_mortar approach is utilized
-  // so we only need to compute the reciprocal number of the diagonal entries
-  // to save memory, no new matrix is created
   _matrix->create_submatrix(*_D, _u2c, _lm);
 
-  auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
-  // Allocate storage
-  diag_D->init(_D->n(), _D->local_n(), false, PARALLEL);
-  // Fill entries
-  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-    diag_D->set(_map_gu2c_to_order.at(_gu2c[i]), (*_D)(i, _map_gu2c_to_order.at(_gu2c[i])));
+  if (_is_diagonal)
+  {
+    // _D should be strictly diagonal if dual_mortar approach is utilized
+    // so we only need to compute the reciprocal number of the diagonal entries
+    computeDInverseDiag();
+  }
+  else
+  {
+    // for general cases when we condense LMs, D is not necessarily diagonal
+    // compute the inverse of D using MatMatSolve()
+    computeDInverse();
+  }
+  PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
+  _D_inv.close();
 
-  _D->zero();
-
-  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
-      _D->set(i, _map_gu2c_to_order.at(_gu2c[i]), 1.0 / (*diag_D)(i));
-  _D->close();
-
-  // compute MDinv=_M*_D
-  _M->matrix_matrix_mult(*_D, *_MDinv); // (should use empty initializer for _MDinv)
+#ifdef DEBUG
+  // check if we get the inversion correctly
+  PetscMatrix<Number> I(MoosePreconditioner::_communicator);
+  _D->matrix_matrix_mult(_D_inv, I);
+  for (unsigned int i = I.row_start(); i < I.row_stop(); ++i)
+    if (!MooseUtils::absoluteFuzzyEqual(I(i, i), 1.0))
+      mooseError("Inverse of D is wrong.");
+#endif
+  // compute MDinv=_M*_Dinv
+  _M->matrix_matrix_mult(_D_inv, *_MDinv);
 
   // initialize _J_condensed
   _J_condensed->init(_grows.size(), _gcols.size(), _rows.size(), _cols.size());
@@ -386,15 +386,14 @@ DualMortarPreconditioner::condenseSystem()
   _MDinv->matrix_matrix_mult(*_u2c_rows, *MDinv_u2c_rows);
 
   // add changed parts to _J_condensed
-  // original system row_id: u1c
+  // original system row_id: _grows
   // original system col_id: _gcols
-  // std::vector<numeric_index_type> row_id_cond, col_id_cond_u2i, col_id_cond_u2c;
   std::map<numeric_index_type, numeric_index_type> row_id_mp, col_id_mp;
 
-  for (auto it : index_range(_gu1c))
+  for (auto it : index_range(_grows))
   {
     numeric_index_type lid = static_cast<numeric_index_type>(it);
-    auto it_row = find(_grows.begin(), _grows.end(), _gu1c[it]);
+    auto it_row = find(_grows.begin(), _grows.end(), _grows[it]);
     if (it_row != _grows.end())
     {
       numeric_index_type gid = std::distance(_grows.begin(), it_row);
@@ -402,7 +401,7 @@ DualMortarPreconditioner::condenseSystem()
         row_id_mp.insert(std::make_pair(lid, gid));
     }
     else
-      mooseError("DOF ", _gu1c[it], " does not exist in the rows of the condensed system");
+      mooseError("DOF ", _grows[it], " does not exist in the rows of the condensed system");
   }
 
   // map for cols
@@ -430,14 +429,30 @@ DualMortarPreconditioner::print_node_info()
 void
 DualMortarPreconditioner::setup()
 {
-  condenseSystem();
+  if (_adaptive_condensation)
+    findZeroDiagonals(*_matrix, _zero_rows);
 
-  // make sure diagonal entries are not empty
-  for (auto i = _J_condensed->row_start(); i < _J_condensed->row_stop(); ++i)
-    _J_condensed->add(i, i, 0.0);
-  _J_condensed->close();
+  // save dofs that are to be condensed out
+  getDofToCondense();
 
-  _preconditioner->set_matrix(*_J_condensed);
+  // solve the condensed system only when needed, otherwise solve the original system
+  if (_need_condense)
+  {
+    // get condensed dofs for rows and cols
+    getDofColRow();
+
+    condenseSystem();
+
+    // make sure diagonal entries are not empty
+    for (auto i = _J_condensed->row_start(); i < _J_condensed->row_stop(); ++i)
+      _J_condensed->add(i, i, 0.0);
+    _J_condensed->close();
+
+    _preconditioner->set_matrix(*_J_condensed);
+  }
+  else
+    _preconditioner->set_matrix(*_matrix);
+
   _preconditioner->set_type(_pre_type);
   _preconditioner->init();
 }
@@ -447,13 +462,20 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 {
   TIME_SECTION(_apply_timer);
 
-  getCondensedXY(y, x);
+  if (_need_condense)
+  {
+    getCondensedXY(y, x);
 
-  _preconditioner->apply(*_y_hat, *_x_hat);
+    _preconditioner->apply(*_y_hat, *_x_hat);
 
-  computeCondensedVariables();
+    computeCondensedVariables();
 
-  getFullSolution(y, x);
+    getFullSolution(y, x);
+  }
+  else
+  {
+    _preconditioner->apply(y, x);
+  }
 }
 
 void
@@ -486,7 +508,7 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
   std::vector<Number> vals;
   for (auto idx = mdinv_r2c->first_local_index(); idx < mdinv_r2c->last_local_index(); ++idx)
   {
-    dof_indices.push_back(_gu1c[idx]);
+    dof_indices.push_back(_grows[idx]);
     vals.push_back(-(*mdinv_r2c)(idx)); // note the minus sign here
   }
 
@@ -501,6 +523,8 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 void
 DualMortarPreconditioner::computeCondensedVariables()
 {
+  PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
+
   _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
 
   std::unique_ptr<NumericVector<Number>> u2c_rows_x_hat(
@@ -511,7 +535,7 @@ DualMortarPreconditioner::computeCondensedVariables()
 
   (*_r2c) -= (*u2c_rows_x_hat);
   _r2c->close();
-  _D->vector_mult(*_lambda, *_r2c);
+  _D_inv.vector_mult(*_lambda, *_r2c);
   _lambda->close();
 }
 
@@ -540,6 +564,140 @@ DualMortarPreconditioner::getFullSolution(const NumericVector<Number> & /*y*/,
 }
 
 void
+DualMortarPreconditioner::findZeroDiagonals(SparseMatrix<Number> & mat,
+                                            std::vector<numeric_index_type> & indices)
+{
+  indices.clear();
+  IS zerodiags, zerodiags_all;
+  PetscErrorCode ierr;
+  const PetscInt * petsc_idx;
+  PetscInt nrows;
+  // make sure we have a petsc matrix
+  PetscMatrix<Number> * petsc_mat = cast_ptr<PetscMatrix<Number> *>(&mat);
+  ierr = MatFindZeroDiagonals(petsc_mat->mat(), &zerodiags);
+  LIBMESH_CHKERR(ierr);
+  // synchronize all indices
+  ierr = ISAllGather(zerodiags, &zerodiags_all);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISGetIndices(zerodiags_all, &petsc_idx);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISGetSize(zerodiags_all, &nrows);
+  LIBMESH_CHKERR(ierr);
+
+  for (PetscInt i = 0; i < nrows; ++i)
+    indices.push_back(static_cast<numeric_index_type>(petsc_idx[i]));
+
+  ISRestoreIndices(zerodiags_all, &petsc_idx);
+  LIBMESH_CHKERR(ierr);
+}
+
+void
 DualMortarPreconditioner::clear()
 {
+}
+
+void
+DualMortarPreconditioner::computeDInverse()
+{
+  PetscErrorCode ierr;
+  Mat F, I;
+  IS perm, iperm;
+  MatFactorInfo info;
+
+  // Create an identity matrix as the right-hand-side
+  ierr = MatCreateDense(PETSC_COMM_WORLD,
+                        static_cast<PetscInt>(_D->local_m()),
+                        static_cast<PetscInt>(_D->local_m()),
+                        static_cast<PetscInt>(_D->m()),
+                        static_cast<PetscInt>(_D->m()),
+                        NULL,
+                        &I);
+  LIBMESH_CHKERR(ierr);
+
+  for (unsigned int i = 0; i < _D->m(); ++i)
+  {
+    ierr = MatSetValue(I, static_cast<PetscInt>(i), static_cast<PetscInt>(i), 1.0, INSERT_VALUES);
+    LIBMESH_CHKERR(ierr);
+  }
+
+  ierr = MatAssemblyBegin(I, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatAssemblyEnd(I, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+
+  // Factorize D
+  ierr = MatGetOrdering(_D->mat(), MATORDERINGND, &perm, &iperm);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatFactorInfoInitialize(&info);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatGetFactor(_D->mat(), MATSOLVERMUMPS, MAT_FACTOR_LU, &F);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatLUFactorSymbolic(F, _D->mat(), perm, iperm, &info);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatLUFactorNumeric(F, _D->mat(), &info);
+  LIBMESH_CHKERR(ierr);
+
+  // Initialize Dinv
+  ierr = MatCreateDense(PETSC_COMM_WORLD,
+                        static_cast<PetscInt>(_D->local_n()),
+                        static_cast<PetscInt>(_D->local_m()),
+                        static_cast<PetscInt>(_D->n()),
+                        static_cast<PetscInt>(_D->m()),
+                        NULL,
+                        &_Dinv);
+  LIBMESH_CHKERR(ierr);
+
+  // Solve for Dinv
+  ierr = MatMatSolve(F, I, _Dinv);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatDestroy(&I);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatDestroy(&F);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&perm);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&iperm);
+  LIBMESH_CHKERR(ierr);
+}
+
+void
+DualMortarPreconditioner::computeDInverseDiag()
+{
+  PetscErrorCode ierr;
+  auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);
+  // Allocate storage
+  diag_D->init(_D->m(), _D->local_m(), false, PARALLEL);
+  // Fill entries
+  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
+    diag_D->set(_map_gu2c_to_order.at(_gu2c[i]), (*_D)(i, _map_gu2c_to_order.at(_gu2c[i])));
+
+  // initialize _Dinv
+  ierr = MatCreateAIJ(PETSC_COMM_WORLD,
+                      static_cast<PetscInt>(_D->local_n()),
+                      static_cast<PetscInt>(_D->local_m()),
+                      static_cast<PetscInt>(_D->n()),
+                      static_cast<PetscInt>(_D->m()),
+                      static_cast<PetscInt>(1),
+                      NULL,
+                      static_cast<PetscInt>(0),
+                      NULL,
+                      &_Dinv);
+
+  for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
+    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
+      ierr = MatSetValue(_Dinv,
+                         static_cast<PetscInt>(i),
+                         static_cast<PetscInt>(_map_gu2c_to_order.at(_gu2c[i])),
+                         static_cast<PetscScalar>(1.0 / (*diag_D)(i)),
+                         INSERT_VALUES);
+
+  ierr = MatAssemblyBegin(_Dinv, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatAssemblyEnd(_Dinv, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
 }

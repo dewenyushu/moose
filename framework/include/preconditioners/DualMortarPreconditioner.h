@@ -71,19 +71,26 @@ protected:
   void getDofToCondense();
 
   /**
-   * Get dofs for the primary variable on the interface
-   */
-  void getDofInterface();
-
-  /**
    * Get row and col dofs for the condensed system
    */
   void getDofColRow();
 
   /**
+   * Check if the original jacobian has zero diagonal entries and save the row indices
+   */
+  void findZeroDiagonals(SparseMatrix<Number> & mat, std::vector<numeric_index_type> & indices);
+
+  /**
    * Reconstruct the equation system
    */
   void condenseSystem();
+
+  /**
+   * Compute inverse of D
+   */
+  void computeDInverse();
+
+  void computeDInverseDiag();
 
   /**
    * Get condensed x and y
@@ -114,6 +121,12 @@ protected:
   /// DofMap for easy reference
   DofMap * _dofmap;
 
+  /// Whether the coupling is diagonal
+  const bool _is_diagonal;
+
+  /// Whether to condense all specified variable
+  const bool _adaptive_condensation;
+
   /// Number of variables
   unsigned int _n_vars;
 
@@ -128,6 +141,8 @@ protected:
   /// Submatrices that are frequently needed while computing the condensed system
   std::unique_ptr<PetscMatrix<Number>> _D, _M, _MDinv, _u2c_rows;
 
+  Mat _Dinv;
+
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;
 
@@ -135,14 +150,14 @@ protected:
   /// Vector for lambda, and part of RHS that is associated with lambda
   std::unique_ptr<NumericVector<Number>> _x_hat, _y_hat, _r2c, _lambda;
 
-  /// Interface boundary IDs
-  const BoundaryID _primary_boundary, _secondary_boundary;
-
-  /// Subdomain IDs
-  const SubdomainID _primary_subdomain, _secondary_subdomain;
+  // check zero diagonal entries in the original Jacobian matrix and save the indices
+  std::vector<numeric_index_type> _zero_rows;
 
   /// Whether DOFs info has been saved, make sure only saving the dof info when needed
   mutable bool _save_dofs;
+
+  /// Whether the DOFs associated the variable are to be condensed
+  mutable bool _need_condense;
 
   /// Which preconditioner to use for the solve
   PreconditionerType _pre_type;
@@ -153,7 +168,7 @@ protected:
   /// indices associated with lagrange multipliers, and primary variable on the interface
   /// _g+<variable_name> represents the indices that are owned by all processors
   /// _<variable_name> represents the indices that are owned only by this processor
-  std::vector<numeric_index_type> _glm, _lm, _gu1c, _u1c, _gu2c, _u2c;
+  std::vector<numeric_index_type> _glm, _lm, _gu2c, _u2c;
 
   /// row and column indices for the condensed system
   std::vector<numeric_index_type> _grows, _rows, _gcols, _cols;
