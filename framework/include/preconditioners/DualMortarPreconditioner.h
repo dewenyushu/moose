@@ -139,9 +139,7 @@ protected:
   std::vector<unsigned int> _cp_var_ids;
 
   /// Submatrices that are frequently needed while computing the condensed system
-  std::unique_ptr<PetscMatrix<Number>> _D, _M, _MDinv, _u2c_rows;
-
-  Mat _Dinv;
+  std::unique_ptr<PetscMatrix<Number>> _D, _M, _D_inv, _MDinv, _u2c_rows;
 
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;

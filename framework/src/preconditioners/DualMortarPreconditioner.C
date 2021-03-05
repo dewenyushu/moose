@@ -103,6 +103,7 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
     _cp_var_names(getParam<std::vector<std::string>>("coupled_variable")),
     _D(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _M(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
+    _D_inv(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _MDinv(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _u2c_rows(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _J_condensed(libmesh_make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
@@ -348,6 +349,8 @@ DualMortarPreconditioner::condenseSystem()
 
   _matrix->create_submatrix(*_D, _u2c, _lm);
 
+  _D_inv->init(_D->n(), _D->m(), _D->local_n(), _D->local_m());
+  MatSetOption(_D_inv->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   if (_is_diagonal)
   {
     // _D should be strictly diagonal if dual_mortar approach is utilized
@@ -360,19 +363,19 @@ DualMortarPreconditioner::condenseSystem()
     // compute the inverse of D using MatMatSolve()
     computeDInverse();
   }
-  PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
-  _D_inv.close();
+  // PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
+  _D_inv->close();
 
 #ifdef DEBUG
   // check if we get the inversion correctly
   PetscMatrix<Number> I(MoosePreconditioner::_communicator);
-  _D->matrix_matrix_mult(_D_inv, I);
+  _D->matrix_matrix_mult(*_D_inv, I);
   for (unsigned int i = I.row_start(); i < I.row_stop(); ++i)
     if (!MooseUtils::absoluteFuzzyEqual(I(i, i), 1.0))
       mooseError("Inverse of D is wrong.");
 #endif
   // compute MDinv=_M*_Dinv
-  _M->matrix_matrix_mult(_D_inv, *_MDinv);
+  _M->matrix_matrix_mult(*_D_inv, *_MDinv);
 
   // initialize _J_condensed
   _J_condensed->init(_grows.size(), _gcols.size(), _rows.size(), _cols.size());
@@ -523,7 +526,7 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 void
 DualMortarPreconditioner::computeCondensedVariables()
 {
-  PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
+  // PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
 
   _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
 
@@ -535,7 +538,7 @@ DualMortarPreconditioner::computeCondensedVariables()
 
   (*_r2c) -= (*u2c_rows_x_hat);
   _r2c->close();
-  _D_inv.vector_mult(*_lambda, *_r2c);
+  _D_inv->vector_mult(*_lambda, *_r2c);
   _lambda->close();
 }
 
@@ -600,7 +603,7 @@ void
 DualMortarPreconditioner::computeDInverse()
 {
   PetscErrorCode ierr;
-  Mat F, I;
+  Mat F, I, Dinv;
   IS perm, iperm;
   MatFactorInfo info;
 
@@ -648,16 +651,27 @@ DualMortarPreconditioner::computeDInverse()
                         static_cast<PetscInt>(_D->n()),
                         static_cast<PetscInt>(_D->m()),
                         NULL,
-                        &_Dinv);
+                        &Dinv);
   LIBMESH_CHKERR(ierr);
 
   // Solve for Dinv
-  ierr = MatMatSolve(F, I, _Dinv);
+  ierr = MatMatSolve(F, I, Dinv);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatAssemblyBegin(Dinv, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatAssemblyEnd(Dinv, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+
+  // copy value to _D_inv
+  ierr = MatCopy(Dinv, _D_inv->mat(), SAME_NONZERO_PATTERN);
   LIBMESH_CHKERR(ierr);
 
   ierr = MatDestroy(&I);
   LIBMESH_CHKERR(ierr);
   ierr = MatDestroy(&F);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatDestroy(&Dinv);
   LIBMESH_CHKERR(ierr);
   ierr = ISDestroy(&perm);
   LIBMESH_CHKERR(ierr);
@@ -676,28 +690,19 @@ DualMortarPreconditioner::computeDInverseDiag()
   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
     diag_D->set(_map_gu2c_to_order.at(_gu2c[i]), (*_D)(i, _map_gu2c_to_order.at(_gu2c[i])));
 
-  // initialize _Dinv
-  ierr = MatCreateAIJ(PETSC_COMM_WORLD,
-                      static_cast<PetscInt>(_D->local_n()),
-                      static_cast<PetscInt>(_D->local_m()),
-                      static_cast<PetscInt>(_D->n()),
-                      static_cast<PetscInt>(_D->m()),
-                      static_cast<PetscInt>(1),
-                      NULL,
-                      static_cast<PetscInt>(0),
-                      NULL,
-                      &_Dinv);
-
   for (numeric_index_type i = _D->row_start(); i < _D->row_stop(); ++i)
-    if (!MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
-      ierr = MatSetValue(_Dinv,
-                         static_cast<PetscInt>(i),
-                         static_cast<PetscInt>(_map_gu2c_to_order.at(_gu2c[i])),
-                         static_cast<PetscScalar>(1.0 / (*diag_D)(i)),
-                         INSERT_VALUES);
+  {
+    if (MooseUtils::absoluteFuzzyEqual((*diag_D)(i), 0.0))
+      mooseError("Trying to compute reciprocal of 0.");
+    ierr = MatSetValue(_D_inv->mat(),
+                       static_cast<PetscInt>(i),
+                       static_cast<PetscInt>(_map_gu2c_to_order.at(_gu2c[i])),
+                       static_cast<PetscScalar>(1.0 / (*diag_D)(i)),
+                       INSERT_VALUES);
+  }
 
-  ierr = MatAssemblyBegin(_Dinv, MAT_FINAL_ASSEMBLY);
+  ierr = MatAssemblyBegin(_D_inv->mat(), MAT_FINAL_ASSEMBLY);
   LIBMESH_CHKERR(ierr);
-  ierr = MatAssemblyEnd(_Dinv, MAT_FINAL_ASSEMBLY);
+  ierr = MatAssemblyEnd(_D_inv->mat(), MAT_FINAL_ASSEMBLY);
   LIBMESH_CHKERR(ierr);
 }
