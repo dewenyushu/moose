@@ -95,8 +95,8 @@
 []
 
 [Preconditioning]
-  [./dmp]
-    type = DMP
+  [./vcp]
+    type = VCP
     full = true
     variable = 'lm'
     coupled_variable = 'u'

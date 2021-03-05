@@ -1,6 +1,6 @@
 [Tests]
   issues = '#15215'
-  design = 'ContactAction.md DualMortarPreconditioner.md'
+  design = 'ContactAction.md VariableCondensationPreconditioner.md'
   [dm_contact]
     type = 'CSVDiff'
     input = 'dm_mechanical_contact.i'
@@ -25,6 +25,6 @@
     csvdiff = 'mortar_frictionless_contact_out.csv'
     rel_err = 1e-4
     cli_args = 'Outputs/file_base=mortar_frictionless_contact_out'
-    requirement = 'The system shall converge and match the solution with the standard methods using the dual mortar preconditioner with AMG.'
+    requirement = 'The system shall converge and match the solution with the standard methods using variable condenstation with AMG.'
   []
 []

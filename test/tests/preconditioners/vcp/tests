@@ -1,11 +1,11 @@
 [Tests]
-  design = 'DualMortarPreconditioner.md'
+  design = 'VariableCondensationPreconditioner.md'
   issues = '#15215'
-  [./dmp_condense_amg_test]
+  [./condense_amg_test]
     type = 'CSVDiff'
-    input = 'dmp_test.i'
-    csvdiff = 'dmp_test_out.csv'
-    requirement = "The system shall converge when using the DMP interface with AMG as the preconditioner."
+    input = 'vcp_test.i'
+    csvdiff = 'vcp_test_out.csv'
+    requirement = "The system shall converge when using the VCP interface with AMG as the preconditioner."
   [../]
   [./no-condense_amg_test]
     type = 'CSVDiff'

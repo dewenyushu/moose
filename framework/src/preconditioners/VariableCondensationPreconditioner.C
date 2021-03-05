@@ -7,7 +7,7 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "DualMortarPreconditioner.h"
+#include "VariableCondensationPreconditioner.h"
 
 // MOOSE includes
 #include "FEProblem.h"
@@ -35,19 +35,18 @@
 
 #include <petscmat.h>
 
-registerMooseObjectAliased("MooseApp", DualMortarPreconditioner, "DMP");
+registerMooseObjectAliased("MooseApp", VariableCondensationPreconditioner, "VCP");
 
-defineLegacyParams(DualMortarPreconditioner);
+defineLegacyParams(VariableCondensationPreconditioner);
 
 InputParameters
-DualMortarPreconditioner::validParams()
+VariableCondensationPreconditioner::validParams()
 {
   InputParameters params = MoosePreconditioner::validParams();
 
-  params.addClassDescription("Dual mortar preconditioner (DMP) condenses out the Lagrange "
-                             "multipliers from the Jacobian matrix "
-                             "and recover a system with only the primal unkowns in order to allow "
-                             "for a broader range of solvers/preconditioners.");
+  params.addClassDescription(
+      "Varialble condensation preconditioner (VCP) condenses out specified variable(s), "
+      "from the Jacobian matrix and results in a system with less unkowns for preconditioners.");
 
   params.addParam<std::vector<NonlinearVariableName>>(
       "off_diag_row",
@@ -76,7 +75,7 @@ DualMortarPreconditioner::validParams()
   params.addParam<bool>(
       "adaptive_condensation",
       true,
-      "By default DMP will check the Jacobian and only condense the rows with zero diagonals. Set "
+      "By default VCP will check the Jacobian and only condense the rows with zero diagonals. Set "
       "to false if you want to condense out all the specified variable dofs.");
   params.addRequiredParam<std::vector<std::string>>("preconditioner", "Preconditioner type.");
   params.addRequiredParam<std::vector<std::string>>(
@@ -85,12 +84,13 @@ DualMortarPreconditioner::validParams()
       "this will be the Lagrange multiplier variable(s).");
   params.addRequiredParam<std::vector<std::string>>(
       "coupled_variable",
-      "Name of the variable(s) that couples with the Lagrange multipliers. Usually this is the "
-      "primary variable that we would like to solve.");
+      "Name of the variable(s) that couples with the variable(s) specified in the `variable` "
+      "block. Usually this is the primary variable that the Lagrange multiplier correspond to.");
   return params;
 }
 
-DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & params)
+VariableCondensationPreconditioner::VariableCondensationPreconditioner(
+    const InputParameters & params)
   : MoosePreconditioner(params),
     Preconditioner<Number>(MoosePreconditioner::_communicator),
     _nl(_fe_problem.getNonlinearSystemBase()),
@@ -140,7 +140,7 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
   // PC type
   const std::vector<std::string> & pc_type = getParam<std::vector<std::string>>("preconditioner");
   if (pc_type.size() > 1)
-    mooseWarning("We only use one preconditioner type in PDMP, the ",
+    mooseWarning("We only use one preconditioner type in VCP, the ",
                  pc_type[0],
                  " preconditioner is utilized.");
   _pre_type = Utility::string_to_enum<PreconditionerType>(pc_type[0]);
@@ -198,10 +198,10 @@ DualMortarPreconditioner::DualMortarPreconditioner(const InputParameters & param
   _nl.attachPreconditioner(this);
 }
 
-DualMortarPreconditioner::~DualMortarPreconditioner() { this->clear(); }
+VariableCondensationPreconditioner::~VariableCondensationPreconditioner() { this->clear(); }
 
 void
-DualMortarPreconditioner::getDofToCondense()
+VariableCondensationPreconditioner::getDofToCondense()
 {
   // clean the containers if we want to update the dofs
   if (!_glm.empty())
@@ -264,7 +264,7 @@ DualMortarPreconditioner::getDofToCondense()
   {
     _need_condense = false;
 #ifdef DEBUG
-    mooseWarning("The variable provided do not have a saddle-point character. DMP will "
+    mooseWarning("The variable provided do not have a saddle-point character. VCP will "
                  "continue without condensing the dofs.");
 #endif
     return;
@@ -283,7 +283,7 @@ DualMortarPreconditioner::getDofToCondense()
 }
 
 void
-DualMortarPreconditioner::getDofColRow()
+VariableCondensationPreconditioner::getDofColRow()
 {
   // clean the containers if we want to update the dofs
   if (!_grows.empty())
@@ -325,7 +325,7 @@ DualMortarPreconditioner::getDofColRow()
 }
 
 void
-DualMortarPreconditioner::init()
+VariableCondensationPreconditioner::init()
 {
   TIME_SECTION(_init_timer);
 
@@ -337,7 +337,7 @@ DualMortarPreconditioner::init()
 }
 
 void
-DualMortarPreconditioner::condenseSystem()
+VariableCondensationPreconditioner::condenseSystem()
 {
   // extract _M from the original matrix
   _matrix->create_submatrix(*_M, _rows, _lm);
@@ -363,7 +363,6 @@ DualMortarPreconditioner::condenseSystem()
     // compute the inverse of D using MatMatSolve()
     computeDInverse();
   }
-  // PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
   _D_inv->close();
 
 #ifdef DEBUG
@@ -420,7 +419,7 @@ DualMortarPreconditioner::condenseSystem()
 }
 
 void
-DualMortarPreconditioner::print_node_info()
+VariableCondensationPreconditioner::print_node_info()
 {
   NodeRange * range = _mesh->getActiveNodeRange();
   for (const auto & node : *range)
@@ -430,7 +429,7 @@ DualMortarPreconditioner::print_node_info()
 }
 
 void
-DualMortarPreconditioner::setup()
+VariableCondensationPreconditioner::setup()
 {
   if (_adaptive_condensation)
     findZeroDiagonals(*_matrix, _zero_rows);
@@ -461,7 +460,8 @@ DualMortarPreconditioner::setup()
 }
 
 void
-DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<Number> & x)
+VariableCondensationPreconditioner::apply(const NumericVector<Number> & y,
+                                          NumericVector<Number> & x)
 {
   TIME_SECTION(_apply_timer);
 
@@ -482,7 +482,8 @@ DualMortarPreconditioner::apply(const NumericVector<Number> & y, NumericVector<N
 }
 
 void
-DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, NumericVector<Number> & x)
+VariableCondensationPreconditioner::getCondensedXY(const NumericVector<Number> & y,
+                                                   NumericVector<Number> & x)
 {
   // create a copy of y
   std::unique_ptr<NumericVector<Number>> y_copy(
@@ -524,10 +525,8 @@ DualMortarPreconditioner::getCondensedXY(const NumericVector<Number> & y, Numeri
 }
 
 void
-DualMortarPreconditioner::computeCondensedVariables()
+VariableCondensationPreconditioner::computeCondensedVariables()
 {
-  // PetscMatrix<Number> _D_inv(_Dinv, MoosePreconditioner::_communicator);
-
   _lambda->init(_D->m(), _D->local_m(), false, PARALLEL);
 
   std::unique_ptr<NumericVector<Number>> u2c_rows_x_hat(
@@ -543,8 +542,8 @@ DualMortarPreconditioner::computeCondensedVariables()
 }
 
 void
-DualMortarPreconditioner::getFullSolution(const NumericVector<Number> & /*y*/,
-                                          NumericVector<Number> & x)
+VariableCondensationPreconditioner::getFullSolution(const NumericVector<Number> & /*y*/,
+                                                    NumericVector<Number> & x)
 {
   std::vector<numeric_index_type> dof_indices;
   std::vector<Number> vals;
@@ -567,8 +566,8 @@ DualMortarPreconditioner::getFullSolution(const NumericVector<Number> & /*y*/,
 }
 
 void
-DualMortarPreconditioner::findZeroDiagonals(SparseMatrix<Number> & mat,
-                                            std::vector<numeric_index_type> & indices)
+VariableCondensationPreconditioner::findZeroDiagonals(SparseMatrix<Number> & mat,
+                                                      std::vector<numeric_index_type> & indices)
 {
   indices.clear();
   IS zerodiags, zerodiags_all;
@@ -595,12 +594,12 @@ DualMortarPreconditioner::findZeroDiagonals(SparseMatrix<Number> & mat,
 }
 
 void
-DualMortarPreconditioner::clear()
+VariableCondensationPreconditioner::clear()
 {
 }
 
 void
-DualMortarPreconditioner::computeDInverse()
+VariableCondensationPreconditioner::computeDInverse()
 {
   PetscErrorCode ierr;
   Mat F, I, Dinv;
@@ -680,7 +679,7 @@ DualMortarPreconditioner::computeDInverse()
 }
 
 void
-DualMortarPreconditioner::computeDInverseDiag()
+VariableCondensationPreconditioner::computeDInverseDiag()
 {
   PetscErrorCode ierr;
   auto diag_D = NumericVector<Number>::build(MoosePreconditioner::_communicator);

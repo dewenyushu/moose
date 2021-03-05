@@ -158,13 +158,13 @@ vy = 0.1
 []
 
 [Preconditioning]
-  [./dmp]
-    type = DMP
+  [./vcp]
+    type = VCP
     full = true
     variable = 'leftright_normal_lm'
     coupled_variable = 'disp_x'
     preconditioner = 'AMG'
-    is_diagonal = true
+    is_diagonal = false
     adaptive_condensation = true
   [../]
 []

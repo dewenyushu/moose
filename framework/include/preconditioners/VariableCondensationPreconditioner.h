@@ -25,21 +25,21 @@
 
 // Forward declarations
 class NonlinearSystemBase;
-class DualMortarPreconditioner;
+class VariableCondensationPreconditioner;
 
 template <>
-InputParameters validParams<DualMortarPreconditioner>();
+InputParameters validParams<VariableCondensationPreconditioner>();
 
 /**
  * Interface for condensing out LMs for the dual mortar approach.
  */
-class DualMortarPreconditioner : public MoosePreconditioner, public Preconditioner<Number>
+class VariableCondensationPreconditioner : public MoosePreconditioner, public Preconditioner<Number>
 {
 public:
   static InputParameters validParams();
 
-  DualMortarPreconditioner(const InputParameters & params);
-  virtual ~DualMortarPreconditioner();
+  VariableCondensationPreconditioner(const InputParameters & params);
+  virtual ~VariableCondensationPreconditioner();
 
   /**
    * Initialize data structures if not done so already.
