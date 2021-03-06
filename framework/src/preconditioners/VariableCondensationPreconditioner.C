@@ -591,6 +591,10 @@ VariableCondensationPreconditioner::findZeroDiagonals(SparseMatrix<Number> & mat
 
   ISRestoreIndices(zerodiags_all, &petsc_idx);
   LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&zerodiags);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&zerodiags_all);
+  LIBMESH_CHKERR(ierr);
 }
 
 void
@@ -634,7 +638,7 @@ VariableCondensationPreconditioner::computeDInverse()
   ierr = MatFactorInfoInitialize(&info);
   LIBMESH_CHKERR(ierr);
 
-  ierr = MatGetFactor(_D->mat(), MATSOLVERMUMPS, MAT_FACTOR_LU, &F);
+  ierr = MatGetFactor(_D->mat(), MATSOLVERSUPERLU_DIST, MAT_FACTOR_LU, &F);
   LIBMESH_CHKERR(ierr);
 
   ierr = MatLUFactorSymbolic(F, _D->mat(), perm, iperm, &info);
