@@ -29,12 +29,8 @@ protected:
   const Real _P;
   /// process efficienty
   const Real _eta;
-  /// transverse ellipsoid axe
-  const Real _rx;
-  /// depth ellipsoid axe
-  const Real _ry;
-  /// longitudinal ellipsoid axe
-  const Real _rz;
+  /// effective radius
+  const Real _r;
   /// scaling factor
   const Real _f;
   /// path of the heat source, x, y, z components
