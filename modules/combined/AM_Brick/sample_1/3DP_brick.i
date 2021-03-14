@@ -2,6 +2,9 @@ T_room = 300
 T_melt = 1200
 T_ambient = 300
 
+efficiency = 1.0
+factor = 1.0
+
 Case = 1
 
 [GlobalParams]
@@ -293,9 +296,10 @@ Case = 1
     nux = '294.994 1669.62 1721.77'
     nuy = '0.246407   0.36961  0.513347'
     # n2 = ${T_melt}
-    absolute_tolerance = 1e-10
     block = '2 3'
     use_substep = true
+    absolute_tolerance = 1e-8
+    relative_tolerance = 1e-6
   [../]
 
   [./thermal_expansion_strain_product]
@@ -320,8 +324,8 @@ Case = 1
     ry = 4.0
     rz = 4.0
     power = 350
-    efficiency = 1.0
-    factor = 1.0
+    efficiency = ${efficiency}
+    factor = ${factor}
     function_x= heat_source_x
     function_y= heat_source_y
     function_z= heat_source_z
