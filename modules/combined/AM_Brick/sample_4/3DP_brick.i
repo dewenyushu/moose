@@ -372,7 +372,7 @@ Case = 1
 
   l_max_its = 100
   nl_max_its = 20
-  nl_rel_tol = 1e-6
+  nl_rel_tol = 1e-5
   nl_abs_tol = 1e-6
   # l_tol = 1e-5
 
