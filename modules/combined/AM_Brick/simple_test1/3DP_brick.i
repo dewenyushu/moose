@@ -1,8 +1,8 @@
 T_room = 300
-T_melt = 1200
+T_melt = 1600
 T_ambient = 300
 
-efficiency = 1.0
+efficiency = 0.36
 factor = 1.0
 
 Case = 1
@@ -18,7 +18,7 @@ Case = 1
 [Mesh]
   [./mesh]
     type = FileMeshGenerator
-    file = sample_5.e
+    file = sample_test1.e
   [../]
   [./add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -39,9 +39,7 @@ Case = 1
     input = add_set2
     block_id = 2
     bottom_left = '-2 -2 4'
-    # top_right = '-1.9 -1.9 4.1'
-    # top_right = '-1.8 -1.8 4.2'
-    top_right = '-1.9 -1.9 4.1'
+    top_right = '-1.8 -1.8 4.2'
   [../]
   [./moving_boundary]
     type = SideSetsAroundSubdomainGenerator
@@ -218,28 +216,28 @@ Case = 1
     boundary = 1
     value = 0.0
   [../]
-  [./temp_bottom_fix]
-    type = ADDirichletBC
-    variable = temp
-    boundary = 1
-    value = ${T_room}
-  [../]
+  # [./temp_bottom_fix]
+  #   type = ADDirichletBC
+  #   variable = temp
+  #   boundary = 1
+  #   value = ${T_room}
+  # [../]
 
 
-  [./convective]
-    # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-    type = ADConvectiveHeatFluxBC
-    variable = temp
-    boundary = 'moving_boundary'
-    # coefficient = 2e-5
-    heat_transfer_coefficient = 0.016
-    T_infinity = ${T_ambient}
-  [../]
+  # [./convective]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = 'moving_boundary'
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 0.016
+  #   T_infinity = ${T_ambient}
+  # [../]
   [./convective_substrate]
     # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
     type = ADConvectiveHeatFluxBC
     variable = temp
-    boundary = '2'
+    boundary = '1 2'
     # coefficient = 2e-5
     heat_transfer_coefficient = 0.016
     T_infinity = ${T_ambient}
@@ -301,6 +299,7 @@ Case = 1
     use_substep = true
     absolute_tolerance = 1e-8
     relative_tolerance = 1e-6
+    maximum_substep_iteration = 10
   [../]
 
   [./thermal_expansion_strain_product]
@@ -321,7 +320,7 @@ Case = 1
   [../]
   [./volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
-    r = 4.0
+    r = 1.0
     power = 350
     efficiency = ${efficiency}
     factor = ${factor}
@@ -375,7 +374,7 @@ Case = 1
   # l_tol = 1e-5
 
   start_time = 0.0
-  end_time = 316.47
+  end_time = 1.0
   dt = 0.04
   dtmin = 1e-4
 []
@@ -396,10 +395,10 @@ Case = 1
 
 [Outputs]
   file_base = './output_case_${Case}/3DP_Brick_path_out'
-  [./exodus]
-    type = Exodus
-    interval = 10
-  [../]
+  # [./exodus]
+  #   type = Exodus
+  #   interval = 10
+  # [../]
   # [checkpoint]
   #   type = Checkpoint
   #   num_files = 2

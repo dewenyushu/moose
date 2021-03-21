@@ -320,9 +320,7 @@ Case = 1
   [../]
   [./volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
-    rx = 4.0
-    ry = 4.0
-    rz = 4.0
+    r = 4.0
     power = 350
     efficiency = ${efficiency}
     factor = ${factor}

@@ -258,8 +258,8 @@ Case = 1
 [Materials]
   [./E]
     type = ADPiecewiseLinearInterpolationMaterial
-    x = '294.994  1671.48  1721.77'
-    y = '201.232e3 80.0821e3 6.16016e3' # [N/mm^3], i.e., MPa
+    x = '0 294.994  1671.48  1721.77 100000'
+    y = '201.232e3 201.232e3 80.0821e3 6.16016e3 6.16016e3' # [N/mm^3], i.e., MPa
     property = youngs_modulus
     variable = temp
     extrapolation = false
@@ -267,8 +267,8 @@ Case = 1
   [../]
   [./nu]
     type = ADPiecewiseLinearInterpolationMaterial
-    x = '294.994 1669.62 1721.77'
-    y = '0.246407   0.36961  0.513347'
+    x = '0 294.994 1669.62 1721.77 100000'
+    y = '0.246407 0.246407   0.36961  0.513347 0.513347'
     property = poissons_ratio
     variable = temp
     extrapolation = false
@@ -321,9 +321,7 @@ Case = 1
   [../]
   [./volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
-    rx = 4.0
-    ry = 4.0
-    rz = 4.0
+    r = 4.0
     power = 350
     efficiency = ${efficiency}
     factor = ${factor}

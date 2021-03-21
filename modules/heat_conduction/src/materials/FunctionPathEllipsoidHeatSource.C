@@ -18,9 +18,7 @@ validParams<FunctionPathEllipsoidHeatSource>()
   InputParameters params = Material::validParams();
   params.addRequiredParam<Real>("power", "power");
   params.addParam<Real>("efficiency", 1, "process efficiency");
-  params.addRequiredParam<Real>("rx", "effective transverse ellipsoid radius");
-  params.addRequiredParam<Real>("ry", "effective longitudinal ellipsoid radius");
-  params.addRequiredParam<Real>("rz", "effective depth ellipsoid radius");
+  params.addRequiredParam<Real>("r", "effective radius");
   params.addParam<Real>(
       "factor", 1, "scaling factor that is multiplied to the heat source to adjust the intensity");
   params.addParam<FunctionName>(
@@ -38,9 +36,7 @@ FunctionPathEllipsoidHeatSource::FunctionPathEllipsoidHeatSource(const InputPara
   : Material(parameters),
     _P(getParam<Real>("power")),
     _eta(getParam<Real>("efficiency")),
-    _rx(getParam<Real>("rx")),
-    _ry(getParam<Real>("ry")),
-    _rz(getParam<Real>("rz")),
+    _r(getParam<Real>("r")),
     _f(getParam<Real>("factor")),
     _function_x(getFunction("function_x")),
     _function_y(getFunction("function_y")),
@@ -64,9 +60,8 @@ FunctionPathEllipsoidHeatSource::computeQpProperties()
   Real y_t = _function_y.value(_t, dummy);
   Real z_t = _function_z.value(_t, dummy);
 
-  _volumetric_heat[_qp] = 6.0 * std::sqrt(3.0) * _P * _eta * _f /
-                          (_rx * _ry * _rz * std::pow(libMesh::pi, 1.5)) *
-                          std::exp(-(3.0 * std::pow(x - x_t, 2.0) / std::pow(_rx, 2.0) +
-                                     3.0 * std::pow(y - y_t, 2.0) / std::pow(_ry, 2.0) +
-                                     3.0 * std::pow(z - z_t, 2.0) / std::pow(_rz, 2.0)));
+  Real dist = std::pow(x - x_t, 2.0) + std::pow(y - y_t, 2.0) + std::pow(z - z_t, 2.0);
+
+  _volumetric_heat[_qp] =
+      2.0 * _P * _eta * _f / libMesh::pi / _r / _r * std::exp(-2.0 * dist / _r / _r);
 }
