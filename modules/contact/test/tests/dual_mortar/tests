@@ -19,4 +19,10 @@
     requirement = 'The system shall converge and match the solution produced by dual mortar contact.'
     mesh_mode = REPLICATED
   []
+  [frless_jac]
+    type = 'PetscJacobianTester'
+    input = 'contact_frless_constraints.i'
+    run_sim = true
+    # heavy = true
+  []
 []
