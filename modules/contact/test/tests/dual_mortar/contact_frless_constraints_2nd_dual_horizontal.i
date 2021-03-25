@@ -1,7 +1,7 @@
 offset = 0.0
-vy = 0.1
+# vy = 0.1
 
-max_lx = 0.04
+max_lx = 0.08
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -16,9 +16,9 @@ max_lx = 0.04
     xmax = 0
     ymin = -1
     ymax = 0
-    nx = 8
-    ny = 8
-    elem_type = QUAD4
+    nx = 1
+    ny = 1
+    elem_type = QUAD9
     boundary_id_offset = 10
     boundary_name_prefix = left
   [../]
@@ -34,9 +34,9 @@ max_lx = 0.04
     xmax = 1
     ymin = -1
     ymax = 1
-    nx = 8
-    ny = 8
-    elem_type = QUAD4
+    nx = 2
+    ny = 3
+    elem_type = QUAD9
     boundary_id_offset = 20
     boundary_name_prefix = right
   [../]
@@ -71,22 +71,18 @@ max_lx = 0.04
   [./disp_x]
     block = '1 2'
     family = LAGRANGE
-    order = FIRST
+    order = SECOND
   [../]
   [./disp_y]
     block = '1 2'
     family = LAGRANGE
-    order = FIRST
+    order = SECOND
   [../]
   [./normal_lm]
     block = 'secondary_lower'
-    # family = MONOMIAL
-    # order = CONSTANT
-  [../]
-  [./tangential_lm]
-    block = 'secondary_lower'
-    family = MONOMIAL
-    order = CONSTANT
+    family = LAGRANGE
+    order = SECOND
+    use_dual = true
   [../]
 []
 
@@ -105,10 +101,10 @@ max_lx = 0.04
     type = ParsedFunction
     value = '${max_lx}-${max_lx}*exp(-t)'
   [../]
-  [./vertical_movement]
-    type = ParsedFunction
-    value = '${vy}*t+${offset}'
-  [../]
+  # [./vertical_movement]
+  #   type = ParsedFunction
+  #   value = '${vy}*t+${offset}'
+  # [../]
 []
 
 [BCs]
@@ -130,11 +126,11 @@ max_lx = 0.04
     boundary = 21
     value = 0.0
   [../]
-  [./push_left_y]
-    type = FunctionDirichletBC
+  [./fix_left_y]
+    type = DirichletBC
     variable = disp_y
     boundary = 13
-    function = vertical_movement
+    value = 0.0
   [../]
 []
 
@@ -198,44 +194,16 @@ max_lx = 0.04
     use_displaced_mesh = true
     compute_lm_residuals = false
   []
-  [tangential_lm] # mortar
-    type = TangentialMortarLMMechanicalContact
-    primary_boundary = '23'
-    secondary_boundary = '11'
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = tangential_lm
-    primary_variable = disp_x
-    secondary_disp_y = disp_y
-    contact_pressure = normal_lm
-    ncp_function_type = fb
-    friction_coefficient = 0.3
-    use_displaced_mesh = true
-    compute_primal_residuals = false
-  []
-  [tangential_x]
-    type = TangentialMortarMechanicalContact
+  [weighted_gap_lm]
+    type = ComputeWeightedGapLMMechanicalContact
     primary_boundary = 23
     secondary_boundary = 11
     primary_subdomain = 4
     secondary_subdomain = 3
-    variable = tangential_lm
-    secondary_variable = disp_x
-    component = x
+    variable = normal_lm
+    disp_x = disp_x
+    disp_y = disp_y
     use_displaced_mesh = true
-    compute_lm_residuals = false
-  []
-  [tangential_y]
-    type = TangentialMortarMechanicalContact
-    primary_boundary = 23
-    secondary_boundary = 11
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = tangential_lm
-    secondary_variable = disp_y
-    component = y
-    use_displaced_mesh = true
-    compute_lm_residuals = false
   []
 []
 
@@ -271,10 +239,10 @@ max_lx = 0.04
   petsc_options_value = 'lu NONZERO   1e-15'
 
   dt = 0.1
-  dtmin = 1e-4
-  end_time = 0.5
+  dtmin = 0.1
+  end_time = 1.0
 
-  l_max_its = 20
+  l_max_its = 5
 
   nl_max_its = 20
   nl_rel_tol = 1e-6
@@ -282,7 +250,7 @@ max_lx = 0.04
 []
 
 [Outputs]
-  file_base = ./contact_fr_constraints_out
+  file_base = ./output/contact_frless_constraints_2nd_dual_horizontal_out
   [./comp]
     type = CSV
   [../]
@@ -301,10 +269,10 @@ max_lx = 0.04
     type = CumulativeValuePostprocessor
     postprocessor = lin
   [../]
-  [nl]
+  [./nl]
     type = NumNonlinearIterations
   []
-  [lin]
+  [./lin]
     type = NumLinearIterations
   []
   [./contact]
@@ -315,11 +283,6 @@ max_lx = 0.04
   [./normal_lm]
     type = ElementAverageValue
     variable = normal_lm
-    block = '3'
-  [../]
-  [./tangential_lm]
-    type = ElementAverageValue
-    variable = tangential_lm
     block = '3'
   [../]
   [./avg_disp_x]
@@ -354,4 +317,13 @@ max_lx = 0.04
     block = '1 2'
     value_type = min
   [../]
+[]
+
+[VectorPostprocessors]
+  [contact_post]
+    type = NodalValueSampler
+    variable = normal_lm
+    boundary = '11'
+    sort_by = y
+  []
 []

@@ -1,7 +1,7 @@
 offset = 0.0
 vy = 0.1
 
-max_lx = 0.04
+max_lx = 0.08
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -35,7 +35,7 @@ max_lx = 0.04
     ymin = -1
     ymax = 1
     nx = 2
-    ny = 2
+    ny = 4
     elem_type = QUAD4
     boundary_id_offset = 20
     boundary_name_prefix = right
@@ -137,7 +137,7 @@ max_lx = 0.04
   [./elasticity_tensor_left]
     type = ADComputeIsotropicElasticityTensor
     block = 1
-    youngs_modulus = 1.0e5
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_left]
@@ -148,7 +148,7 @@ max_lx = 0.04
   [./elasticity_tensor_right]
     type = ADComputeIsotropicElasticityTensor
     block = 2
-    youngs_modulus = 1.0e5
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_right]
@@ -193,6 +193,17 @@ max_lx = 0.04
     use_displaced_mesh = true
     compute_lm_residuals = false
   []
+  [weighted_gap_lm]
+    type = ComputeWeightedGapLMMechanicalContact
+    primary_boundary = 23
+    secondary_boundary = 11
+    primary_subdomain = 4
+    secondary_subdomain = 3
+    variable = normal_lm
+    disp_x = disp_x
+    disp_y = disp_y
+    use_displaced_mesh = true
+  []
 []
 
 [ICs]
@@ -228,17 +239,17 @@ max_lx = 0.04
 
   dt = 0.1
   dtmin = 1e-4
-  end_time = 0.5
+  end_time = 0.1
 
   l_max_its = 20
 
-  nl_max_its = 8
+  nl_max_its = 20
   nl_rel_tol = 1e-6
   snesmf_reuse_base = false
 []
 
 [Outputs]
-  file_base = ./contact_frless_constraints_out
+  file_base = ./output/contact_frless_constraints_out
   [./comp]
     type = CSV
   [../]
@@ -305,4 +316,13 @@ max_lx = 0.04
     block = '1 2'
     value_type = min
   [../]
+[]
+
+[VectorPostprocessors]
+  [contact_post]
+    type = NodalValueSampler
+    variable = normal_lm
+    boundary = '11'
+    sort_by = y
+  []
 []

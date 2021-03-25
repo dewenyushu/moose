@@ -1,7 +1,7 @@
 offset = 0.0
 vy = 0.1
 
-max_lx = 0.04
+max_lx = 0.1
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -16,15 +16,19 @@ max_lx = 0.04
     xmax = 0
     ymin = -1
     ymax = 0
-    nx = 8
-    ny = 8
+    nx = 4
+    ny = 4
     elem_type = QUAD4
-    boundary_id_offset = 10
-    boundary_name_prefix = left
+  [../]
+  [./left_block_sidesets]
+    type = RenameBoundaryGenerator
+    input = left_block
+    old_boundary = '0 1 2 3'
+    new_boundary = '10 11 12 13'
   [../]
   [./left_block_id]
     type = SubdomainIDGenerator
-    input = left_block
+    input = left_block_sidesets
     subdomain_id = 1
   [../]
   [./right_block]
@@ -34,59 +38,25 @@ max_lx = 0.04
     xmax = 1
     ymin = -1
     ymax = 1
-    nx = 8
-    ny = 8
+    nx = 6
+    ny = 12
     elem_type = QUAD4
-    boundary_id_offset = 20
-    boundary_name_prefix = right
   [../]
+  [right_block_sidesets]
+    type = RenameBoundaryGenerator
+    input = right_block
+    old_boundary = '0 1 2 3'
+    new_boundary = '20 21 22 23'
+  []
   [./right_block_id]
     type = SubdomainIDGenerator
-    input = right_block
+    input = right_block_sidesets
     subdomain_id = 2
   [../]
 
   [./combined_mesh]
     type = MeshCollectionGenerator
     inputs = 'left_block_id right_block_id'
-  [../]
-
-  [./secondary]
-    input = combined_mesh
-    type = LowerDBlockFromSidesetGenerator
-    sidesets = 'left_right'
-    new_block_id = '3'
-    new_block_name = 'secondary_lower'
-  [../]
-  [./primary]
-    input = secondary
-    type = LowerDBlockFromSidesetGenerator
-    sidesets = 'right_left'
-    new_block_id = '4'
-    new_block_name = 'primary_lower'
-  [../]
-[]
-
-[Variables]
-  [./disp_x]
-    block = '1 2'
-    family = LAGRANGE
-    order = FIRST
-  [../]
-  [./disp_y]
-    block = '1 2'
-    family = LAGRANGE
-    order = FIRST
-  [../]
-  [./normal_lm]
-    block = 'secondary_lower'
-    # family = MONOMIAL
-    # order = CONSTANT
-  [../]
-  [./tangential_lm]
-    block = 'secondary_lower'
-    family = MONOMIAL
-    order = CONSTANT
   [../]
 []
 
@@ -162,81 +132,17 @@ max_lx = 0.04
   [../]
 []
 
-[Constraints]
-  # All constraints below for mechanical contact (Mortar)
-  [normal_lm]
-    type = NormalNodalLMMechanicalContact
-    primary = right_left
-    secondary = left_right
-    variable = normal_lm
-    primary_variable = disp_x
-    disp_y = disp_y
-    use_displaced_mesh = true
-    ncp_function_type = min
-  []
-  [normal_x]
-    type = NormalMortarMechanicalContact
-    primary_boundary = '23'
-    secondary_boundary = '11'
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = normal_lm
-    secondary_variable = disp_x
-    component = x
-    use_displaced_mesh = true
-    compute_lm_residuals = false
-  []
-  [normal_y]
-    type = NormalMortarMechanicalContact
-    primary_boundary = 23
-    secondary_boundary = 11
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = normal_lm
-    secondary_variable = disp_y
-    component = y
-    use_displaced_mesh = true
-    compute_lm_residuals = false
-  []
-  [tangential_lm] # mortar
-    type = TangentialMortarLMMechanicalContact
-    primary_boundary = '23'
-    secondary_boundary = '11'
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = tangential_lm
-    primary_variable = disp_x
-    secondary_disp_y = disp_y
-    contact_pressure = normal_lm
-    ncp_function_type = fb
-    friction_coefficient = 0.3
-    use_displaced_mesh = true
-    compute_primal_residuals = false
-  []
-  [tangential_x]
-    type = TangentialMortarMechanicalContact
-    primary_boundary = 23
-    secondary_boundary = 11
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = tangential_lm
-    secondary_variable = disp_x
-    component = x
-    use_displaced_mesh = true
-    compute_lm_residuals = false
-  []
-  [tangential_y]
-    type = TangentialMortarMechanicalContact
-    primary_boundary = 23
-    secondary_boundary = 11
-    primary_subdomain = 4
-    secondary_subdomain = 3
-    variable = tangential_lm
-    secondary_variable = disp_y
-    component = y
-    use_displaced_mesh = true
-    compute_lm_residuals = false
-  []
+[Contact]
+  [leftright]
+    mesh = combined_mesh
+    secondary = '11'
+    primary = '23'
+
+    formulation = mortar
+    model = frictionless
+
+    use_dual = true
+  [../]
 []
 
 [ICs]
@@ -276,13 +182,13 @@ max_lx = 0.04
 
   l_max_its = 20
 
-  nl_max_its = 20
+  nl_max_its = 8
   nl_rel_tol = 1e-6
   snesmf_reuse_base = false
 []
 
 [Outputs]
-  file_base = ./contact_fr_constraints_out
+  file_base = ./contact_frless_dual_out
   [./comp]
     type = CSV
   [../]
@@ -309,18 +215,13 @@ max_lx = 0.04
   []
   [./contact]
     type = ContactDOFSetSize
-    variable = normal_lm
-    subdomain = '3'
+    variable = leftright_normal_lm
+    subdomain = leftright_secondary_subdomain
   []
   [./normal_lm]
     type = ElementAverageValue
-    variable = normal_lm
-    block = '3'
-  [../]
-  [./tangential_lm]
-    type = ElementAverageValue
-    variable = tangential_lm
-    block = '3'
+    variable = leftright_normal_lm
+    block = leftright_secondary_subdomain
   [../]
   [./avg_disp_x]
     type = ElementAverageValue

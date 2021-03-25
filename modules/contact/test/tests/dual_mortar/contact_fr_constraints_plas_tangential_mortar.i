@@ -139,7 +139,7 @@ vy = 0.1
   [./elasticity_tensor_left]
     type = ComputeIsotropicElasticityTensor
     block = 1
-    youngs_modulus = 1.0e6
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_left]
@@ -159,7 +159,7 @@ vy = 0.1
   [./elasticity_tensor_right]
     type = ComputeIsotropicElasticityTensor
     block = 2
-    youngs_modulus = 1.0e6
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_right]
@@ -212,6 +212,17 @@ vy = 0.1
     component = y
     use_displaced_mesh = true
     compute_lm_residuals = false
+  []
+  [weighted_gap_lm]
+    type = ComputeWeightedGapLMMechanicalContact
+    primary_boundary = 23
+    secondary_boundary = 11
+    primary_subdomain = 4
+    secondary_subdomain = 3
+    variable = normal_lm
+    disp_x = disp_x
+    disp_y = disp_y
+    use_displaced_mesh = true
   []
   [tangential_lm] # mortar
     type = TangentialMortarLMMechanicalContact

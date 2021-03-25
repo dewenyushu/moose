@@ -142,7 +142,7 @@ max_lx = 0.1
   [./elasticity_tensor_left]
     type = ADComputeIsotropicElasticityTensor
     block = 1
-    youngs_modulus = 1.0e5
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_left]
@@ -153,7 +153,7 @@ max_lx = 0.1
   [./elasticity_tensor_right]
     type = ADComputeIsotropicElasticityTensor
     block = 2
-    youngs_modulus = 1.0e5
+    youngs_modulus = 1.0e3
     poissons_ratio = 0.3
   [../]
   [./stress_right]
