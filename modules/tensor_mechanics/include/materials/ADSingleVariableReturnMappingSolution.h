@@ -34,7 +34,7 @@ protected:
    * @param scalar                 Inelastic strain increment magnitude being solved for
    * @param console                Console output
    */
-  void returnMappingSolve(const ADReal & effective_trial_stress,
+  bool returnMappingSolve(const ADReal & effective_trial_stress,
                           ADReal & scalar,
                           const ConsoleStream & console);
 
@@ -84,8 +84,17 @@ protected:
    * @param effective_trial_stress Effective trial stress
    * @param scalar                 Inelastic strain increment magnitude being solved for
    */
-  virtual Real computeReferenceResidual(const ADReal & effective_trial_stress,
-                                        const ADReal & scalar) = 0;
+   virtual Real computeReferenceResidual(const ADReal & effective_trial_stress,
+                                         const ADReal & scalar) = 0;
+
+   /**
+   * If the flow rule depends on state variables other than the increment of inelastic strain,
+   * We need to update the internal state variables in the inherited classes
+   * @param effective_trial_stress Effective trial stress
+   * @param scalar     Inelastic strain magnitude obtained in an inner NR loop
+   */
+   virtual void updateInternalStateVariables(const ADReal & /*effective_trial_stress*/,
+                                         const ADReal & /*scalar*/, const ADReal & /*scalar_increment*/) {}
 
   /**
    * Finalize internal state variables for a model for a given iteration.

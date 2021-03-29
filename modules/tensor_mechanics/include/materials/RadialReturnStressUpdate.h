@@ -217,6 +217,9 @@ protected:
 
   /// Debugging option to enable specifying instead of calculating strain
   const bool _apply_strain;
+
+  /// Maximum number of substep iterations
+  unsigned int _max_substep_iter;
 };
 
 typedef RadialReturnStressUpdateTempl<false> RadialReturnStressUpdate;

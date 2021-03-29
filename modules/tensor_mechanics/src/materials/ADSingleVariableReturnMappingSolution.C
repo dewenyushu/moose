@@ -90,11 +90,12 @@ ADSingleVariableReturnMappingSolution::maximumPermissibleValue(
   return std::numeric_limits<Real>::max();
 }
 
-void
+bool
 ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effective_trial_stress,
                                                           ADReal & scalar,
                                                           const ConsoleStream & console)
 {
+  bool err_tol = true;
   // construct the stringstream here only if the debug level is set to ALL
   std::unique_ptr<std::stringstream> iter_output =
       (_internal_solve_output_on == InternalSolveOutput::ALWAYS)
@@ -110,6 +111,7 @@ ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effecti
   if (solve_state != SolveState::SUCCESS &&
       _internal_solve_output_on != InternalSolveOutput::ALWAYS)
   {
+    err_tol = false;
     // output suppressed by user, throw immediately
     if (_internal_solve_output_on == InternalSolveOutput::NEVER)
       mooseException("");
@@ -140,7 +142,9 @@ ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effecti
 
     // Append summary and throw exception
     outputIterationSummary(iter_output.get(), _iteration);
-    mooseException(iter_output->str());
+    // return the info that return mapping did not converge
+    // instead of cutting the timestep directly
+    // mooseException(iter_output->str());
   }
 
   if (_internal_solve_output_on == InternalSolveOutput::ALWAYS)
@@ -149,6 +153,8 @@ ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effecti
     outputIterationSummary(iter_output.get(), _iteration);
     console << iter_output->str();
   }
+
+  return err_tol;
 }
 
 typename ADSingleVariableReturnMappingSolution::SolveState
@@ -186,6 +192,10 @@ ADSingleVariableReturnMappingSolution::internalSolve(const ADReal effective_tria
   {
     scalar_increment = -_residual / computeDerivative(effective_trial_stress, scalar);
     scalar = scalar_old + scalar_increment;
+
+    /// Inner NR loop needs to update the internal state variables for cases when
+    /// the flow rule is a function of these variables
+    updateInternalStateVariables(effective_trial_stress, scalar, scalar_increment);
 
     if (_check_range)
       checkPermissibleRange(scalar,

@@ -38,6 +38,8 @@ RadialReturnStressUpdateTempl<is_ad>::validParams()
   params.addParam<bool>("apply_strain", true, "Flag to apply strain. Used for testing.");
   params.addParamNamesToGroup(
       "effective_inelastic_strain_name substep_strain_tolerance apply_strain", "Advanced");
+  params.addParam<unsigned int>(
+      "maximum_substep_iteration", 1, "Maximum number of substep iteration");
   return params;
 }
 
@@ -58,7 +60,8 @@ RadialReturnStressUpdateTempl<is_ad>::RadialReturnStressUpdateTempl(
     _identity_symmetric_four(RankFourTensor::initIdentitySymmetricFour),
     _deviatoric_projection_four(_identity_symmetric_four -
                                 _identity_two.outerProduct(_identity_two) / 3.0),
-    _apply_strain(this->template getParam<bool>("apply_strain"))
+    _apply_strain(this->template getParam<bool>("apply_strain")),
+    _max_substep_iter(this->template getParam<unsigned int>("maximum_substep_iteration"))
 {
 }
 
@@ -360,77 +363,135 @@ void
 RadialReturnStressUpdateTempl<true>::updateStateSubstep(
     ADRankTwoTensor & strain_increment,
     ADRankTwoTensor & inelastic_strain_increment,
-    const ADRankTwoTensor & rotation_increment,
+    const ADRankTwoTensor & /*rotation_increment*/,
     ADRankTwoTensor & stress_new,
-    const RankTwoTensor & stress_old,
+    const RankTwoTensor & /*stress_old*/,
     const ADRankFourTensor & elasticity_tensor,
     const RankTwoTensor & elastic_strain_old,
     bool /*compute_full_tangent_operator*/,
     RankFourTensor & /*tangent_operator*/)
 {
-  const unsigned int total_substeps = calculateNumberSubsteps(strain_increment);
-
-  // if only one substep is needed, then call the original update state method
-  if (total_substeps == 1)
-  {
-    updateState(strain_increment,
-                inelastic_strain_increment,
-                rotation_increment,
-                stress_new,
-                stress_old,
-                elasticity_tensor,
-                elastic_strain_old);
-    return;
-  }
+  bool err_tol = true;
+  // Depth of substepping; Limited to maximum substep iteration
+  unsigned int substep_iter = 1;
+  // Calculated from substep_iter as 2^substep_iter
+  unsigned int total_substeps = 1;
   // Store original _dt; Reset at the end of solve
   Real dt_original = _dt;
-  // cut the original timestep
-  _dt = dt_original / total_substeps;
 
-  // initialize the inputs
-  const ADRankTwoTensor strain_increment_per_step = strain_increment / total_substeps;
-  ADRankTwoTensor sub_stress_new = elasticity_tensor * elastic_strain_old;
+  // chache the original input strains
+  ADRankTwoTensor original_strain_increment = strain_increment;
+  ADRankTwoTensor original_inelastic_strain_increment = inelastic_strain_increment;
 
-  ADRankTwoTensor sub_elastic_strain_old = elastic_strain_old;
-  ADRankTwoTensor sub_inelastic_strain_increment = inelastic_strain_increment;
-
-  ADReal sub_scalar_effective_inelastic_strain = 0;
-
-  // clear the original inputs
-  MathUtils::mooseSetToZero(strain_increment);
-  MathUtils::mooseSetToZero(inelastic_strain_increment);
-  MathUtils::mooseSetToZero(stress_new);
-
-  for (unsigned int step = 0; step < total_substeps; ++step)
+  do
   {
-    // set up input for this substep
-    ADRankTwoTensor sub_strain_increment = strain_increment_per_step;
-    sub_stress_new += elasticity_tensor * sub_strain_increment;
+    // reset the flag
+    err_tol = true;
 
-    // update stress and strain based on the strain increment
-    updateState(sub_strain_increment,
-                sub_inelastic_strain_increment,
-                rotation_increment, // not used in updateState
-                sub_stress_new,
-                stress_old, // not used in updateState
-                elasticity_tensor,
-                elastic_strain_old);
-    // update strain and stress
-    strain_increment += sub_strain_increment;
-    inelastic_strain_increment += sub_inelastic_strain_increment;
-    sub_elastic_strain_old += sub_strain_increment;
-    sub_stress_new = elasticity_tensor * sub_elastic_strain_old;
-    // accumulate scalar_effective_inelastic_strain
-    sub_scalar_effective_inelastic_strain += _scalar_effective_inelastic_strain;
-    computeStressFinalize(inelastic_strain_increment);
-    // store incremental material properties for this step
-    storeIncrementalMaterialProperties();
-  }
-  // update stress
-  stress_new = sub_stress_new;
+    // cut the original timestep
+    _dt = dt_original / total_substeps;
+
+    // clear the original inputs
+    MathUtils::mooseSetToZero(strain_increment);
+    MathUtils::mooseSetToZero(inelastic_strain_increment);
+    MathUtils::mooseSetToZero(stress_new);
+
+    _scalar_effective_inelastic_strain = 0.0;
+
+    // initialize the inputs for sub-stepping
+    stress_new = elasticity_tensor * elastic_strain_old;
+
+    ADRankTwoTensor sub_elastic_strain_old = elastic_strain_old;
+    ADRankTwoTensor sub_inelastic_strain_increment = original_inelastic_strain_increment;
+
+    // begin substepping iteration
+    for (unsigned int step = 0; step < total_substeps; ++step)
+    {
+      // set up input for this substep
+      ADRankTwoTensor sub_strain_increment = original_strain_increment / total_substeps;
+      stress_new += elasticity_tensor * sub_strain_increment;
+
+      /// BEGIN of return mapping solve
+      ///////
+      // compute the deviatoric trial stress and trial strain from the current intermediate
+      // configuration
+      ADRankTwoTensor deviatoric_trial_stress = stress_new.deviatoric();
+
+      // compute the effective trial stress
+      ADReal dev_trial_stress_squared =
+          deviatoric_trial_stress.doubleContraction(deviatoric_trial_stress);
+      ADReal effective_trial_stress =
+          dev_trial_stress_squared == 0.0 ? 0.0 : std::sqrt(3.0 / 2.0 * dev_trial_stress_squared);
+
+      // Set the value of 3 * shear modulus for use as a reference residual value
+      _three_shear_modulus =
+          3.0 * ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
+
+      computeStressInitialize(effective_trial_stress, elasticity_tensor);
+
+      // Use Newton iteration to determine the scalar effective inelastic strain increment
+      ADReal sub_scalar_effective_inelastic_strain = 0.0;
+      if (!MooseUtils::absoluteFuzzyEqual(effective_trial_stress, 0.0))
+      {
+        err_tol = returnMappingSolve(
+            effective_trial_stress, sub_scalar_effective_inelastic_strain, _console);
+        if (sub_scalar_effective_inelastic_strain != 0.0)
+          sub_inelastic_strain_increment =
+              deviatoric_trial_stress *
+              (1.5 * sub_scalar_effective_inelastic_strain / effective_trial_stress);
+        else
+          sub_inelastic_strain_increment.zero();
+      }
+      else
+        sub_inelastic_strain_increment.zero();
+
+      if (_apply_strain)
+      {
+        sub_strain_increment -= sub_inelastic_strain_increment;
+        _effective_inelastic_strain[_qp] =
+            _effective_inelastic_strain_old[_qp] + sub_scalar_effective_inelastic_strain;
+
+        // Use the old elastic strain here because we require tensors used by this class
+        // to be isotropic and this method natively allows for changing in time
+        // elasticity tensors
+        stress_new = elasticity_tensor * (elastic_strain_old + sub_strain_increment);
+      }
+
+      computeStressFinalize(sub_inelastic_strain_increment);
+      ///////
+      /// END of return mapping solve
+
+      if (!err_tol)
+      {
+        substep_iter++;
+        total_substeps *= 2;
+        std::cout << "total_substeps = " << total_substeps << std::endl;
+        break;
+      }
+      // update strain and stress
+      strain_increment += sub_strain_increment;
+      inelastic_strain_increment += sub_inelastic_strain_increment;
+      sub_elastic_strain_old += sub_strain_increment;
+      stress_new = elasticity_tensor * sub_elastic_strain_old;
+      // accumulate scalar_effective_inelastic_strain
+      _scalar_effective_inelastic_strain += sub_scalar_effective_inelastic_strain;
+      computeStressFinalize(inelastic_strain_increment);
+      // store incremental material properties for this step
+      storeIncrementalMaterialProperties();
+    }
+
+    if (substep_iter > _max_substep_iter && !err_tol)
+    {
+      _dt = dt_original;
+      throw MooseException("updateStateSubstep: Constitutive failure.");
+    }
+  } while (!err_tol);
+
+  // // update stress
+  // stress_new = stress_new;
   // update effective inelastic strain
   _effective_inelastic_strain[_qp] =
-      _effective_inelastic_strain_old[_qp] + sub_scalar_effective_inelastic_strain;
+      _effective_inelastic_strain_old[_qp] + _scalar_effective_inelastic_strain;
 
   // recover the original timestep
   _dt = dt_original;

@@ -84,6 +84,7 @@
     use_substep = true
     substep_strain_tolerance = 0.1
     max_inelastic_increment = 0.01
+    maximum_substep_iteration = 5
   [../]
 []
 
