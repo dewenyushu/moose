@@ -69,4 +69,22 @@
     requirement = 'The system shall apply correct boundary condition after timestep being cut during substepping'
     design = '/ComputeMultipleCrystalPlasticityStress.md'
   [../]
+  [./thermal_eigenstrain]
+    type = 'CSVDiff'
+    input = 'thermal_eigenstrain_test.i'
+    csvdiff = 'thermal_eigenstrain_test_out.csv'
+    allow_warnings = true
+    issues = '#17734'
+    requirement = 'The system shall produce correct thermal deformation gradient values with changing temperature'
+    design = '/ComputeCrystalPlasticityThermalEigenstrain.md /ComputeMultipleCrystalPlasticityStress.md'
+  [../]
+  [./multiple_eigenstrains]
+    type = 'CSVDiff'
+    input = 'multiple_eigenstrains_test.i'
+    csvdiff = 'multiple_eigenstrains_test_out.csv'
+    allow_warnings = true
+    issues = '#17734'
+    requirement = 'The system shall produce correct deformation gradient values for the total and individual eigenstrains'
+    design = '/ComputeCrystalPlasticityThermalEigenstrain.md /ComputeMultipleCrystalPlasticityStress.md'
+  [../]
 []

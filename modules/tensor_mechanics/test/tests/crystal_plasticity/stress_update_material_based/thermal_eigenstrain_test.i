@@ -1,5 +1,5 @@
 [GlobalParams]
-  displacements = 'ux uy uz'
+  displacements = 'disp_x disp_y disp_z'
 []
 
 [Mesh]
@@ -9,24 +9,21 @@
 []
 
 [AuxVariables]
-  [./fp_zz]
+  [./temperature]
+    order = FIRST
+    family = LAGRANGE
+  [../]
+  [./fth_xx]
     order = CONSTANT
     family = MONOMIAL
   [../]
-  [./e_zz]
+  [./fth_yy]
     order = CONSTANT
     family = MONOMIAL
   [../]
-  [./gss]
+  [./fth_zz]
     order = CONSTANT
     family = MONOMIAL
-  [../]
-[]
-
-[Functions]
-  [./tdisp]
-    type = ParsedFunction
-    value = 0.01*t
   [../]
 []
 
@@ -37,27 +34,34 @@
 []
 
 [AuxKernels]
-  [./fp_zz]
+  [./temperature]
+    type = FunctionAux
+    variable = temperature
+    function = '300+400*t'  # temperature increases at a constant rate
+    execute_on = timestep_begin
+  [../]
+  [./fth_xx]
     type = RankTwoAux
-    variable = fp_zz
-    rank_two_tensor = plastic_deformation_gradient
-    index_j = 2
-    index_i = 2
+    variable = fth_xx
+    rank_two_tensor = thermal_deformation_gradient
+    index_j = 0
+    index_i = 0
     execute_on = timestep_end
   [../]
-  [./e_zz]
+  [./fth_yy]
     type = RankTwoAux
-    variable = e_zz
-    rank_two_tensor = total_lagrangian_strain
-    index_j = 2
-    index_i = 2
+    variable = fth_yy
+    rank_two_tensor = thermal_deformation_gradient
+    index_j = 1
+    index_i = 1
     execute_on = timestep_end
   [../]
-  [./gss1]
-    type = MaterialStdVectorAux
-    variable = gss
-    property = slip_resistance
-    index = 0
+  [./fth_zz]
+    type = RankTwoAux
+    variable = fth_zz
+    rank_two_tensor = thermal_deformation_gradient
+    index_j = 2
+    index_i = 2
     execute_on = timestep_end
   [../]
 []
@@ -65,27 +69,27 @@
 [BCs]
   [./symmy]
     type = DirichletBC
-    variable = uy
+    variable = disp_y
     boundary = bottom
     value = 0
   [../]
   [./symmx]
     type = DirichletBC
-    variable = ux
+    variable = disp_x
     boundary = left
     value = 0
   [../]
   [./symmz]
     type = DirichletBC
-    variable = uz
+    variable = disp_z
     boundary = back
     value = 0
   [../]
   [./tdisp]
-    type = FunctionDirichletBC
-    variable = uz
+    type = DirichletBC
+    variable = disp_z
     boundary = front
-    function = tdisp
+    value = 0
   [../]
 []
 
@@ -98,16 +102,21 @@
   [./stress]
     type = ComputeMultipleCrystalPlasticityStress
     crystal_plasticity_models = 'trial_xtalpl'
+    eigenstrain_names = thermal_eigenstrain
     tan_mod_type = exact
-    maximum_substep_iteration = 200
-    use_line_search = true
-    min_line_search_step_size = 0.01
+    maximum_substep_iteration = 5
   [../]
   [./trial_xtalpl]
     type = CrystalPlasticityKalidindiUpdate
     number_slip_systems = 12
     slip_sys_file_name = input_slip_sys.txt
-    resistance_tol = 0.01
+  [../]
+  [./thermal_eigenstrain]
+    type = ComputeCrystalPlasticityThermalEigenstrain
+    eigenstrain_name = thermal_eigenstrain
+    deformation_gradient_name = thermal_deformation_gradient
+    temperature = temperature
+    thermal_expansion_coefficients = '1e-05 2e-05 4e-05' # thermal expansion coefficients along three directions
   [../]
 []
 
@@ -116,17 +125,21 @@
     type = ElementAverageValue
     variable = stress_zz
   [../]
-  [./fp_zz]
+  [./fth_xx]
     type = ElementAverageValue
-    variable = fp_zz
+    variable = fth_xx
   [../]
-  [./e_zz]
+  [./fth_yy]
     type = ElementAverageValue
-    variable = e_zz
+    variable = fth_yy
   [../]
-  [./gss]
+  [./fth_zz]
     type = ElementAverageValue
-    variable = gss
+    variable = fth_zz
+  [../]
+  [./temperature]
+    type = ElementAverageValue
+    variable = temperature
   [../]
 []
 
@@ -139,21 +152,23 @@
 
 [Executioner]
   type = Transient
-  dt = 0.05
   solve_type = 'PJFNK'
 
-  petsc_options_iname = -pc_hypre_type
-  petsc_options_value = boomerang
+  petsc_options_iname = '-pc_type -pc_asm_overlap -sub_pc_type -ksp_type -ksp_gmres_restart'
+  petsc_options_value = ' asm      2              lu            gmres     200'
   nl_abs_tol = 1e-10
-  nl_rel_step_tol = 1e-10
-  dtmax = 10.0
   nl_rel_tol = 1e-10
-  end_time = 1
-  dtmin = 0.02
-  num_steps = 10
   nl_abs_step_tol = 1e-10
+
+  dt = 0.1
+  dtmin = 1e-4
+  end_time = 10
 []
 
 [Outputs]
-  exodus = true
+  csv = true
+  [./console]
+    type = Console
+    max_rows = 5
+  [../]
 []
