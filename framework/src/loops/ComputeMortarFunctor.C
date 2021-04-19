@@ -142,7 +142,8 @@ ComputeMortarFunctor::operator()()
                                   secondary_side_id,
                                   _secondary_boundary_id,
                                   TOLERANCE,
-                                  &custom_xi1_pts);
+                                  &custom_xi1_pts,
+                                  &_qrule_msm->get_weights());
 
     if (_has_primary)
     {
@@ -163,8 +164,12 @@ ComputeMortarFunctor::operator()()
         reinit_primary_elem = _fe_problem.mesh().elemPtr(reinit_primary_elem->id());
 
       // reinit the variables/residuals/jacobians on the primary interior
-      _fe_problem.reinitNeighborFaceRef(
-          reinit_primary_elem, primary_side_id, _primary_boundary_id, TOLERANCE, &custom_xi2_pts);
+      _fe_problem.reinitNeighborFaceRef(reinit_primary_elem,
+                                        primary_side_id,
+                                        _primary_boundary_id,
+                                        TOLERANCE,
+                                        &custom_xi2_pts,
+                                        &_qrule_msm->get_weights());
 
       // reinit neighbor materials, but be careful not to execute stateful materials since
       // conceptually they don't make sense with mortar (they're not interpolary)
@@ -177,7 +182,7 @@ ComputeMortarFunctor::operator()()
     // reinit the variables/residuals/jacobians on the lower dimensional element corresponding to
     // the secondary face. This must be done last after the dof indices have been prepared for the
     // secondary (element) and primary (neighbor)
-    _subproblem.reinitLowerDElem(secondary_face_elem, /*tid=*/0, &custom_xi1_pts);
+    _subproblem.reinitLowerDElem(secondary_face_elem, /*tid=*/0, &custom_xi1_pts, &_qrule_msm->get_weights());
 
     // All this does currently is sets the neighbor/primary lower dimensional elem in Assembly and
     // computes its volume for potential use in the MortarConstraints. Solution continuity

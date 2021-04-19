@@ -16,8 +16,8 @@ max_lx = 0.08
     xmax = 0
     ymin = -0.9
     ymax = 0.1
-    nx = 4
-    ny = 4
+    nx = 2
+    ny = 2
     elem_type = QUAD9
     boundary_id_offset = 10
     boundary_name_prefix = left
@@ -34,8 +34,8 @@ max_lx = 0.08
     xmax = 1
     ymin = -1
     ymax = 1
-    nx = 3
-    ny = 8
+    nx = 2
+    ny = 4
     elem_type = QUAD9
     boundary_id_offset = 20
     boundary_name_prefix = right
@@ -242,9 +242,9 @@ max_lx = 0.08
   dtmin = 0.1
   end_time = 3.0
 
-  l_max_its = 10
+  l_max_its = 20
 
-  nl_max_its = 50
+  nl_max_its = 20
   nl_rel_tol = 1e-6
   snesmf_reuse_base = false
 []

@@ -240,7 +240,7 @@ max_lx = 0.08
 
   dt = 0.1
   dtmin = 0.1
-  end_time = 1.0
+  end_time = 0.1
 
   l_max_its = 5
 
