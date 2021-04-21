@@ -94,6 +94,7 @@
 #include "FVTimeKernel.h"
 #include "MooseVariableFV.h"
 #include "FVBoundaryCondition.h"
+#include "FVInterfaceKernel.h"
 #include "Reporter.h"
 #include "ADUtils.h"
 
@@ -1074,6 +1075,9 @@ FEProblemBase::initialSetup()
 
   if (_line_search)
     _line_search->initialSetup();
+
+  // Perform Reporter get/declare check
+  _reporter_data.check();
 
   _app.checkRegistryLabels();
   setCurrentExecuteOnFlag(EXEC_NONE);
@@ -2769,6 +2773,14 @@ FEProblemBase::addFVBC(const std::string & fv_bc_name,
                        InputParameters & parameters)
 {
   addObject<FVBoundaryCondition>(fv_bc_name, name, parameters);
+}
+
+void
+FEProblemBase::addFVInterfaceKernel(const std::string & fv_ik_name,
+                                    const std::string & name,
+                                    InputParameters & parameters)
+{
+  addObject<FVInterfaceKernel>(fv_ik_name, name, parameters);
 }
 
 // InterfaceKernels ////
@@ -6464,9 +6476,6 @@ FEProblemBase::checkProblemIntegrity()
   // variables matches the order of the elements in the displaced
   // mesh.
   checkDisplacementOrders();
-
-  // Perform Reporter get/declare check
-  _reporter_data.check();
 }
 
 void

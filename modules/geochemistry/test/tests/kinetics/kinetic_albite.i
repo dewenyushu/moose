@@ -4,13 +4,14 @@
   geochemistry_reactor_name = reactor
   charge_balance_species = "Cl-"
   constraint_species = "H2O              H+            Cl-              Na+              SiO2(aq)           Al+++"
-  constraint_value = "  1.0              -1.5          0.1              1.053387         1E-6               1E-6" # note: Na+ appears in Albite
+  constraint_value = "  1.0              -1.5          0.1              0.1              1E-6               1E-6"
   constraint_meaning = "kg_solvent_water log10activity bulk_composition bulk_composition free_concentration free_concentration"
   constraint_unit = "   kg               dimensionless moles            moles            molal              molal"
   initial_temperature = 70.0
   temperature = 70.0
   kinetic_species_name = Albite
-  kinetic_species_initial_moles = 0.953387 # Albite has 262.2230g/mol
+  kinetic_species_initial_value = 250
+  kinetic_species_unit = g
   evaluate_kinetic_rates_always = true # implicit time-marching used for stability
   ramp_max_ionic_strength_initial = 0 # max_ionic_strength in such a simple problem does not need ramping
   stoichiometric_ionic_str_using_Cl_only = true # for comparison with GWB

@@ -171,6 +171,13 @@ SystemBase::getActualFieldVariable(THREAD_ID tid, const std::string & var_name)
 }
 
 template <typename T>
+MooseVariableFV<T> &
+SystemBase::getFVVariable(THREAD_ID tid, const std::string & var_name)
+{
+  return *_vars[tid].getFVVariable<T>(var_name);
+}
+
+template <typename T>
 MooseVariableFE<T> &
 SystemBase::getFieldVariable(THREAD_ID tid, unsigned int var_number)
 {
@@ -1245,28 +1252,9 @@ SystemBase::copyVars(ExodusII_IO & io)
       }
     }
     else if (hasScalarVariable(vci._dest_name))
-    {
-      auto rank = comm().rank();
-      auto size = comm().size();
-
-      // Read solution on rank 0 only and send data to rank "size - 1" where scalar DOFs are
-      // stored
-      std::vector<Real> global_values;
-      if (rank == 0)
-      {
-        // Read the scalar value then set that value in the current solution
-        io.read_global_variable({vci._source_name}, timestep, global_values);
-        if (size > 1)
-          comm().send(size - 1, global_values);
-      }
-      if (rank == size - 1)
-      {
-        if (size > 1)
-          comm().receive(0, global_values);
-        const unsigned int var_num = system().variable_number(vci._dest_name);
-        system().solution->set(var_num, global_values[0]);
-      }
-    }
+      io.copy_scalar_solution(system(), {vci._dest_name}, {vci._source_name}, timestep);
+    else
+      mooseError("Unrecognized variable ", vci._dest_name, " in variables to copy.");
   }
 
   if (did_copy)
@@ -1607,3 +1595,6 @@ SystemBase::getActualFieldVariable<RealVectorValue>(THREAD_ID tid, unsigned int 
 
 template MooseVariableField<RealEigenVector> &
 SystemBase::getActualFieldVariable<RealEigenVector>(THREAD_ID tid, unsigned int var_number);
+
+template MooseVariableFV<Real> & SystemBase::getFVVariable<Real>(THREAD_ID tid,
+                                                                 const std::string & var_name);
