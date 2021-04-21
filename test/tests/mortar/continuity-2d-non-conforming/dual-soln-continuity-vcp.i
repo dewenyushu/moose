@@ -90,19 +90,24 @@
 []
 
 [Preconditioning]
-  [./smp]
-    type = SMP
+  [./vcp]
+    type = VCP
     full = true
+    variable = 'lambda'
+    coupled_variable = 'T'
+    preconditioner = 'AMG'
+    is_diagonal = true
   [../]
 []
 
 [Executioner]
   solve_type = NEWTON
   type = Steady
-  petsc_options_iname = '-pc_type -snes_linesearch_type -pc_factor_shift_type -pc_factor_shift_amount'
-  petsc_options_value = 'lu       basic                 NONZERO               1e-15'
+  petsc_options_iname = ' -pc_factor_shift_type -pc_factor_shift_amount'
+  petsc_options_value = '  NONZERO               1e-15'
 []
 
 [Outputs]
+  file_base = 'dual-soln-continuity_out'
   exodus = true
 []
