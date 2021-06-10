@@ -11,23 +11,22 @@
 
 #include "Material.h"
 
-class EulerAngleMagnitude : public Material
+class UpdatedEulerAngle : public Material
 {
 public:
   static InputParameters validParams();
 
-  EulerAngleMagnitude(const InputParameters & parameters);
+  UpdatedEulerAngle(const InputParameters & parameters);
 
-  void initQpStatefulProperties() override{};
+  void initQpStatefulProperties() override;
   void computeQpProperties() override;
 
 private:
   void computeEulerAngleFromRotationMatrix(const RankTwoTensor & rot, RealVectorValue & euler_angle);
 
-  const bool _degree_to_radian;
-  // const MaterialProperty<RealVectorValue> & _initial_euler_angles;
+  const MaterialProperty<RealVectorValue> & _initial_euler_angles;
 
-  // total rotation tensor
+  // updated rotation tensor
   const MaterialProperty<RankTwoTensor> & _update_rotation;
   MaterialProperty<RealVectorValue> & _updated_euler_angle;
 };

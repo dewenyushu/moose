@@ -143,9 +143,9 @@
     type = ComputeElasticityTensorConstantRotationCP
     C_ijkl = '1.684e5 1.214e5 1.214e5 1.684e5 1.214e5 1.684e5 0.754e5 0.754e5 0.754e5'
     fill_method = symmetric9
-    euler_angle_1 = 120.0
-    euler_angle_2 = 125.264
-    euler_angle_3 =  45.0
+    euler_angle_1 = 100.0
+    euler_angle_2 = 22.0
+    euler_angle_3 = 50.0
   []
   [stress]
     type = ComputeMultipleCrystalPlasticityStress
@@ -158,7 +158,8 @@
     slip_sys_file_name = input_slip_sys.txt
   []
   [euler_angle_mag]
-    type = EulerAngleMagnitude
+    type = UpdatedEulerAngle
+    degree_to_radian = false
   []
 []
 
@@ -218,10 +219,10 @@
   nl_rel_tol = 1e-10
   nl_abs_step_tol = 1e-10
 
-  dt = 0.05
+  dt = 0.1
   dtmin = 0.01
   dtmax = 10.0
-  end_time = 1
+  end_time = 50
 []
 
 [Outputs]

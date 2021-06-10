@@ -90,7 +90,7 @@ ComputeMultipleCrystalPlasticityStress::ComputeMultipleCrystalPlasticityStress(
     _pk2_old(getMaterialPropertyOld<RankTwoTensor>("second_piola_kirchhoff_stress")),
     _total_lagrangian_strain(
         declareProperty<RankTwoTensor>("total_lagrangian_strain")), // Lagrangian strain
-    _update_rotation(declareProperty<RankTwoTensor>("update_rot")),
+    _update_rotation(declareProperty<RankTwoTensor>("update_rotation")),
     _crysrot(getMaterialProperty<RankTwoTensor>(
         "crysrot")) // defined in the elasticity tensor classes for crystal plasticity
 {
@@ -296,7 +296,7 @@ ComputeMultipleCrystalPlasticityStress::postSolveQp(RankTwoTensor & cauchy_stres
 
   // Calculate crystal rotation to track separately
   RankTwoTensor rot;
-  _deformation_gradient[_qp].getRUDecompositionRotation(rot);
+  _elastic_deformation_gradient.getRUDecompositionRotation(rot);
   _update_rotation[_qp] = rot * _crysrot[_qp];
 }
 
