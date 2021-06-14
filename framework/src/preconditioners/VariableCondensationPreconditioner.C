@@ -45,8 +45,9 @@ VariableCondensationPreconditioner::validParams()
   InputParameters params = MoosePreconditioner::validParams();
 
   params.addClassDescription(
-      "Varialble condensation preconditioner (VCP) condenses out specified variable(s), "
-      "from the Jacobian matrix and results in a system with less unkowns for preconditioners.");
+      "Varialble condensation preconditioner (VCP) condenses out specified variable(s) "
+      "from the Jacobian matrix and produces a system of equations with less unkowns to "
+      "be solved by the underlying preconditioners.");
 
   params.addParam<std::vector<NonlinearVariableName>>(
       "off_diag_row",
