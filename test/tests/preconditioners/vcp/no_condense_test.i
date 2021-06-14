@@ -1,8 +1,8 @@
 [Mesh]
-  [./original_file_mesh]
+  [original_file_mesh]
     type = FileMeshGenerator
     file = non_conform_2blocks.e
-  [../]
+  []
   [slave]
     input = original_file_mesh
     type = LowerDBlockFromSidesetGenerator
@@ -20,45 +20,45 @@
 []
 
 [Functions]
-  [./exact_sln]
+  [exact_sln]
     type = ParsedFunction
     value = sin(2*pi*x)*sin(2*pi*y)
-  [../]
-  [./ffn]
+  []
+  [ffn]
     type = ParsedFunction
     value = 8*pi*pi*sin(2*pi*x)*sin(2*pi*y)
-  [../]
+  []
 []
 
 [Variables]
-  [./u]
+  [u]
     order = FIRST
     family = LAGRANGE
     block = '1 2'
-  [../]
+  []
 
-  [./lm]
+  [lm]
     order = FIRST
     family = LAGRANGE
     block = slave_lower
     use_dual = false
-  [../]
+  []
 []
 
 [Kernels]
-  [./diff]
+  [diff]
     type = Diffusion
     variable = u
-  [../]
-  [./ffn]
+  []
+  [ffn]
     type = BodyForce
     variable = u
     function = ffn
-  [../]
+  []
 []
 
 [Constraints]
-  [./ced]
+  [ced]
     type = EqualValueConstraint
     variable = lm
     secondary_variable = u
@@ -66,41 +66,40 @@
     primary_subdomain = 200
     secondary_boundary = 10
     secondary_subdomain = 100
-  [../]
+  []
 []
 
 [BCs]
-  [./all]
+  [all]
     type = DirichletBC
     variable = u
     boundary = '30 40'
     value = 0.0
-  [../]
-  [./neumann]
+  []
+  [neumann]
     type = FunctionGradientNeumannBC
     exact_solution = exact_sln
     variable = u
     boundary = '50 60'
-  [../]
+  []
 []
 
 [Postprocessors]
-  [./l2_error]
+  [l2_error]
     type = ElementL2Error
     variable = u
     function = exact_sln
     block = '1 2'
     execute_on = 'initial timestep_end'
-  [../]
+  []
 []
 
 [Preconditioning]
-  [./smp]
+  [smp]
     type = SMP
     full = true
-  [../]
+  []
 []
-
 
 [Executioner]
   type = Steady

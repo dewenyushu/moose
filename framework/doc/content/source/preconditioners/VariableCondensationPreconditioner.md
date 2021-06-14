@@ -1,4 +1,4 @@
-# VCP
+# Variable Condensation Preconditioner (VCP)
 
 !syntax description /Preconditioning/VCP
 
