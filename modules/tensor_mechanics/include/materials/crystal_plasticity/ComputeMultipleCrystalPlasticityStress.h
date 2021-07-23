@@ -197,6 +197,9 @@ protected:
   /// Lagrangian total strain measure for the entire crystal
   MaterialProperty<RankTwoTensor> & _total_lagrangian_strain;
 
+  /// Lagrangian elastic lattice strain
+  MaterialProperty<RankTwoTensor> & _elastic_lagrangian_strain;
+
   /**
    * Tracks the rotation of the crystal during deformation
    * Note: this rotation tensor is not applied to the crystal lattice
