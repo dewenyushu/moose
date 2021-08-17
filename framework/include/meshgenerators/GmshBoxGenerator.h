@@ -9,21 +9,17 @@
 
 #pragma once
 
-#include "GmshPlateGenerator.h"
+#include "GmshGeneratorBase.h"
 
-class GmshHolePlateGenerator : public GmshPlateGenerator
+class GmshBoxGenerator : public GmshGeneratorBase
 {
 public:
   static InputParameters validParams();
 
-  GmshHolePlateGenerator(const InputParameters & parameters);
+  GmshBoxGenerator(const InputParameters & parameters);
 
 protected:
   void generateGeometry() override;
 
-  std::vector<Real> _x;
-  std::vector<Real> _y;
-  std::vector<Real> _r;
-  std::vector<std::string> _names;
-  std::size_t _n_holes;
+  Real _x, _y, _z;
 };
