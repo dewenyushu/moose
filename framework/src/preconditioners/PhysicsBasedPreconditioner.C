@@ -62,7 +62,9 @@ PhysicsBasedPreconditioner::validParams()
 PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(const InputParameters & params)
   : MoosePreconditioner(params),
     Preconditioner<Number>(MoosePreconditioner::_communicator),
-    _nl(_fe_problem.getNonlinearSystemBase())
+    _nl(_fe_problem.getNonlinearSystemBase()),
+    _init_timer(registerTimedSection("init", 2)),
+    _apply_timer(registerTimedSection("apply", 1))
 {
   unsigned int num_systems = _nl.system().n_vars();
   _systems.resize(num_systems);
@@ -177,7 +179,7 @@ PhysicsBasedPreconditioner::addSystem(unsigned int var,
 void
 PhysicsBasedPreconditioner::init()
 {
-  TIME_SECTION("init", 2, "Initializing PhysicsBasedPreconditioner");
+  TIME_SECTION(_init_timer);
 
   // Tell libMesh that this is initialized!
   _is_initialized = true;
@@ -250,7 +252,7 @@ PhysicsBasedPreconditioner::setup()
 void
 PhysicsBasedPreconditioner::apply(const NumericVector<Number> & x, NumericVector<Number> & y)
 {
-  TIME_SECTION("apply", 1, "Applying PhysicsBasedPreconditioner");
+  TIME_SECTION(_apply_timer);
 
   const unsigned int num_systems = _systems.size();
 
