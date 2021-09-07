@@ -12,26 +12,26 @@
     lower_bound = -0.05
     upper_bound = 0.05
   []
-  [right_circle_r]
+  [right_circle_x]
     type = Uniform
-    lower_bound = 0.725
-    upper_bound = 0.775
+    lower_bound = 5.7
+    upper_bound = 5.8
   []
-  [left_circle_r]
+  [left_circle_x]
     type = Uniform
-    lower_bound = 0.725
-    upper_bound = 0.775
+    lower_bound = -5.8
+    upper_bound = -5.7
   []
-  [fillet_radius]
-    type = Uniform
-    lower_bound = 0.25
-    upper_bound = 0.35
-  []
+  # [fillet_radius]
+  #   type = Uniform
+  #   lower_bound = 0.2
+  #   upper_bound = 0.4
+  # []
 []
 
 [GlobalParams]
   sampler = quad
-  distributions = 'right_circle_y left_circle_y right_circle_r left_circle_r fillet_radius'
+  distributions = 'right_circle_y left_circle_y right_circle_x left_circle_x'
 []
 
 [Samplers]
@@ -55,8 +55,8 @@
   [param]
     type = MultiAppCommandLineControl
     multi_app = sub
-    param_names = 'Mesh/gmsh/right_circle_y Mesh/gmsh/left_circle_y Mesh/gmsh/right_circle_r '
-                  'Mesh/gmsh/left_circle_r Mesh/gmsh/fillet_radius'
+    param_names = 'Mesh/gmsh/right_circle_y[0] Mesh/gmsh/left_circle_y[1] '
+                  'Mesh/gmsh/right_circle_x[2] Mesh/gmsh/left_circle_x[3]'
   []
 []
 

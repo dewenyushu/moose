@@ -29,7 +29,7 @@ protected:
 
   Real _half_bridge_height;
   Real _half_bridge_length;
-  Real _gripping_height;
+  Real _half_gripping_height;
   Real _fillet_radius;
   Real _connection_radius;
   Real _half_sample_length;

@@ -18,7 +18,7 @@ GmshTensionSampleGenerator::validParams()
   params.addParam<Real>("spacing", 1e-2, "Mesh size");
   params.addParam<Real>("half_bridge_height", 0.6, "Half of the sample bridge height");
   params.addParam<Real>("half_bridge_length", 2.5, "Half of the sample bridge length");
-  params.addParam<Real>("gripping_height", 1.4, "Height of the gripping part");
+  params.addParam<Real>("half_gripping_height", 1.4, "Half of the height of the gripping part");
   params.addParam<Real>("half_sample_length", 8, "Half of the overal sample length");
   params.addParam<Real>("right_circle_x", 5.75, "Right circle centroid x coordinate");
   params.addParam<Real>("right_circle_y", 0, "Right circle centroid y coordinate");
@@ -36,9 +36,9 @@ GmshTensionSampleGenerator::GmshTensionSampleGenerator(const InputParameters & p
     _scale(getParam<Real>("scale")),
     _half_bridge_height(getParam<Real>("half_bridge_height") * _scale),
     _half_bridge_length(getParam<Real>("half_bridge_length") * _scale),
-    _gripping_height(getParam<Real>("gripping_height") * _scale),
+    _half_gripping_height(getParam<Real>("half_gripping_height") * _scale),
     _fillet_radius(getParam<Real>("fillet_radius") * _scale),
-    _connection_radius(_gripping_height - _fillet_radius),
+    _connection_radius(_half_gripping_height - _fillet_radius),
     _half_sample_length(getParam<Real>("half_sample_length") * _scale),
     _right_circle_x(getParam<Real>("right_circle_x") * _scale),
     _right_circle_y(getParam<Real>("right_circle_y") * _scale),

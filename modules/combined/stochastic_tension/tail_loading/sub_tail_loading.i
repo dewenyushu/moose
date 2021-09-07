@@ -2,13 +2,13 @@
   [gmsh]
     type = GmshTensionSampleGenerator
     dim = 2
-    right_circle_x =5.75
+    right_circle_x = 5.75
     right_circle_y = 0
     right_circle_r = 0.75
     left_circle_x = -5.75
     left_circle_y = 0
     left_circle_r = 0.75
-    fillet_radius= 0.3
+    fillet_radius = 0.3
     spacing = 0.1
     scale = 1000.0 # scale to micron
   []
@@ -16,77 +16,98 @@
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
+  out_of_plane_strain = strain_zz
+[]
+
+[Variables]
+  [./strain_zz]
+  [../]
 []
 
 [AuxVariables]
-  [./temp]
+  [temp]
     initial_condition = 297
-  [../]
+  []
+  [nl_strain_zz]
+    order = CONSTANT
+    family = MONOMIAL
+  []
 []
 
 [Modules/TensorMechanics/Master]
-  [./all]
+  [all]
+    planar_formulation = WEAK_PLANE_STRESS
     strain = FINITE
     incremental = true
     add_variables = true
-    generate_output = 'stress_xx stress_yy stress_xy strain_xx strain_yy strain_xy elastic_strain_yy vonmises_stress'
+    generate_output = 'stress_xx stress_yy stress_xy strain_xx strain_yy strain_xy elastic_strain_yy '
+                      'vonmises_stress'
     use_automatic_differentiation = true
-  [../]
+  []
+[]
+
+[AuxKernels]
+  [strain_zz]
+    type = ADRankTwoAux
+    rank_two_tensor = total_strain
+    variable = nl_strain_zz
+    index_i = 2
+    index_j = 2
+  []
 []
 
 [Materials]
-  [./elasticity_tensor]
+  [elasticity_tensor]
     type = ADComputeIsotropicElasticityTensor
     youngs_modulus = 200e3 # MPa
     poissons_ratio = 0.3
     constant_on = SUBDOMAIN
-  [../]
-  [./radial_return_stress]
+  []
+  [radial_return_stress]
     type = ADComputeMultipleInelasticStress
     inelastic_models = 'power_law_creep'
-  [../]
-  [./power_law_creep]
+  []
+  [power_law_creep]
     type = ADPowerLawCreepStressUpdate
     coefficient = 1.0e-15
     n_exponent = 2
     activation_energy = 3.0e2
     temperature = temp
-  [../]
+  []
 []
 
-
 [BCs]
-  [./left_x]
+  [left_x]
     type = FunctionDirichletBC
     variable = disp_x
     boundary = '19'
     function = -50*t
-  [../]
-  [./left_y]
+  []
+  [left_y]
     type = DirichletBC
     variable = disp_y
     boundary = '19'
     value = 0
-  [../]
-  [./right_x]
+  []
+  [right_x]
     type = FunctionDirichletBC
     variable = disp_x
     boundary = '8'
     function = 50*t
-  [../]
-  [./right_y]
+  []
+  [right_y]
     type = DirichletBC
     variable = disp_y
     boundary = '8'
     value = 0
-  [../]
+  []
 []
 
 [Preconditioning]
-  [./smp]
+  [smp]
     type = SMP
     full = true
-  [../]
+  []
 []
 
 [Executioner]
@@ -107,7 +128,7 @@
   file_base = ./output
   execute_on = 'initial timestep_end'
   exodus = false
-  csv=false
+  csv = false
 []
 
 [Postprocessors]

@@ -4,34 +4,34 @@
 [Distributions]
   [right_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.1
+    upper_bound = 0.1
   []
   [left_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.1
+    upper_bound = 0.1
   []
-  [right_circle_x]
-    type = Uniform
-    lower_bound = 5.7
-    upper_bound = 5.8
-  []
-  [left_circle_x]
-    type = Uniform
-    lower_bound = -5.8
-    upper_bound = -5.7
-  []
+  # [right_circle_r]
+  #   type = Uniform
+  #   lower_bound = 0.725
+  #   upper_bound = 0.775
+  # []
+  # [left_circle_r]
+  #   type = Uniform
+  #   lower_bound = 0.725
+  #   upper_bound = 0.775
+  # []
   # [fillet_radius]
   #   type = Uniform
-  #   lower_bound = 0.2
-  #   upper_bound = 0.4
+  #   lower_bound = 0.25
+  #   upper_bound = 0.35
   # []
 []
 
 [GlobalParams]
   sampler = quad
-  distributions = 'right_circle_y left_circle_y right_circle_x left_circle_x'
+  distributions = 'right_circle_y left_circle_y' # right_circle_r left_circle_r fillet_radius'
 []
 
 [Samplers]
@@ -46,7 +46,7 @@
 [MultiApps]
   [sub]
     type = SamplerFullSolveMultiApp
-    input_files = sub_tail_loading.i
+    input_files = sub_shoulder_loading.i
     mode = batch-reset
   []
 []
@@ -55,8 +55,8 @@
   [param]
     type = MultiAppCommandLineControl
     multi_app = sub
-    param_names = 'Mesh/gmsh/right_circle_y[0] Mesh/gmsh/left_circle_y[1] '
-                  'Mesh/gmsh/right_circle_x[2] Mesh/gmsh/left_circle_x[3]'
+    param_names = 'Mesh/gmsh/right_circle_y[0] Mesh/gmsh/left_circle_y[1]' #Mesh/gmsh/right_circle_r '
+                  #'Mesh/gmsh/left_circle_r Mesh/gmsh/fillet_radius'
   []
 []
 
