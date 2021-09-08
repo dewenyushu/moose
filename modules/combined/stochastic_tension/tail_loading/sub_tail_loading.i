@@ -9,7 +9,7 @@
     left_circle_y = 0
     left_circle_r = 0.75
     fillet_radius = 0.3
-    spacing = 0.1
+    spacing = 0.15
     scale = 1000.0 # scale to micron
   []
 []
@@ -20,8 +20,8 @@
 []
 
 [Variables]
-  [./strain_zz]
-  [../]
+  [strain_zz]
+  []
 []
 
 [AuxVariables]
@@ -70,9 +70,11 @@
   [power_law_creep]
     type = ADPowerLawCreepStressUpdate
     coefficient = 1.0e-15
-    n_exponent = 2
+    n_exponent = 4
     activation_energy = 3.0e2
     temperature = temp
+    relative_tolerance = 1e-6
+    absolute_tolerance = 1e-6
   []
 []
 
@@ -115,13 +117,19 @@
 
   solve_type = 'PJFNK'
 
-  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = 'lu    superlu_dist'
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -pc_factor_shift_type '
+                        '-pc_factor_shift_amount'
+  petsc_options_value = 'lu    superlu_dist NONZERO 1e-13'
   line_search = 'none'
 
-  dt = 0.125
+  [TimeStepper]
+    type = IterationAdaptiveDT
+    dt = 0.1
+    optimal_iterations = 8
+    iteration_window = 2
+  []
   dtmin = 1e-4
-  end_time = 16
+  end_time = 8
 []
 
 [Outputs]
@@ -150,6 +158,18 @@
     point = '0 0.6 0'
     use_displaced_mesh = false
   []
+  [stress_xx_left]
+    type = PointValue
+    variable = stress_xx
+    point = '-0.6 0 0'
+    use_displaced_mesh = false
+  []
+  [stress_xx_right]
+    type = PointValue
+    variable = stress_xx
+    point = '0.6 0 0'
+    use_displaced_mesh = false
+  []
   [strain_xx_top]
     type = PointValue
     variable = strain_xx
@@ -166,6 +186,18 @@
     type = PointValue
     variable = strain_xx
     point = '0 -0.6 0'
+    use_displaced_mesh = false
+  []
+  [strain_xx_left]
+    type = PointValue
+    variable = strain_xx
+    point = '-0.6 0 0'
+    use_displaced_mesh = false
+  []
+  [strain_xx_right]
+    type = PointValue
+    variable = strain_xx
+    point = '0.6 0 0'
     use_displaced_mesh = false
   []
 []

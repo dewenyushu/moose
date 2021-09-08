@@ -82,6 +82,14 @@
     type = EvaluateSurrogate
     model = pc_strain_xx_top
   []
+  [eval_strain_xx_left]
+    type = EvaluateSurrogate
+    model = pc_strain_xx_left
+  []
+  [eval_strain_xx_right]
+    type = EvaluateSurrogate
+    model = pc_strain_xx_right
+  []
   [eval_stress_xx_bot]
     type = EvaluateSurrogate
     model = pc_stress_xx_bot
@@ -93,6 +101,14 @@
   [eval_stress_xx_top]
     type = EvaluateSurrogate
     model = pc_stress_xx_top
+  []
+  [eval_stress_xx_left]
+    type = EvaluateSurrogate
+    model = pc_stress_xx_left
+  []
+  [eval_stress_xx_right]
+    type = EvaluateSurrogate
+    model = pc_stress_xx_right
   []
 []
 
@@ -127,6 +143,26 @@
     pc_name = pc_strain_xx_top
     sensitivity_order = 'first second total'
   []
+  [stats_strain_xx_left]
+    type = PolynomialChaosStatistics
+    pc_name = pc_strain_xx_left
+    compute = 'mean stddev'
+  []
+  [sobol_strain_xx_left]
+    type = PolynomialChaosSobolStatistics
+    pc_name = pc_strain_xx_left
+    sensitivity_order = 'first second total'
+  []
+  [stats_strain_xx_right]
+    type = PolynomialChaosStatistics
+    pc_name = pc_strain_xx_right
+    compute = 'mean stddev'
+  []
+  [sobol_strain_xx_right]
+    type = PolynomialChaosSobolStatistics
+    pc_name = pc_strain_xx_right
+    sensitivity_order = 'first second total'
+  []
   [stats_stress_xx_bot]
     type = PolynomialChaosStatistics
     pc_name = pc_stress_xx_bot
@@ -155,6 +191,26 @@
   [sobol_stress_xx_top]
     type = PolynomialChaosSobolStatistics
     pc_name = pc_stress_xx_top
+    sensitivity_order = 'first second total'
+  []
+  [stats_stress_xx_left]
+    type = PolynomialChaosStatistics
+    pc_name = pc_stress_xx_left
+    compute = 'mean stddev'
+  []
+  [sobol_stress_xx_left]
+    type = PolynomialChaosSobolStatistics
+    pc_name = pc_stress_xx_left
+    sensitivity_order = 'first second total'
+  []
+  [stats_stress_xx_right]
+    type = PolynomialChaosStatistics
+    pc_name = pc_stress_xx_right
+    compute = 'mean stddev'
+  []
+  [sobol_stress_xx_right]
+    type = PolynomialChaosSobolStatistics
+    pc_name = pc_stress_xx_right
     sensitivity_order = 'first second total'
   []
 []
