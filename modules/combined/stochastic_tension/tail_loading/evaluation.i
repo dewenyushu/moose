@@ -12,16 +12,16 @@
     lower_bound = -0.05
     upper_bound = 0.05
   []
-  [right_circle_x]
-    type = Uniform
-    lower_bound = 5.7
-    upper_bound = 5.8
-  []
-  [left_circle_x]
-    type = Uniform
-    lower_bound = -5.8
-    upper_bound = -5.7
-  []
+  # [right_circle_x]
+  #   type = Uniform
+  #   lower_bound = 5.7
+  #   upper_bound = 5.8
+  # []
+  # [left_circle_x]
+  #   type = Uniform
+  #   lower_bound = -5.8
+  #   upper_bound = -5.7
+  # []
   # [fillet_radius]
   #   type = Uniform
   #   lower_bound = 0.2
@@ -30,14 +30,14 @@
 []
 
 [GlobalParams]
-  sampler = quad
-  distributions = 'right_circle_y left_circle_y right_circle_x left_circle_x'
+  sampler = sample
+  distributions = 'right_circle_y left_circle_y'# right_circle_x left_circle_x'
 []
 
 [Samplers]
   [sample]
     type = MonteCarlo
-    num_rows = 200
+    num_rows = 1000
     execute_on = PRE_MULTIAPP_SETUP
   []
 []
@@ -45,27 +45,43 @@
 [Surrogates]
   [pc_strain_xx_bot]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_strain_xx_bot.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_strain_xx_bot.rd
   []
   [pc_strain_xx_center]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_strain_xx_center.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_strain_xx_center.rd
   []
   [pc_strain_xx_top]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_strain_xx_top.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_strain_xx_top.rd
+  []
+  [pc_strain_xx_left]
+    type = PolynomialChaos
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_strain_xx_left.rd
+  []
+  [pc_strain_xx_right]
+    type = PolynomialChaos
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_strain_xx_right.rd
   []
   [pc_stress_xx_bot]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_stress_xx_bot.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_bot.rd
   []
   [pc_stress_xx_center]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_stress_xx_center.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_center.rd
   []
   [pc_stress_xx_top]
     type = PolynomialChaos
-    filename = ./5param_surrogates/train_1param_trainer_poly_chaos_stress_xx_top.rd
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_top.rd
+  []
+  [pc_stress_xx_left]
+    type = PolynomialChaos
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_left.rd
+  []
+  [pc_stress_xx_right]
+    type = PolynomialChaos
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_right.rd
   []
 []
 
