@@ -15,18 +15,27 @@ InputParameters
 GmshTensionSampleGenerator::validParams()
 {
   InputParameters params = GmshGeneratorBase::validParams();
-  params.addParam<Real>("spacing", 1e-2, "Mesh size");
-  params.addParam<Real>("half_bridge_height", 0.6, "Half of the sample bridge height");
-  params.addParam<Real>("half_bridge_length", 2.5, "Half of the sample bridge length");
-  params.addParam<Real>("half_gripping_height", 1.4, "Half of the height of the gripping part");
+  params.addParam<Real>(
+      "coarse_spacing",
+      1e-2,
+      "The mesh size of the parts that are away from the hole, which can be coarse meshed.");
+  params.addParam<Real>(
+      "fine_spacing",
+      1e-2,
+      "The mesh size of the parts that are close to the hole, which are fine meshed.");
   params.addParam<Real>("half_sample_length", 8, "Half of the overal sample length");
+  params.addParam<Real>("half_bridge_height", 0.6, "Half of the sample bridge height");
+  params.addParam<Real>("half_sample_height", 2.0, "Half of the height of the gripping part");
+  params.addParam<Real>("gripping_length", 4.1, "Length of the gripping part");
+  params.addParam<Real>("fillet_radius", 0.3, "Fillet radius");
+
   params.addParam<Real>("right_circle_x", 5.75, "Right circle centroid x coordinate");
   params.addParam<Real>("right_circle_y", 0, "Right circle centroid y coordinate");
   params.addParam<Real>("right_circle_r", 0.75, "Right circle radius");
   params.addParam<Real>("left_circle_x", -5.75, "Left circle centroid x coordinate");
   params.addParam<Real>("left_circle_y", 0, "Left circle centroid y coordinate");
   params.addParam<Real>("left_circle_r", 0.75, "Left circle radius");
-  params.addParam<Real>("fillet_radius", 0.3, "Fillet radius");
+
   params.addParam<Real>("scale", 1.0, "Scale factor");
   return params;
 }
@@ -34,19 +43,24 @@ GmshTensionSampleGenerator::validParams()
 GmshTensionSampleGenerator::GmshTensionSampleGenerator(const InputParameters & parameters)
   : GmshGeneratorBase(parameters),
     _scale(getParam<Real>("scale")),
-    _half_bridge_height(getParam<Real>("half_bridge_height") * _scale),
-    _half_bridge_length(getParam<Real>("half_bridge_length") * _scale),
-    _half_gripping_height(getParam<Real>("half_gripping_height") * _scale),
-    _fillet_radius(getParam<Real>("fillet_radius") * _scale),
-    _connection_radius(_half_gripping_height - _fillet_radius),
     _half_sample_length(getParam<Real>("half_sample_length") * _scale),
+    _half_bridge_height(getParam<Real>("half_bridge_height") * _scale),
+    _half_sample_height(getParam<Real>("half_sample_height") * _scale),
+    _gripping_length(getParam<Real>("gripping_length") * _scale),
+    _fillet_radius(getParam<Real>("fillet_radius") * _scale),
     _right_circle_x(getParam<Real>("right_circle_x") * _scale),
     _right_circle_y(getParam<Real>("right_circle_y") * _scale),
     _right_circle_r(getParam<Real>("right_circle_r") * _scale),
     _left_circle_x(getParam<Real>("left_circle_x") * _scale),
     _left_circle_y(getParam<Real>("left_circle_y") * _scale),
-    _left_circle_r(getParam<Real>("left_circle_r") * _scale)
+    _left_circle_r(getParam<Real>("left_circle_r") * _scale),
+    _connection_radius(_half_sample_height - _half_bridge_height - _fillet_radius),
+    _half_bridge_length(_half_sample_length - _gripping_length - _connection_radius)
 {
+  if (_connection_radius <= 0)
+    mooseError("The radius of the connection part is not positive.");
+  if (_half_bridge_length <= 0)
+    mooseError("The bridge length is not positive.");
   if (_half_bridge_length + _connection_radius + 2.0 * _right_circle_r >= _half_sample_length)
     paramError("half_sample_length", "Right hole is out of the sample (x-direction)");
   if (_right_circle_y + _right_circle_r >=
@@ -66,7 +80,8 @@ GmshTensionSampleGenerator::GmshTensionSampleGenerator(const InputParameters & p
 void
 GmshTensionSampleGenerator::generateGeometry()
 {
-  Real lc = getParam<Real>("spacing") * _scale;
+  Real lc = getParam<Real>("coarse_spacing") * _scale;
+  Real lf = getParam<Real>("fine_spacing") * _scale;
 
   // top right part
   Real p1x = _half_bridge_length;
@@ -85,35 +100,35 @@ GmshTensionSampleGenerator::generateGeometry()
   Real p4y = p3y;
 
   // top right part
-  int p1 = gmsh::model::geo::addPoint(p1x, p1y, 0, lc);
-  int p2 = gmsh::model::geo::addPoint(p2x, p2y, 0, lc);
-  int p3 = gmsh::model::geo::addPoint(p3x, p3y, 0, lc);
+  int p1 = gmsh::model::geo::addPoint(p1x, p1y, 0, lf);
+  int p2 = gmsh::model::geo::addPoint(p2x, p2y, 0, lf);
+  int p3 = gmsh::model::geo::addPoint(p3x, p3y, 0, lf);
   int p4 = gmsh::model::geo::addPoint(p4x, p4y, 0, lc);
-  int c1 = gmsh::model::geo::addPoint(c1x, c1y, 0, lc);
+  int c1 = gmsh::model::geo::addPoint(c1x, c1y, 0, lf);
   int m1 = addCurveCenter({p1x, p1y}, {p2x, p2y}, {c1x, c1y});
 
   // bottom right part
   int p5 = gmsh::model::geo::addPoint(p4x, -p4y, 0, lc);
-  int p6 = gmsh::model::geo::addPoint(p3x, -p3y, 0, lc);
-  int p7 = gmsh::model::geo::addPoint(p2x, -p2y, 0, lc);
-  int p8 = gmsh::model::geo::addPoint(p1x, -p1y, 0, lc);
-  int c2 = gmsh::model::geo::addPoint(c1x, -c1y, 0, lc);
+  int p6 = gmsh::model::geo::addPoint(p3x, -p3y, 0, lf);
+  int p7 = gmsh::model::geo::addPoint(p2x, -p2y, 0, lf);
+  int p8 = gmsh::model::geo::addPoint(p1x, -p1y, 0, lf);
+  int c2 = gmsh::model::geo::addPoint(c1x, -c1y, 0, lf);
   int m2 = addCurveCenter({p2x, -p2y}, {p1x, -p1y}, {c1x, -c1y});
 
   // bottom left part
-  int p9 = gmsh::model::geo::addPoint(-p1x, -p1y, 0, lc);
-  int p10 = gmsh::model::geo::addPoint(-p2x, -p2y, 0, lc);
-  int p11 = gmsh::model::geo::addPoint(-p3x, -p3y, 0, lc);
+  int p9 = gmsh::model::geo::addPoint(-p1x, -p1y, 0, lf);
+  int p10 = gmsh::model::geo::addPoint(-p2x, -p2y, 0, lf);
+  int p11 = gmsh::model::geo::addPoint(-p3x, -p3y, 0, lf);
   int p12 = gmsh::model::geo::addPoint(-p4x, -p4y, 0, lc);
-  int c3 = gmsh::model::geo::addPoint(-c1x, -c1y, 0, lc);
+  int c3 = gmsh::model::geo::addPoint(-c1x, -c1y, 0, lf);
   int m3 = addCurveCenter({-p1x, -p1y}, {-p2x, -p2y}, {-c1x, -c1y});
 
   // top left part
   int p13 = gmsh::model::geo::addPoint(-p4x, p4y, 0, lc);
-  int p14 = gmsh::model::geo::addPoint(-p3x, p3y, 0, lc);
-  int p15 = gmsh::model::geo::addPoint(-p2x, p2y, 0, lc);
-  int p16 = gmsh::model::geo::addPoint(-p1x, p1y, 0, lc);
-  int c4 = gmsh::model::geo::addPoint(-c1x, c1y, 0, lc);
+  int p14 = gmsh::model::geo::addPoint(-p3x, p3y, 0, lf);
+  int p15 = gmsh::model::geo::addPoint(-p2x, p2y, 0, lf);
+  int p16 = gmsh::model::geo::addPoint(-p1x, p1y, 0, lf);
+  int c4 = gmsh::model::geo::addPoint(-c1x, c1y, 0, lf);
   int m4 = addCurveCenter({-p2x, p2y}, {-p1x, p1y}, {-c1x, c1y});
 
   // center line
@@ -153,9 +168,9 @@ GmshTensionSampleGenerator::generateGeometry()
   tags.push_back(gmsh::model::geo::addCurveLoop(line_tags_loop));
   // create holes
   tags.push_back(Moose::gmshAddCircleLoop(
-      _right_circle_x, _right_circle_y, _right_circle_r, lc, "right_hole"));
+      _right_circle_x, _right_circle_y, _right_circle_r, lf, "right_hole"));
   tags.push_back(
-      Moose::gmshAddCircleLoop(_left_circle_x, _left_circle_y, _left_circle_r, lc, "left_hole"));
+      Moose::gmshAddCircleLoop(_left_circle_x, _left_circle_y, _left_circle_r, lf, "left_hole"));
 
   // create surface
   gmsh::model::geo::addPlaneSurface(tags, 1);
@@ -199,7 +214,7 @@ GmshTensionSampleGenerator::addCurveCenter(const std::vector<Real> & p1_coord,
                                            const std::vector<Real> & p2_coord,
                                            const std::vector<Real> & c_coord)
 {
-  Real lc = getParam<Real>("spacing") * _scale;
+  Real lc = getParam<Real>("fine_spacing") * _scale;
 
   if (p1_coord.size() != 2 || p2_coord.size() != 2 || c_coord.size() != 2)
     mooseError("Points defining the curve should have dimension of 2");
@@ -247,9 +262,10 @@ GmshTensionSampleGenerator::addCurveCenter(const std::vector<Real> & p1_coord,
     }
   }
   // check correctness
-  if (!MooseUtils::absoluteFuzzyLessEqual(
-          std::pow((pc_coord[0] - c_coord[0]), 2) + std::pow((pc_coord[1] - c_coord[1]), 2), r * r))
+  if (!MooseUtils::absoluteFuzzyEqual(std::pow((pc_coord[0] - c_coord[0]), 2) +
+                                          std::pow((pc_coord[1] - c_coord[1]), 2),
+                                      r * r,
+                                      1e-6))
     mooseError("Center point coordinate calculation wrong");
-
   return gmsh::model::geo::addPoint(pc_coord[0], pc_coord[1], 0, lc);
 }

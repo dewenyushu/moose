@@ -9,7 +9,8 @@
     left_circle_y = 0
     left_circle_r = 0.75
     fillet_radius = 0.3
-    spacing = 0.3
+    coarse_spacing = 0.3
+    fine_spacing = 0.2
     scale = 1000.0 # scale to micron
   []
 []

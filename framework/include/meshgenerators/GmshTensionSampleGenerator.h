@@ -25,20 +25,22 @@ protected:
                      const std::vector<Real> & p2_coord,
                      const std::vector<Real> & c_coord);
 
-  Real _scale;
+  const Real _scale;
+  const Real _half_sample_length;
+  const Real _half_bridge_height;
+  const Real _half_sample_height;
+  const Real _gripping_length;
+  const Real _fillet_radius;
 
-  Real _half_bridge_height;
-  Real _half_bridge_length;
-  Real _half_gripping_height;
-  Real _fillet_radius;
-  Real _connection_radius;
-  Real _half_sample_length;
+  const Real _right_circle_x;
+  const Real _right_circle_y;
+  const Real _right_circle_r;
 
-  Real _right_circle_x;
-  Real _right_circle_y;
-  Real _right_circle_r;
+  const Real _left_circle_x;
+  const Real _left_circle_y;
+  const Real _left_circle_r;
 
-  Real _left_circle_x;
-  Real _left_circle_y;
-  Real _left_circle_r;
+  // obtained from the previous parameters
+  const Real _connection_radius;
+  const Real _half_bridge_length;
 };
