@@ -4,13 +4,13 @@
 [Distributions]
   [right_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.2
+    upper_bound = 0.2
   []
   [left_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.2
+    upper_bound = 0.2
   []
   # [right_circle_x]
   #   type = Uniform
@@ -22,16 +22,16 @@
   #   lower_bound = -5.8
   #   upper_bound = -5.7
   # []
-  # [fillet_radius]
-  #   type = Uniform
-  #   lower_bound = 0.2
-  #   upper_bound = 0.4
-  # []
+  [fillet_radius]
+    type = Uniform
+    lower_bound = 0.2
+    upper_bound = 0.4
+  []
 []
 
 [GlobalParams]
   sampler = quad
-  distributions = 'right_circle_y left_circle_y'# right_circle_x left_circle_x'
+  distributions = 'right_circle_y left_circle_y fillet_radius' # right_circle_x left_circle_x'
 []
 
 [Samplers]
@@ -55,8 +55,8 @@
   [param]
     type = MultiAppCommandLineControl
     multi_app = sub
-    param_names = 'Mesh/gmsh/right_circle_y[0] Mesh/gmsh/left_circle_y[1] '
-                  #'Mesh/gmsh/right_circle_x[2] Mesh/gmsh/left_circle_x[3]'
+    param_names = 'Mesh/gmsh/right_circle_y[0] Mesh/gmsh/left_circle_y[1] Mesh/gmsh/fillet_radius[2]'
+    #'Mesh/gmsh/right_circle_x[2] Mesh/gmsh/left_circle_x[3]'
   []
 []
 
@@ -68,7 +68,7 @@
     from_reporter = 'stress_xx_center/value strain_xx_center/value stress_xx_top/value '
                     'stress_xx_left/value stress_xx_right/value strain_xx_top/value '
                     'stress_xx_bot/value strain_xx_bot/value strain_xx_left/value '
-                    'strain_xx_right/value'
+                    'strain_xx_right/value stress_xx_max/value'
   []
 []
 
@@ -159,6 +159,14 @@
     converged_reporter = storage/data:converged
     skip_unconverged_samples = true
   []
+  [poly_chaos_stress_xx_max]
+    type = PolynomialChaosTrainer
+    order = 4
+    response = storage/data:stress_xx_max:value
+    # response_type = vector_real
+    converged_reporter = storage/data:converged
+    skip_unconverged_samples = true
+  []
 []
 
 [Outputs]
@@ -168,6 +176,6 @@
     trainers = 'poly_chaos_stress_xx_center  poly_chaos_strain_xx_center poly_chaos_stress_xx_top '
                'poly_chaos_strain_xx_top poly_chaos_stress_xx_bot poly_chaos_strain_xx_bot '
                'poly_chaos_stress_xx_left poly_chaos_strain_xx_left poly_chaos_stress_xx_right '
-               'poly_chaos_strain_xx_right'
+               'poly_chaos_strain_xx_right poly_chaos_stress_xx_max'
   []
 []

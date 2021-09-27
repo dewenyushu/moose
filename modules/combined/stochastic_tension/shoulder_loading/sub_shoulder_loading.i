@@ -114,7 +114,7 @@
 [Executioner]
   type = Transient
 
-  solve_type = 'PJFNK'
+  solve_type = 'NEWTON'
 
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -pc_factor_shift_type '
                         '-pc_factor_shift_amount'
@@ -205,6 +205,12 @@
     type = PointValue
     variable = plastic_strain_xx
     point = '0.6 0 0'
+    use_displaced_mesh = false
+  []
+  [stress_xx_max]
+    type = ElementExtremeValue
+    variable = stress_xx
+    value_type = max
     use_displaced_mesh = false
   []
 []

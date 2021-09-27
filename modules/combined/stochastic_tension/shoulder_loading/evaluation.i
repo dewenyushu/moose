@@ -4,13 +4,13 @@
 [Distributions]
   [right_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.2
+    upper_bound = 0.2
   []
   [left_circle_y]
     type = Uniform
-    lower_bound = -0.05
-    upper_bound = 0.05
+    lower_bound = -0.2
+    upper_bound = 0.2
   []
   # [right_circle_x]
   #   type = Uniform
@@ -22,16 +22,16 @@
   #   lower_bound = -5.8
   #   upper_bound = -5.7
   # []
-  # [fillet_radius]
-  #   type = Uniform
-  #   lower_bound = 0.2
-  #   upper_bound = 0.4
-  # []
+  [fillet_radius]
+    type = Uniform
+    lower_bound = 0.2
+    upper_bound = 0.4
+  []
 []
 
 [GlobalParams]
   sampler = sample
-  distributions = 'right_circle_y left_circle_y'# right_circle_x left_circle_x'
+  distributions = 'right_circle_y left_circle_y fillet_radius'# right_circle_x left_circle_x'
 []
 
 [Samplers]
@@ -83,6 +83,10 @@
     type = PolynomialChaos
     filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_right.rd
   []
+  [pc_stress_xx_max]
+    type = PolynomialChaos
+    filename = ./5pt_ypos_surrogate/train_trainer_poly_chaos_stress_xx_max.rd
+  []
 []
 
 [Reporters]
@@ -125,6 +129,10 @@
   [eval_stress_xx_right]
     type = EvaluateSurrogate
     model = pc_stress_xx_right
+  []
+  [eval_stress_xx_max]
+    type = EvaluateSurrogate
+    model = pc_stress_xx_max
   []
 []
 
@@ -227,6 +235,16 @@
   [sobol_stress_xx_right]
     type = PolynomialChaosSobolStatistics
     pc_name = pc_stress_xx_right
+    sensitivity_order = 'first second total'
+  []
+  [stats_stress_xx_max]
+    type = PolynomialChaosStatistics
+    pc_name = pc_stress_xx_max
+    compute = 'mean stddev'
+  []
+  [sobol_stress_xx_max]
+    type = PolynomialChaosSobolStatistics
+    pc_name = pc_stress_xx_max
     sensitivity_order = 'first second total'
   []
 []
