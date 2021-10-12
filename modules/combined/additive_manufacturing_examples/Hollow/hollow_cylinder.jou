@@ -1,0 +1,44 @@
+reset
+
+brick x 50 y 50 z 5
+move Volume 1  location 0 0 2.5 include_merged 
+
+create Cylinder height 6 radius 8.5
+move Volume 2  location 0 0 6 include_merged
+
+create Cylinder height 6 radius 7.5
+move Volume 3 location 0 0 6 include_merged
+
+subtract volume 3 from volume 2 
+
+merge Volume 1 2
+unite Volume 1 2  
+#volume all scale 0.001
+
+webcut volume 1  with plane xplane noimprint nomerge 
+
+
+merge all
+
+curve 37 36 53 55 56 38 54 33  interval 15
+curve 37 36 53 55 56 38 54 33  scheme equal
+
+curve 25 29  interval 2
+curve 25 29  scheme equal
+
+curve 24 28 30 26  interval 3
+curve 24 28 30 26  scheme equal
+
+mesh volume 1 4
+set duplicate block elements off
+block 1 add volume 1 4
+Sideset 1 add surface 27  35
+Sideset 2 add surface 6 22 26 27 28 4 33 34 35 37
+nodeset 3 add vertex 26
+# Sideset 4 add surface 21 23 24 25 30 31 32 36 
+Sideset 4 add surface 25 31 
+
+set exodus netcdf4 off
+set large exodus on
+export mesh "/Users/yushd/projects/moose/modules/combined/Additive_Manufacturing/cylinder_product.e" overwrite
+
