@@ -1,0 +1,7 @@
+[Tests]
+  [./rate_temp_material]
+    type = 'CSVDiff'
+    input = 'tension.i'
+    csvdiff = 'tension_csv.csv'
+  [../]
+[]
