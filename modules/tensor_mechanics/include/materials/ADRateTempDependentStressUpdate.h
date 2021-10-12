@@ -56,25 +56,6 @@ protected:
   virtual void propagateQpStatefulProperties() override;
   virtual void computeStressFinalize(const ADRankTwoTensor & plastic_strain_increment) override;
 
-  // /**
-  //  * Toggle between solid/fluid stress updates based on element temperature
-  //  * if solid: compute stress from J2 radial return mapping method
-  //  * if fluid: compute stress from the Newtonian fluid constitutive eqn
-  //  * @param strain_increment              Sum of elastic and inelastic strain increments
-  //  * @param inelastic_strain_increment    Inelastic strain increment calculated by this class
-  //  * @param rotation increment            Not used by this class
-  //  * @param stress_new                    New trial stress from pure elastic calculation
-  //  * @param stress_old                    Old state of stress
-  //  * @param elasticity_tensor             Rank 4 C_{ijkl}, must be isotropic
-  //  * @param elastic_strain_old            Old state of total elastic strain
-  //  */
-  // virtual void updateState(ADRankTwoTensor & strain_increment,
-  //                          ADRankTwoTensor & inelastic_strain_increment,
-  //                          const ADRankTwoTensor & rotation_increment,
-  //                          ADRankTwoTensor & stress_new,
-  //                          const RankTwoTensor & stress_old,
-  //                          const ADRankFourTensor & elasticity_tensor,
-  //                          const RankTwoTensor & elastic_strain_old) override;
   virtual Real computeReferenceResidual(const ADReal & effective_trial_stress, const ADReal & scalar_effective_inelastic_strain) override;
 
   /// Temperature variable value
@@ -159,12 +140,4 @@ protected:
   /// Plastic strain material property
   ADMaterialProperty<RankTwoTensor> & _plastic_strain;
   const MaterialProperty<RankTwoTensor> & _plastic_strain_old;
-
-  // /// Pressure
-  // ADMaterialProperty<Real> & _pressure;
-  // const MaterialProperty<Real> & _pressure_old;
-
-  // /// Strain from fluid deformation
-  // ADMaterialProperty<RankTwoTensor> & _strain_fluid;
-  // const MaterialProperty<RankTwoTensor> & _strain_fluid_old;
 };
