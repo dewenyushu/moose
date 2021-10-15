@@ -1,0 +1,72 @@
+reset
+
+brick x 30 y 30 z 4
+move Volume 1  location 0 0 2 include_merged 
+
+create brick x 10 y 10 z 10
+move Volume 2  location 0 0 9 include_merged
+
+merge Volume 1 2
+unite Volume 1 2  
+
+webcut volume 1  with plane xplane noimprint nomerge 
+
+merge all
+
+# product side (long)
+# 13 28 33 
+# 15  26  33 
+curve 13 15  26 28   interval 40
+curve 13 15  26 28      scheme equal
+
+
+# product side (short)
+# 37  38  39  42 
+# 53 54 57  60 
+curve 37 38 39 42  53 54 57  60  interval 20
+curve 37 38 39 42  53 54 57  60   scheme equal
+
+
+# product height
+# 22 24  32 34 
+# 21  23  32  34 
+curve 21 22 23 24  interval 40
+curve  21 22 23 24  scheme equal
+
+
+# substrate width (long)
+# 1 5 29
+# 3  7  29 
+curve 1 3 5 7 interval 20
+curve  1 3 5 7  scheme equal
+
+
+# substrate width (short)
+# 40  41 43  44 
+# 55 56  58  59 
+curve 40  41 43  44  55 56  58  59  interval 10
+curve  40  41 43  44  55 56  58  59  scheme equal
+
+# substrate top middle
+# 31 35
+curve 31 35  interval 20
+curve 31 35   scheme equal
+
+# substrate height
+# 10 12 30 36 
+# 9 11 30  36 
+curve 9 10 11 12  interval 4
+curve 9 10 11 12   scheme equal
+
+
+mesh volume 1 3
+set duplicate block elements off
+block 1 add volume 1 3
+Sideset 1 add surface 20  26 
+Sideset 2 add surface 4 6  17 21 25  29 
+Sideset 3 add surface 19 24 
+
+set exodus netcdf4 off
+set large exodus on
+export mesh "/Users/yushd/projects/moose_AM/modules/combined/Multiapp_Overbuild_Multiapp/box_10x10x10.e" overwrite
+

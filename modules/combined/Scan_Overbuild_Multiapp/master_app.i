@@ -1,0 +1,279 @@
+T_room = 500
+# T_ambient = 500
+
+[Mesh]
+  [mesh]
+    type = GeneratedMeshGenerator
+    dim = 3
+    xmax = 10
+    ymax = 4
+    zmax = 10
+    nx = 50
+    ny = 20
+    nz = 50
+  []
+  [add_set1]
+    type = SubdomainBoundingBoxGenerator
+    input = mesh
+    block_id = 3
+    bottom_left = '0 0 0'
+    top_right = '10 4 5'
+  []
+  [add_set2]
+    type = SubdomainBoundingBoxGenerator
+    input = add_set1
+    block_id = 1
+    bottom_left = '0 0 5'
+    top_right = '10 4 10'
+  []
+  [add_set3]
+    type = SubdomainBoundingBoxGenerator
+    input = add_set2
+    block_id = 2
+    bottom_left = '0 2 5'
+    top_right = '0.2 2.2 5.2'
+  []
+  [moving_boundary]
+    type = SideSetsAroundSubdomainGenerator
+    input = add_set3
+    block = 2
+    new_boundary = 'moving_boundary'
+  []
+  [middle]
+    type = SideSetsAroundSubdomainGenerator
+    input = moving_boundary
+    block = 3
+    new_boundary = 'middle'
+    normal = '0 0 1'
+  []
+  # displacements = 'disp_x disp_y disp_z'
+[]
+
+[Problem]
+  kernel_coverage_check = false
+  # material_coverage_check = false
+[]
+
+[Variables]
+  [./temp]
+    initial_condition = ${T_room}
+  [../]
+[]
+
+[AuxVariables]
+  [./disp_x]
+    block = '2 3'
+  [../]
+  [./disp_y]
+    block = '2 3'
+  [../]
+  [./disp_z]
+    block = '2 3'
+  [../]
+  [./processor_id]
+    order = CONSTANT
+    family = MONOMIAL
+  [../]
+[]
+
+[Kernels]
+  [./time]
+    type = ADHeatConductionTimeDerivative
+    variable = temp
+  [../]
+  [./heat_conduct]
+    type = ADHeatConduction
+    variable = temp
+    use_displaced_mesh = true
+    thermal_conductivity = thermal_conductivity
+  [../]
+  [./heatsource]
+    type = ADMatHeatSource
+    material_property = volumetric_heat
+    variable = temp
+    scalar = 1
+    use_displaced_mesh = true
+  [../]
+[]
+
+[AuxKernels]
+  [./processor_id_aux]
+    type = ProcessorIDAux
+    variable = processor_id
+    execute_on = timestep_begin
+  [../]
+[]
+
+[BCs]
+  [./bottom_temp]
+    type = ADDirichletBC
+    variable = temp
+    boundary = back
+    value = ${T_room}
+  [../]
+  # [./convective_substrate]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = '2'
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 0.016
+  #   T_infinity = ${T_ambient}
+  # [../]
+  # [./convective_middle]
+  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
+  #   type = ADConvectiveHeatFluxBC
+  #   variable = temp
+  #   boundary = 'middle'
+  #   # coefficient = 2e-5
+  #   heat_transfer_coefficient = 0.016
+  #   T_infinity = ${T_ambient}
+  # [../]
+[]
+
+[MultiApps]
+  [thermo_mech]
+    type = TransientMultiApp
+    positions = '0.0 0.0 0.0'
+    # input_files = sub_app.i
+    # input_files = linear_sub_app.i
+    input_files = sub_thermal_app.i
+    # sub_cycling = true
+    # steady_state_tol = 1e-6
+    # detect_steady_state = true
+
+    catch_up = true
+    max_catch_up_steps = 100
+    max_failures = 100
+    keep_solution_during_restore = true
+    execute_on = 'timestep_end'
+  []
+[]
+
+[Transfers]
+  [to_mech]
+    type = MultiAppCopyTransfer
+    direction = to_multiapp
+    execute_on = 'timestep_end'
+    multi_app = thermo_mech
+    source_variable = temp
+    variable = temp_aux
+  []
+  [to_disp_x]
+    type = MultiAppCopyTransfer
+    direction = from_multiapp
+    execute_on = 'timestep_end'
+    multi_app = thermo_mech
+    source_variable = disp_x
+    variable = disp_x
+  []
+  [to_disp_y]
+    type = MultiAppCopyTransfer
+    direction = from_multiapp
+    execute_on = 'timestep_end'
+    multi_app = thermo_mech
+    source_variable = disp_y
+    variable = disp_y
+  []
+  [to_disp_z]
+    type = MultiAppCopyTransfer
+    direction = from_multiapp
+    execute_on = 'timestep_end'
+    multi_app = thermo_mech
+    source_variable = disp_z
+    variable = disp_z
+  []
+[]
+
+[Functions]
+  [heat_source_x]
+    type = ParsedFunction
+    value = '0.5*t'
+  []
+  [heat_source_y]
+    type = ConstantFunction
+    value = '2'
+  []
+  [heat_source_z]
+    type = ConstantFunction
+    value = '5'
+  []
+  [specific_heat]
+    type = PiecewiseLinear
+    data_file = ./Specific_Heat.csv
+    format = columns
+    scale_factor = 1.0
+  []
+  [thermal_conductivity]
+    type = PiecewiseLinear
+    data_file = ./Thermal_Conductivity.csv
+    format = columns
+    scale_factor = 0.05e-3
+  []
+[]
+
+[Materials]
+  [./heat]
+    type = ADHeatConductionMaterial
+    specific_heat_temperature_function = specific_heat
+    thermal_conductivity_temperature_function = thermal_conductivity
+    temp = temp
+  [../]
+  [./volumetric_heat]
+    type = FunctionPathEllipsoidHeatSource
+    r = 2.0
+    power = 350
+    efficiency = 0.5
+    factor = 1
+    function_x= heat_source_x
+    function_y= heat_source_y
+    function_z= heat_source_z
+  [../]
+  [./density]
+    type = ADDensity
+    density = 7.609e-6
+  [../]
+[]
+
+[Preconditioning]
+  [./smp]
+    type = SMP
+    full = true
+  [../]
+[]
+
+[Executioner]
+  type = Transient
+  solve_type = 'PJFNK'
+
+  # automatic_scaling = true
+
+  petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package'
+  petsc_options_value = 'preonly lu       superlu_dist'
+
+  # petsc_options_iname = '-pc_type -ksp_type -pc_factor_shift_type -pc_factor_shift_amount'
+  # petsc_options_value = 'lu  preonly NONZERO 1e-10'
+
+  line_search = 'none'
+
+  l_max_its = 100
+  nl_max_its = 20
+  nl_rel_tol = 1e-5
+  nl_abs_tol = 1e-6
+
+  start_time = 0.0
+  end_time = 20 # 528
+  dt = 0.1
+  dtmin = 1e-4
+
+  auto_advance = true # cut time-step when subapp fails
+[]
+
+[Outputs]
+  file_base = 'output/master'
+  [./exodus]
+    type = Exodus
+    # execute_on = 'INITIAL TIMESTEP_END'
+    interval = 1
+  [../]
+[]
