@@ -16,10 +16,10 @@
 
 [Samplers]
   [pc_sampler]
-    type = Quadrature
-    order = 5
+    type = MonteCarlo
+    num_rows = 1000
     distributions = 'speed_dist power_dist'
-    execute_on = PRE_MULTIAPP_SETUP
+    execute_on = 'PRE_MULTIAPP_SETUP'
   []
 []
 
@@ -38,4 +38,19 @@
     sampler = pc_sampler
     param_names = 'speed power'
   []
+[]
+
+[VectorPostprocessors]
+  [data]
+    type = SamplerData
+    sampler = pc_sampler
+    execute_on = 'INITIAL TIMESTEP_END'
+    parallel_type = DISTRIBUTED
+  []
+[]
+
+[Outputs]
+  file_base = 'output/sampler_data'
+  execute_on = 'INITIAL'
+  csv = true
 []
