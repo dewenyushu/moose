@@ -4,7 +4,7 @@
 #PBS -N line_build
 #PBS -l select=4:ncpus=48:mpiprocs=48
 #PBS -l place=scatter:excl
-#PBS -l walltime=10:00:00
+#PBS -l walltime=100:00:00
 #PBS -P ne_ldrd
 
 # A simple script to run contact problems with different preconditioners and refinement levels

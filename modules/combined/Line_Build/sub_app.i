@@ -196,7 +196,7 @@ power = 1 # w
   []
   [heat_source_y]
     type = ParsedFunction
-    value = '-8 + ${power}*t '
+    value = '-8 + ${speed}*t '
   []
   [scan_length_y]
     type = ParsedFunction
