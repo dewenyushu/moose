@@ -287,6 +287,8 @@ power = 350 # w
   dtmin = 1e-4
 
   auto_advance = true # cut time-step when subapp fails
+
+  error_on_dtmin = false
 []
 
 [Outputs]

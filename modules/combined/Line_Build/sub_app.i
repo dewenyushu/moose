@@ -426,6 +426,8 @@ power = 1 # w
   end_time = '${fparse 12/speed}'
   dt = 0.1
   dtmin = 1e-4
+
+  error_on_dtmin = false
 []
 
 [Outputs]

@@ -28,6 +28,8 @@
     type = SamplerFullSolveMultiApp
     input_files = master_app.i
     sampler = pc_sampler
+    mode = batch-reset
+    ignore_solve_not_converge = true
   []
 []
 
