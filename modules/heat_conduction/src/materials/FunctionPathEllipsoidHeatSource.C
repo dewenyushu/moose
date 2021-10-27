@@ -122,11 +122,9 @@ FunctionPathEllipsoidHeatSource::computeAveragedHeatSource(
       Q_begin = Q_end;
     }
     num_pts *= 2;
-    if (num_pts > 1e6)
-    {
-      mooseWarning("Heat source integration is taking too long");
+    // limit to 10 pts to accelerate the simulation
+    if (num_pts > 10)
       break;
-    }
   } while (!MooseUtils::absoluteFuzzyEqual(Q_integral_old, Q_integral, 1e-4));
 
   return Q_integral / (time_end - time_begin);

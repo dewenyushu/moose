@@ -4,20 +4,20 @@
 [Distributions]
   [speed_dist]
     type = Uniform
-    lower_bound = 1
+    lower_bound = 0.5
     upper_bound = 4
   []
   [power_dist]
     type = Uniform
-    lower_bound = 300
-    upper_bound = 500
+    lower_bound = 200
+    upper_bound = 400
   []
 []
 
 [Samplers]
   [pc_sampler]
     type = MonteCarlo
-    num_rows = 1000
+    num_rows = 5000
     distributions = 'speed_dist power_dist'
     execute_on = 'PRE_MULTIAPP_SETUP'
   []

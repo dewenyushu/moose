@@ -367,6 +367,8 @@ power = 1 # w
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
+    heat_source_type = mixed
+    threshold_length = 0.1
   []
   [density]
     type = ADDensity
@@ -418,14 +420,14 @@ power = 1 # w
   line_search = 'none'
 
   l_max_its = 100
-  nl_max_its = 20
+  nl_max_its = 40
   nl_rel_tol = 1e-5
   nl_abs_tol = 1e-6
 
   start_time = 0.0
   end_time = '${fparse 12/speed}'
-  dt = 0.1
-  dtmin = 1e-4
+  dt = 0.1 #'${fparse 0.1/speed}'
+  dtmin = 1e-6
 
   error_on_dtmin = false
 []

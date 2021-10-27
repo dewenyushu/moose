@@ -2,9 +2,9 @@
 #PBS -M dewen.yushu@inl.gov
 #PBS -m be
 #PBS -N line_build
-#PBS -l select=8:ncpus=48:mpiprocs=48
+#PBS -l select=16:ncpus=48:mpiprocs=48
 #PBS -l place=scatter:excl
-#PBS -l walltime=40:00:00
+#PBS -l walltime=60:00:00
 #PBS -P ne_ldrd
 
 # A simple script to run contact problems with different preconditioners and refinement levels
