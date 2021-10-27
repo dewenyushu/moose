@@ -2,89 +2,88 @@ v = 10
 r = 0.75
 
 [Mesh]
-  [./gen]
+  [gen]
     type = GeneratedMeshGenerator
     dim = 3
-    xmin =0
-    xmax =10
-    ymin =0
-    ymax =2
-    zmin =0
-    zmax =1
-    nx=100
-    ny=20
-    nz=10
-  [../]
+    xmin = 0
+    xmax = 10
+    ymin = 0
+    ymax = 2
+    zmin = 0
+    zmax = 1
+    nx = 100
+    ny = 20
+    nz = 10
+  []
 []
 
-
 [Variables]
-  [./temp]
-  [../]
+  [temp]
+  []
 []
 
 [ICs]
-  [./temp_substrate]
+  [temp_substrate]
     type = ConstantIC
     variable = temp
     value = 300
-  [../]
+  []
 []
 
 [Kernels]
-  [./time]
+  [time]
     type = ADHeatConductionTimeDerivative
     variable = temp
-  [../]
-  [./heat_conduct]
+  []
+  [heat_conduct]
     type = ADHeatConduction
     variable = temp
     thermal_conductivity = thermal_conductivity
-  [../]
-  [./heatsource]
+  []
+  [heatsource]
     type = ADMatHeatSource
     material_property = volumetric_heat
     variable = temp
     scalar = 1
-  [../]
+  []
 []
 
 [Functions]
-  [./heat_source_x]
+  [heat_source_x]
     type = ParsedFunction
-    value ='v*t'
+    value = 'v*t'
     vars = 'v'
     vals = ${v}
-  [../]
-  [./heat_source_y]
+  []
+  [heat_source_y]
     type = ParsedFunction
     value = 1
-  [../]
-  [./heat_source_z]
+  []
+  [heat_source_z]
     type = ParsedFunction
     value = 1
-  [../]
-  [./specific_heat]
+  []
+  [specific_heat]
     type = PiecewiseLinear
-    data_file = ./../AM_Brick/AM_Brick_parameters/Specific_Heat.csv
+    data_file = Specific_Heat.csv
     format = columns
     scale_factor = 1.0
-  [../]
-  [./thermal_conductivity]
+  []
+  [thermal_conductivity]
     type = PiecewiseLinear
-    data_file = ./../AM_Brick/AM_Brick_parameters/Thermal_Conductivity.csv
+    data_file = Thermal_Conductivity.csv
     format = columns
     scale_factor = 0.05e-3
-  [../]
+  []
 []
 
 [BCs]
-  [./temp_bottom_fix]
+  [temp_bottom_fix]
     type = ADDirichletBC
     variable = temp
     boundary = back
     value = 300
-  [../]
+  []
 
   # [./convective_substrate]
   #   type = ADConvectiveHeatFluxBC
@@ -96,35 +95,36 @@ r = 0.75
 []
 
 [Materials]
-  [./volumetric_heat]
+  [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
     power = 350
     efficiency = 0.36
     factor = 1
-    function_x= heat_source_x
-    function_y= heat_source_y
-    function_z= heat_source_z
-  [../]
-  [./density]
+    function_x = heat_source_x
+    function_y = heat_source_y
+    function_z = heat_source_z
+    heat_source_type = mixed
+    threshold_length = 0.1
+  []
+  [density]
     type = ADDensity
     density = 7.609e-6
-  [../]
-  [./heat]
+  []
+  [heat]
     type = ADHeatConductionMaterial
     specific_heat_temperature_function = specific_heat
     thermal_conductivity_temperature_function = thermal_conductivity
     temp = temp
-  [../]
+  []
 []
 
 [Preconditioning]
-  [./smp]
+  [smp]
     type = SMP
     full = true
-  [../]
+  []
 []
-
 
 [Executioner]
   type = Transient
@@ -151,16 +151,34 @@ r = 0.75
 
   start_time = 0.0
   end_time = 1.0
-  dt = 0.02
+  dt = 0.2
   dtmin = 1e-4
 []
 
+[Adaptivity]
+  steps = 1
+  marker = marker
+  initial_marker = marker
+  max_h_level = 1
+  [Indicators/indicator]
+    type = GradientJumpIndicator
+    variable = temp
+    scale_by_flux_faces = true
+  []
+  [Markers/marker]
+    type = ErrorFractionMarker
+    indicator = indicator
+    coarsen = 0.5
+    refine = 0.7
+  []
+[]
+
 [Outputs]
-  file_base = './output_r${r}/heat_source_out'
-  [./exodus]
+  file_base = './output_r${r}/heat_source_out_mixed'
+  [exodus]
     type = Exodus
     interval = 1
-  [../]
+  []
   # [checkpoint]
   #   type = Checkpoint
   #   num_files = 2
