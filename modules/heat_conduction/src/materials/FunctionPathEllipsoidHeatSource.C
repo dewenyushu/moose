@@ -35,6 +35,11 @@ FunctionPathEllipsoidHeatSource::validParams()
   params.addParam<Real>(
       "threshold_length", 1.0, "Threshold size when we change the way of computing heat source");
 
+  params.addParam<Real>(
+      "number_time_integration",
+      10,
+      "Number of points to do time integration for averaged heat source calculation");
+
   params.addClassDescription("Double ellipsoid volumetric source heat with function path.");
 
   return params;
@@ -51,6 +56,7 @@ FunctionPathEllipsoidHeatSource::FunctionPathEllipsoidHeatSource(const InputPara
     _function_z(getFunction("function_z")),
     _heat_source_type(getParam<MooseEnum>("heat_source_type").getEnum<HeatSourceType>()),
     _threshold_length(getParam<Real>("threshold_length")),
+    _number_time_integration(getParam<Real>("number_time_integration")),
     _volumetric_heat(declareADProperty<Real>("volumetric_heat"))
 {
 }
@@ -93,7 +99,7 @@ FunctionPathEllipsoidHeatSource::computeHeatSourceAtTime(const Real x,
   Real dist = std::pow(x - x_t, 2.0) + std::pow(y - y_t, 2.0) + std::pow(z - z_t, 2.0);
 
   // Gaussian point heat source
-  return 2.0 * _P * _eta * _f / libMesh::pi / _r / _r * std::exp(-2.0 * dist / _r / _r);
+  return 2.0 * _P * _eta * _f / libMesh::pi / _r / _r / _r * std::exp(-2.0 * dist / _r / _r);
 }
 
 Real
@@ -122,8 +128,8 @@ FunctionPathEllipsoidHeatSource::computeAveragedHeatSource(
       Q_begin = Q_end;
     }
     num_pts *= 2;
-    // limit to 10 pts to accelerate the simulation
-    if (num_pts > 10)
+    // limit to _number_time_integration pts to accelerate the simulation
+    if (num_pts > _number_time_integration)
       break;
   } while (!MooseUtils::absoluteFuzzyEqual(Q_integral_old, Q_integral, 1e-4));
 
@@ -147,22 +153,29 @@ FunctionPathEllipsoidHeatSource::computeMixedHeatSource(
   Real y_t = _function_y.value(time_end, dummy);
   Real z_t = _function_z.value(time_end, dummy);
   Point P_end = Point(x_t, y_t, z_t);
-  // current position
-  Point P_current = Point(x, y, z);
 
-  // distances
-  Real SE, SP, PE; // start - current_point - end
-  SE = (P_end - P_start).norm();
-  SP = (P_current - P_start).norm();
-  PE = (P_end - P_current).norm();
+  // // current position
+  // Point P_current = Point(x, y, z);
 
+  // // distances
+  // Real SE, SP, PE; // start - current_point - end
+  // SE = (P_end - P_start).norm();
+  // SP = (P_current - P_start).norm();
+  // PE = (P_end - P_current).norm();
+  //
+  // if (SE < _threshold_length)
+  //   return computeHeatSourceAtTime(x, y, z, time_end);
+  // else
+  // {
+  //   if (SP <= _threshold_length || PE <= _threshold_length)
+  //     return computeHeatSourceAtTime(x, y, z, time_end);
+  //   else
+  //     return computeAveragedHeatSource(x, y, z, time_begin, time_end);
+  // }
+
+  Real SE = (P_end - P_start).norm();
   if (SE < _threshold_length)
     return computeHeatSourceAtTime(x, y, z, time_end);
   else
-  {
-    if (SP <= _threshold_length || PE <= _threshold_length)
-      return computeHeatSourceAtTime(x, y, z, time_end);
-    else
-      return computeAveragedHeatSource(x, y, z, time_begin, time_end);
-  }
+    return computeAveragedHeatSource(x, y, z, time_begin, time_end);
 }

@@ -52,5 +52,7 @@ protected:
 
   const Real _threshold_length;
 
+  const Real _number_time_integration;
+
   ADMaterialProperty<Real> & _volumetric_heat;
 };
