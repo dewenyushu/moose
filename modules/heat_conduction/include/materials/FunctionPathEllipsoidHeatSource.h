@@ -11,6 +11,7 @@
 
 #include "Material.h"
 #include "Function.h"
+#include "MooseEnum.h"
 
 /**
  * Double ellipsoid heat source distribution.
@@ -25,22 +26,33 @@ public:
 protected:
   virtual void computeQpProperties() override;
 
+  Real computeHeatSourceAtTime(const Real x, const Real y, const Real z, const Real time);
+
+  Real computeAveragedHeatSource(
+      const Real x, const Real y, const Real z, const Real time_begin, const Real time_end);
+
+  Real computeMixedHeatSource(
+      const Real x, const Real y, const Real z, const Real time_begin, const Real time_end);
+
   /// power
   const Real _P;
   /// process efficienty
   const Real _eta;
-  /// transverse ellipsoid axe
-  const Real _rx;
-  /// depth ellipsoid axe
-  const Real _ry;
-  /// longitudinal ellipsoid axe
-  const Real _rz;
+  /// effective radius
+  const Real _r;
   /// scaling factor
   const Real _f;
   /// path of the heat source, x, y, z components
   const Function & _function_x;
   const Function & _function_y;
   const Function & _function_z;
+
+  /// type of heat source
+  const enum class HeatSourceType { POINT, LINE, MIXED } _heat_source_type;
+
+  const Real _threshold_length;
+
+  const Real _number_time_integration;
 
   ADMaterialProperty<Real> & _volumetric_heat;
 };
