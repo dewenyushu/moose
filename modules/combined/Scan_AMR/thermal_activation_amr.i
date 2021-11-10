@@ -262,7 +262,7 @@ dt = 1
   steps = 1
   marker = marker
   initial_marker = marker
-  max_h_level = 1
+  max_h_level = 2
   [Indicators/indicator]
     type = GradientJumpIndicator
     variable = temp
@@ -271,7 +271,7 @@ dt = 1
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0.2
-    refine = 0.5
+    coarsen = 0
+    refine = 0.7
   []
 []
