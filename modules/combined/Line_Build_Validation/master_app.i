@@ -184,16 +184,17 @@ dt = 1 # ms
     max_catch_up_steps = 100
     max_failures = 100
     keep_solution_during_restore = true
-    execute_on = 'initial timestep_end'
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
     cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
   []
 []
 
 [Transfers]
   [to_mech]
-    type = MultiAppCopyTransfer
+    # type = MultiAppCopyTransfer
+    type = MultiAppNearestNodeTransfer
     direction = to_multiapp
-    execute_on = 'initial timestep_end'
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
     multi_app = thermo_mech
     source_variable = temp
     variable = temp_aux
@@ -215,26 +216,27 @@ dt = 1 # ms
   []
   [specific_heat_metal]
     type = PiecewiseLinear
-    data_file = Specific_Heat.csv
-    format = columns
+    x = '-1e7 197.79  298.46  600.31 1401.01 1552.59 1701.44 1e7'
+    y = '426.69 426.69 479.77 549.54 676.94  695.14 726.99 726.99'
     scale_factor = 1.0
   []
   [thermal_conductivity_metal]
     type = PiecewiseLinear
-    data_file = Thermal_Conductivity.csv
+    x = '-1e7 198.84  298.10  398.75 500.76 601.40 700.64 801.27 901.89 1001.12 1098.98 1200.96 1301.56 1400.78 1501.37 1601.96 1e7'
+    y = '247.72 247.72 285.64 323.55 358.44 390.29 417.59 446.41 469.16 491.91 510.11 528.31 540.44 554.09 561.67 569.26 569.26'
     format = columns
     scale_factor = 0.05e-6
   []
   [specific_heat_air]
     type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '1.008e3 1.008e3 695  695'
+    x = '-1e-7 0 300 1701.44 1e7'
+    y = '1.008e3 1.008e3 1.008e3 726.99  726.99'
     scale_factor = 1.0
   []
   [thermal_conductivity_air]
     type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '0.025e-6 0.025e-6 28e-6 28e-6'
+    x = '-1e7 0 300 1601.96 1e7'
+    y = '0.025e-6 0.025e-6 0.025e-6 28.463e-6 28.463e-6'
     scale_factor = 1.0
   []
 []
@@ -297,7 +299,7 @@ dt = 1 # ms
   #   active_subdomain_id = '2'
   #   expand_boundary_name= 'moving_boundary'
   #   activate_value= ${T_melt}
-  #   execute_on = 'TIMESTEP_BEGIN'
+  #   execute_on = 'TIMESTEP_END'
   # []
 []
 
@@ -340,12 +342,12 @@ dt = 1 # ms
 [Outputs]
   file_base = 'output/Line_master_speed_${speed}_power_${power}'
   csv=true
-  # [exodus]
-  #   type = Exodus
-  #   file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_master'
-  #   # execute_on = 'INITIAL TIMESTEP_END'
-  #   interval = 1
-  # []
+  [exodus]
+    type = Exodus
+    file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_master'
+    # execute_on = 'INITIAL TIMESTEP_END'
+    interval = 1
+  []
 []
 
 [Postprocessors]

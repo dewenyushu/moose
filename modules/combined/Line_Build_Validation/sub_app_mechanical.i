@@ -74,6 +74,7 @@ dt = 1 # ms
   [temp_aux]
     order = FIRST
     family = LAGRANGE
+    block = '1 2 3'
   []
   [von_mises]
     order = CONSTANT
@@ -177,21 +178,21 @@ dt = 1 # ms
 []
 
 [Functions]
-  [heat_source_x]
-    type = ConstantFunction
-    value = 0
-  []
-  [heat_source_y]
-    type = ParsedFunction
-    value = '-2 + ${speed}*t '
-  []
+  # [heat_source_x]
+  #   type = ConstantFunction
+  #   value = 0
+  # []
+  # [heat_source_y]
+  #   type = ParsedFunction
+  #   value = '-2 + ${speed}*t '
+  # []
+  # [heat_source_z]
+  #   type = ConstantFunction
+  #   value = 0.5
+  # []
   [scan_length_y]
     type = ParsedFunction
     value = '${speed}*t '
-  []
-  [heat_source_z]
-    type = ConstantFunction
-    value = 0.5
   []
   # for monitoring the deposited material geometry
   [x_coord]
@@ -255,11 +256,6 @@ dt = 1 # ms
     block = '2 3'
   []
 
-  [stress]
-    type = ADComputeFiniteStrainElasticStress
-    block = '2 3'
-  []
-
   [thermal_expansion_strain_product]
     type = ADComputeThermalExpansionEigenstrain
     stress_free_temperature = ${T_room}
@@ -279,37 +275,44 @@ dt = 1 # ms
     block = '3'
   []
 
+  [stress]
+    type = ADComputeFiniteStrainElasticStress
+    block = '2 3'
+  []
+
   # [./radial_return_stress]
   #   type = ADComputeMultipleInelasticStress
-  #   inelastic_models = 'power_law_hardening'
+  #   inelastic_models = 'rate_temp_plas'
   #   block = '2 3'
   # [../]
-  #
+
   # [power_law_hardening]
   #   type = ADIsotropicPowerLawHardeningStressUpdate
   #   strength_coefficient = 847 #K
   #   strain_hardening_exponent = 0.06 #n
   #   relative_tolerance = 1e-6
   #   absolute_tolerance = 1e-6
-  #   temperature = temp
+  #   temperature = temp_aux
   #   block = '2 3'
   # []
 
   # [./rate_temp_plas]
   #   type = ADRateTempDependentStressUpdate
-  #   temperature = temp
-  #   Y0 = 5.264e03 # [MPa]
-  #   Rd1 = 8.565e-4 # [MPa]
-  #   hxi = 1.670e-06 # [mm/(s*MPa)]
+  #   temperature = temp_aux
+  #   Y0 = 5.264 # 5.264e03 [MPa]
+  #   Rd1 = 8.565e-7 #8.565e-4 [MPa]
+  #   hxi = 1.670e6 # 1.670e3 # [mm/(s*MPa)]
   #   Ex = '294.994  1671.48  1721.77'
-  #   Ey = '201.232e3 80.0821e3 6.16016e3' # [N/mm^3], i.e., MPa
+  #   Ey = '201.232 80.0821 6.16016' # GPa
+  #   f1 = 9.178e-05 #[1/ms]
   #   nux = '294.994 1669.62 1721.77'
   #   nuy = '0.246407   0.36961  0.513347'
   #   # n2 = ${T_melt}
   #   absolute_tolerance = 1e-8
+  #   relative_tolerance = 1e-6
   #   block = '2 3'
-  #   use_substep = true
-  #   max_inelastic_increment = 0.02
+  #   # use_substep = true
+  #   # max_inelastic_increment = 0.02
   # [../]
 []
 
@@ -323,7 +326,17 @@ dt = 1 # ms
     criterion_type = ABOVE
     threshold = ${T_melt}
     moving_boundary_name = 'moving_boundary'
+    apply_initial_conditions = false
   []
+  # [activated_elem_uo]
+  #   type = ActivateElementsCoupled
+  #   coupled_var = temp_aux
+  #   activate_type = above
+  #   active_subdomain_id = '2'
+  #   expand_boundary_name= 'moving_boundary'
+  #   activate_value= ${T_melt}
+  #   execute_on = 'TIMESTEP_BEGIN'
+  # []
 []
 
 [Preconditioning]
@@ -338,7 +351,7 @@ dt = 1 # ms
   #Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
-  automatic_scaling = true
+  # automatic_scaling = true
 
   petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package'
   petsc_options_value = 'preonly lu       superlu_dist'
@@ -364,12 +377,12 @@ dt = 1 # ms
 [Outputs]
   file_base = 'output/Line_sub_speed_${speed}_power_${power}'
   csv = true
-  # [exodus]
-  #   type = Exodus
-  #   file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_sub'
-  #   # execute_on = 'INITIAL TIMESTEP_END'
-  #   interval = 1
-  # []
+  [exodus]
+    type = Exodus
+    file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_sub'
+    # execute_on = 'INITIAL TIMESTEP_END'
+    interval = 1
+  []
 []
 
 [Postprocessors]
