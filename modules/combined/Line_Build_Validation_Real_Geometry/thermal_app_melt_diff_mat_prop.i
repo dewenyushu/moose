@@ -8,7 +8,7 @@ elevate_z = 0 # 200e-3 mm
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
-dt = 15 #'${fparse 0.3*r/speed}' # ms
+dt = 1 # ms
 
 [Mesh]
   [mesh]
@@ -125,7 +125,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     type = ADHeatConductionTimeDerivative
     variable = temp
   []
-  [heat_conduc]
+  [heat_conduct]
     type = ADHeatConduction
     variable = temp
     use_displaced_mesh = true
@@ -245,7 +245,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     # y = '1.008e3 1.008e3 1.008e3 726.99  726.99'
     # scale_factor = 1.0
     type = PiecewiseLinear
-    data_file = AirSpecificHeat.csv
+    data_file = MixedSpecificHeat.csv
     format = columns
     scale_factor = 1.0
 
@@ -256,7 +256,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     # y = '0.025e-6 0.025e-6 0.025e-6 28.463e-6 28.463e-6'
     # scale_factor = 1.0
     type = PiecewiseLinear
-    data_file = AirConductivity.csv
+    data_file = MixedThermalConductivity.csv
     format = columns
     scale_factor = 1e-6
   []
@@ -294,33 +294,18 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     temp = temp
     block = '1'
   []
-  [volumetric_heat_air]
+  [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
     power = ${power}
     efficiency = 0.36
-    factor = 0.7e-3
+    factor = 1
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
-    heat_source_type = 'mixed'
+    heat_source_type = 'line'
     threshold_length = 0.1 #mm
     number_time_integration = 10
-    block = '1'
-  []
-  [volumetric_heat_metal]
-    type = FunctionPathEllipsoidHeatSource
-    r = ${r}
-    power = ${power}
-    efficiency = 0.36
-    factor = 0.8
-    function_x = heat_source_x
-    function_y = heat_source_y
-    function_z = heat_source_z
-    heat_source_type = 'mixed'
-    threshold_length = 0.1 #mm
-    number_time_integration = 10
-    block = '2 3 4'
   []
   [density_metal]
     type = ADDensity
@@ -420,11 +405,11 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
 []
 
 [Outputs]
-  file_base = 'output_stm/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output_mat_prop/Line_master_speed_${speed}_power_${power}_r_${r}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_stm/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Line_thermal_melt'
+    file_base = 'output_mat_prop/Exodus_speed_${speed}_power_${power}_r_${r}/Line_thermal_melt'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []
