@@ -17,8 +17,8 @@
 [Samplers]
   [pc_sampler]
     type = CSVSampler
-    samples_file = 'Input_Params.csv'
-    column_names = 'power speed r'
+    samples_file = 'Input_Params_Part.csv'
+    column_names = 'power speed r dt'
     execute_on = 'PRE_MULTIAPP_SETUP'
   []
 []
@@ -38,7 +38,7 @@
     type = MultiAppCommandLineControl
     multi_app = pc_master
     sampler = pc_sampler
-    param_names = 'power speed r'
+    param_names = 'power speed r dt'
   []
 []
 
@@ -51,8 +51,8 @@
   []
 []
 
-[Outputs]
-  file_base = 'output/sampler_data'
-  execute_on = 'INITIAL'
-  csv = true
-[]
+# [Outputs]
+#   file_base = 'output/sampler_data'
+#   execute_on = 'INITIAL'
+#   csv = true
+# []
