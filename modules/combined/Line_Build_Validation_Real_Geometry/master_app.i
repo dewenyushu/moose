@@ -1,60 +1,42 @@
 T_room = 300
 T_ambient = 300
-T_melt = 1700
-
-elevate_z = 0 # 200e-3 mm
+T_melt = 1500
 
 # speed = 2 # mm/s
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
-r = 300e-3 # 400 um = 400e-3 mm
-dt = 15 #'${fparse 0.3*r/speed}' # ms
+r = 200e-3 # 200 um = 100e-3 mm
+dt = 1 # ms
 
 [Mesh]
   [mesh]
-    type = GeneratedMeshGenerator
-    dim = 3
-    xmin =-1
-    xmax = 1
-    ymin = -2.5
-    ymax = 2.5
-    zmin = 0
-    zmax = 2
-    nx = 20
-    ny = 50
-    nz = 20
+    type = FileMeshGenerator
+    file = box_1x4x.5.e
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
     input = mesh
     block_id = 3
     bottom_left = '-50 -50 0'
-    top_right = '50 50 1'
+    top_right = '50 50 0.5'
   []
   [add_set2]
     type = SubdomainBoundingBoxGenerator
     input = add_set1
     block_id = 1
-    bottom_left = '-50 -50 1'
-    top_right = '50 50 2'
+    bottom_left = '-50 -50 0.5'
+    top_right = '50 50 5'
   []
   [add_set3]
     type = SubdomainBoundingBoxGenerator
     input = add_set2
     block_id = 2
-    bottom_left = '-0.1 -2 1'
-    top_right = '0 -1.9 1.1'
-  []
-  [add_set4]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set3
-    block_id = 4
-    bottom_left = '-0.1 -2 0.9'
-    top_right = '0 -1.9 1'
+    bottom_left = '-0.05 -2 0.5'
+    top_right = '0 -1.95 0.55'
   []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
-    input = add_set4
+    input = add_set3
     block = 2
     new_boundary = 'moving_boundary'
   []
@@ -74,7 +56,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
 
 [Variables]
   [temp]
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
 []
 
@@ -83,7 +65,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     type = ConstantIC
     variable = temp
     value = ${T_room}
-    block = '1 3 4'
+    block = '1 3'
   []
   [temp_product]
     type = ConstantIC
@@ -106,18 +88,6 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     order = CONSTANT
     family = MONOMIAL
   []
-  [x_coord]
-    order = FIRST
-    family = LAGRANGE
-  []
-  [y_coord]
-    order = FIRST
-    family = LAGRANGE
-  []
-  [z_coord]
-    order = FIRST
-    family = LAGRANGE
-  []
 []
 
 [Kernels]
@@ -125,11 +95,19 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     type = ADHeatConductionTimeDerivative
     variable = temp
   []
-  [heat_conduc]
+  [heat_conduct_metal]
     type = ADHeatConduction
     variable = temp
     use_displaced_mesh = true
     thermal_conductivity = thermal_conductivity
+    block = '2 3'
+  []
+  [heat_conduct_air]
+    type = ADHeatConduction
+    variable = temp
+    use_displaced_mesh = true
+    thermal_conductivity = thermal_conductivity # 0.025 W/(m·K) 1e-6 for mm and ms
+    block = '1'
   []
   [heatsource]
     type = ADMatHeatSource
@@ -157,21 +135,6 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     variable = speed_aux
     value = ${speed}
     # execute_on = 'INITIAL TIMESTEP_BEGIN'
-  []
-  [x_coord]
-    type = FunctionAux
-    function = x_coord
-    variable = x_coord
-  []
-  [y_coord]
-    type = FunctionAux
-    function = y_coord
-    variable = y_coord
-  []
-  [z_coord]
-    type = FunctionAux
-    function = z_coord
-    variable = z_coord
   []
 []
 
@@ -206,9 +169,36 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
   #   variable = temp
   #   boundary = 'middle'
   #   # coefficient = 2e-5
-  #   heat_transfer_coefficient = 2e-5
+  #   heat_transfer_coefficient = 0.016
   #   T_infinity = ${T_ambient}
   # [../]
+[]
+
+[MultiApps]
+  [thermo_mech]
+    type = TransientMultiApp
+    positions = '0.0 0.0 0.0'
+    input_files = sub_app_mechanical.i
+
+    catch_up = true
+    max_catch_up_steps = 100
+    max_failures = 100
+    keep_solution_during_restore = true
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
+    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
+  []
+[]
+
+[Transfers]
+  [to_mech]
+    # type = MultiAppCopyTransfer
+    type = MultiAppNearestNodeTransfer
+    direction = to_multiapp
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
+    multi_app = thermo_mech
+    source_variable = temp
+    variable = temp_aux
+  []
 []
 
 [Functions]
@@ -221,8 +211,8 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     value = '-2 + ${speed}*t '
   []
   [heat_source_z]
-    type = ParsedFunction
-    value = '1+${elevate_z}'
+    type = ConstantFunction
+    value = 0.5
   []
   [specific_heat_metal]
     type = PiecewiseLinear
@@ -232,50 +222,22 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
   []
   [thermal_conductivity_metal]
     type = PiecewiseLinear
-    x = '-1e7 198.84  298.10  398.75 500.76 601.40 700.64 801.27 901.89 1001.12 1098.98 1200.96 '
-        '1301.56 1400.78 1501.37 1601.96 1e7'
-    y = '247.72 247.72 285.64 323.55 358.44 390.29 417.59 446.41 469.16 491.91 510.11 528.31 540.44 '
-        '554.09 561.67 569.26 569.26'
+    x = '-1e7 198.84  298.10  398.75 500.76 601.40 700.64 801.27 901.89 1001.12 1098.98 1200.96 1301.56 1400.78 1501.37 1601.96 1e7'
+    y = '247.72 247.72 285.64 323.55 358.44 390.29 417.59 446.41 469.16 491.91 510.11 528.31 540.44 554.09 561.67 569.26 569.26'
     format = columns
     scale_factor = 0.05e-6
   []
   [specific_heat_air]
-    # type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    # x = '-1e-7 0 300 1701.44 1e7'
-    # y = '1.008e3 1.008e3 1.008e3 726.99  726.99'
-    # scale_factor = 1.0
-    type = PiecewiseLinear
-    data_file = AirSpecificHeat.csv
-    format = columns
+    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+    x = '-1e-7 0 300 1701.44 1e7'
+    y = '1.008e3 1.008e3 1.008e3 726.99  726.99'
     scale_factor = 1.0
-
   []
   [thermal_conductivity_air]
-    # type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    # x = '-1e7 0 300 1601.96 1e7'
-    # y = '0.025e-6 0.025e-6 0.025e-6 28.463e-6 28.463e-6'
-    # scale_factor = 1.0
-    type = PiecewiseLinear
-    data_file = AirConductivity.csv
-    format = columns
-    scale_factor = 1e-6
-  []
-  # for monitoring the deposited material geometry
-  [scan_length_y]
-    type = ParsedFunction
-    value = '${speed}*t '
-  []
-  [x_coord]
-    type = ParsedFunction
-    value = 'x'
-  []
-  [y_coord]
-    type = ParsedFunction
-    value = 'y'
-  []
-  [z_coord]
-    type = ParsedFunction
-    value = 'z'
+    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+    x = '-1e7 0 300 1601.96 1e7'
+    y = '0.025e-6 0.025e-6 0.025e-6 28.463e-6 28.463e-6'
+    scale_factor = 1.0
   []
 []
 
@@ -285,7 +247,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     specific_heat_temperature_function = specific_heat_metal
     thermal_conductivity_temperature_function = thermal_conductivity_metal
     temp = temp
-    block = '2 3 4'
+    block = '2 3'
   []
   [heat_air]
     type = ADHeatConductionMaterial
@@ -294,38 +256,23 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     temp = temp
     block = '1'
   []
-  [volumetric_heat_air]
+  [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
     power = ${power}
     efficiency = 0.36
-    factor = 0.7e-3
+    factor = 0.5
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
-    heat_source_type = 'mixed'
+    heat_source_type = 'line'
     threshold_length = 0.1 #mm
     number_time_integration = 10
-    block = '1'
-  []
-  [volumetric_heat_metal]
-    type = FunctionPathEllipsoidHeatSource
-    r = ${fparse r*1.1}
-    power = ${power}
-    efficiency = 0.36
-    factor = 0.9
-    function_x = heat_source_x
-    function_y = heat_source_y
-    function_z = heat_source_z
-    heat_source_type = 'mixed'
-    threshold_length = 0.1 #mm
-    number_time_integration = 10
-    block = '2 3 4'
   []
   [density_metal]
     type = ADDensity
     density = 7609e-9 # kg/m^3 -> 1e-9 kg/mm^3
-    block = '2 3 4'
+    block = '2 3'
   []
   [density_air]
     type = ADDensity
@@ -335,7 +282,7 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
 []
 
 [UserObjects]
-  [activated_elem_uo_beam]
+  [activated_elem_uo]
     type = CoupledVarThresholdElementSubdomainModifier
     execute_on = 'TIMESTEP_BEGIN'
     coupled_var = temp
@@ -344,16 +291,6 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
     criterion_type = ABOVE
     threshold = ${T_melt}
     moving_boundary_name = 'moving_boundary'
-  []
-  [activated_elem_uo_melt]
-    type = CoupledVarThresholdElementSubdomainModifier
-    execute_on = 'TIMESTEP_BEGIN'
-    coupled_var = temp
-    block = 3
-    subdomain_id = 4
-    criterion_type = ABOVE
-    threshold = ${T_melt}
-    # moving_boundary_name = 'moving_boundary'
   []
   # [activated_elem_uo]
   #   type = ActivateElementsCoupled
@@ -364,23 +301,6 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
   #   activate_value= ${T_melt}
   #   execute_on = 'TIMESTEP_END'
   # []
-[]
-
-[Adaptivity]
-  steps = 1
-  marker = marker
-  initial_marker = marker
-  max_h_level = 2
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0
-    refine = 0.5
-  []
 []
 
 [Preconditioning]
@@ -420,135 +340,35 @@ dt = 15 #'${fparse 0.3*r/speed}' # ms
 []
 
 [Outputs]
-  file_base = 'output_stm/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
-  csv = true
+  file_base = 'output/Line_master_speed_${speed}_power_${power}'
+  csv=true
   [exodus]
     type = Exodus
-    file_base = 'output_stm/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Line_thermal_melt'
+    file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_master'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []
 []
 
 [Postprocessors]
-  [bead_max_temperature]
+  [max_temperature]
     type = ElementExtremeValue
     variable = temp
     value_type = max
     block = '2'
-    outputs = 'csv'
   []
-  [bead_min_temperature]
+  [min_temperature]
     type = ElementExtremeValue
     variable = temp
     value_type = min
     block = '2'
-    outputs = 'csv'
-  []
-  [bead_volume]
-    type = VolumePostprocessor
-    block = '2'
-    use_displaced_mesh = true
-    outputs = 'csv console'
-  []
-  [melt_volume]
-    type = VolumePostprocessor
-    block = '4'
-    use_displaced_mesh = true
-    outputs = 'csv console'
   []
   [pp_power]
     type = ElementAverageValue
     variable = power_aux
-    outputs = 'csv'
   []
   [pp_speed]
     type = ElementAverageValue
     variable = speed_aux
-    outputs = 'csv'
-  []
-  [bead_x_coord_max]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_x_coord_min]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv'
-  []
-  [bead_y_coord_max]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_y_coord_min]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_z_coord_max]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_z_coord_min]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv'
-  []
-  [melt_x_coord_max]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_x_coord_min]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv'
-  []
-  [melt_y_coord_max]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_y_coord_min]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_z_coord_max]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv'
-  []
-  [melt_z_coord_min]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv console'
   []
 []

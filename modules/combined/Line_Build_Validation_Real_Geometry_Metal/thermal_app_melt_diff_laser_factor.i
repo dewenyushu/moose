@@ -8,13 +8,13 @@ elevate_z = 0 # 200e-3 mm
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
-dt = 2 #'${fparse 0.3*r/speed}' # ms
+dt = 6 #'${fparse 0.3*r/speed}' # ms
 
 [Mesh]
   [mesh]
     type = GeneratedMeshGenerator
     dim = 3
-    xmin = -1
+    xmin =-1
     xmax = 1
     ymin = -2.5
     ymax = 2.5
@@ -128,7 +128,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [heat_conduc]
     type = ADHeatConduction
     variable = temp
-    # use_displaced_mesh = true
+    use_displaced_mesh = true
     thermal_conductivity = thermal_conductivity
   []
   [heatsource]
@@ -136,7 +136,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     material_property = volumetric_heat
     variable = temp
     scalar = 1
-    # use_displaced_mesh = true
+    use_displaced_mesh = true
   []
 []
 
@@ -303,7 +303,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
-    heat_source_type = 'line'
+    heat_source_type = 'mixed'
     threshold_length = 0.1 #mm
     number_time_integration = 10
     block = '1 2 3 4'
@@ -364,14 +364,15 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #   active_subdomain_id = '2'
   #   expand_boundary_name= 'moving_boundary'
   #   activate_value= ${T_melt}
-  #   execute_on = 'TIMESTEP_BEGIN'
+  #   execute_on = 'TIMESTEP_END'
   # []
 []
 
 [Adaptivity]
+  steps = 1
   marker = marker
   initial_marker = marker
-  max_h_level = 1
+  max_h_level = 2
   [Indicators/indicator]
     type = GradientJumpIndicator
     variable = temp
@@ -397,9 +398,8 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
   automatic_scaling = true
 
-  petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package -pc_factor_shift_type '
-                        '-pc_factor_shift_amount'
-  petsc_options_value = 'preonly lu       superlu_dist NONZERO 1e-10'
+  petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package'
+  petsc_options_value = 'preonly lu       superlu_dist'
 
   # petsc_options_iname = '-pc_type -ksp_type -pc_factor_shift_type -pc_factor_shift_amount'
   # petsc_options_value = 'lu  preonly NONZERO 1e-10'
@@ -407,9 +407,9 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   line_search = 'none'
 
   l_max_its = 100
-  nl_max_its = 15
-  nl_rel_tol = 1e-8
-  nl_abs_tol = 1e-10
+  nl_max_its = 40
+  nl_rel_tol = 1e-5
+  nl_abs_tol = 1e-6
 
   start_time = 0.0
   end_time = '${fparse 3/speed}'
@@ -422,14 +422,14 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 []
 
 [Outputs]
-  file_base = 'output_multiapp/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output_stm/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
-  [exodus]
-    type = Exodus
-    file_base = 'output_multiapp/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Master'
-    # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 1
-  []
+  # [exodus]
+  #   type = Exodus
+  #   file_base = 'output_stm/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Line_thermal_melt'
+  #   # execute_on = 'INITIAL TIMESTEP_END'
+  #   interval = 1
+  # []
 []
 
 [Postprocessors]
@@ -450,13 +450,13 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [bead_volume]
     type = VolumePostprocessor
     block = '2'
-    # use_displaced_mesh = true
+    use_displaced_mesh = true
     outputs = 'csv console'
   []
   [melt_volume]
     type = VolumePostprocessor
     block = '4'
-    # use_displaced_mesh = true
+    use_displaced_mesh = true
     outputs = 'csv console'
   []
   [pp_power]
@@ -552,33 +552,5 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     value_type = min
     block = '4'
     outputs = 'csv console'
-  []
-[]
-
-[MultiApps]
-  [thermo_mech]
-    type = TransientMultiApp
-    positions = '0.0 0.0 0.0'
-    input_files = sub_app_mechanical.i
-
-    catch_up = true
-    max_catch_up_steps = 10
-    # max_failures = 10
-    keep_solution_during_restore = true
-    execute_on = 'TIMESTEP_END'
-    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
-  []
-[]
-
-[Transfers]
-  [to_mech]
-    # type = MultiAppCopyTransfer
-    type = MultiAppNearestNodeTransfer
-    # type = MultiAppProjectionTransfer
-    direction = to_multiapp
-    execute_on = 'TIMESTEP_END'
-    multi_app = thermo_mech
-    source_variable = 'temp'
-    variable = 'temp_aux'
   []
 []

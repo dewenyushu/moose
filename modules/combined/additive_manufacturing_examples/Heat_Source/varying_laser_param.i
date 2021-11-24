@@ -1,10 +1,10 @@
 # sample #40
 
-v = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
+v = 10e-3 # 10 mm/s = 10e-3 mm/ms
 r = 100e-3 # 200 um = 100e-3 mm
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
-scan_type = mixed
-dt = 50
+scan_type = line
+dt = 100
 
 [Mesh]
   [gen]
@@ -56,7 +56,7 @@ dt = 50
 [Functions]
   [heat_source_x]
     type = ParsedFunction
-    value = 'v*t'
+    value = '2+v*t'
     vars = 'v'
     vals = ${v}
   []
@@ -105,13 +105,13 @@ dt = 50
     r = ${r}
     power = ${power}
     efficiency = 0.36
-    factor = 0.5
+    factor = 1
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
     heat_source_type = ${scan_type}
     threshold_length = 0.1 #mm
-    number_time_integration = 10
+    number_time_integration = 20
   []
   [density]
     type = ADDensity
@@ -156,7 +156,7 @@ dt = 50
   # l_tol = 1e-5
 
   start_time = 0.0
-  end_time = 500 # ms
+  end_time = ${fparse 1.5/v} # ms
   dt = ${dt} # ms
   dtmin = 1e-4
 []
@@ -201,7 +201,7 @@ dt = 50
   [vpp]
     type = CSV
     delimiter = ','
-    sync_times = '300'
+    sync_times = '100'
     sync_only = true
     time_data = true
     file_base = './output_r${r}/heat_source_out_${power}W_${scan_type}_dt${dt}_vpp/center_temperature'
