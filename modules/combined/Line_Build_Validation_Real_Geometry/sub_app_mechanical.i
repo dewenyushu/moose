@@ -1,16 +1,14 @@
 T_room = 300
 # T_ambient = 300
-T_melt = 1700
+T_melt = 1500
 
-# speed = 2 # mm/s
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
-r = 300e-3 # 400 um = 400e-3 mm
-dt = 2 #'${fparse 0.3*r/speed}' # ms
+# r = 200e-3 # 200 um = 100e-3 mm
+dt = 1 # ms
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
-  volumetric_locking_correction = true
 []
 
 [Problem]
@@ -20,49 +18,33 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
 [Mesh]
   [mesh]
-    type = GeneratedMeshGenerator
-    dim = 3
-    xmin = -1
-    xmax = 1
-    ymin = -2.5
-    ymax = 2.5
-    zmin = 0
-    zmax = 2
-    nx = 20
-    ny = 50
-    nz = 20
+    type = FileMeshGenerator
+    file = box_1x4x.5.e
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
     input = mesh
     block_id = 3
     bottom_left = '-50 -50 0'
-    top_right = '50 50 1.0'
+    top_right = '50 50 0.5'
   []
   [add_set2]
     type = SubdomainBoundingBoxGenerator
     input = add_set1
     block_id = 1
-    bottom_left = '-50 -50 1.0'
-    top_right = '50 50 2'
+    bottom_left = '-50 -50 0.5'
+    top_right = '50 50 5'
   []
   [add_set3]
     type = SubdomainBoundingBoxGenerator
     input = add_set2
     block_id = 2
-    bottom_left = '-0.1 -2 1.0'
-    top_right = '0 -1.9 1.1'
-  []
-  [add_set4]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set3
-    block_id = 4
-    bottom_left = '-0.1 -2 0.9'
-    top_right = '0 -1.9 1.0'
+    bottom_left = '-0.05 -2 0.5'
+    top_right = '0 -1.95 0.55'
   []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
-    input = add_set4
+    input = add_set3
     block = 2
     new_boundary = 'moving_boundary'
   []
@@ -73,18 +55,18 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     new_boundary = 'middle'
     normal = '0 0 1'
   []
-  # displacements = 'disp_x disp_y disp_z'
+  displacements = 'disp_x disp_y disp_z'
 []
 
 [Variables]
   [disp_x]
-    block = '2 3 4'
+    block = '2 3'
   []
   [disp_y]
-    block = '2 3 4'
+    block = '2 3'
   []
   [disp_z]
-    block = '2 3 4'
+    block = '2 3'
   []
 []
 
@@ -92,17 +74,17 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [temp_aux]
     order = FIRST
     family = LAGRANGE
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
   [von_mises]
     order = CONSTANT
     family = MONOMIAL
-    block = '2 3 4'
+    block = '2 3'
   []
   [plastic_strain_eff]
     order = CONSTANT
     family = MONOMIAL
-    block = '2 3 4'
+    block = '2 3'
   []
   [power_aux]
     order = CONSTANT
@@ -138,7 +120,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   # block = '2 3'
   # [../]
   [product]
-    block = '2 4'
+    block = '2'
     eigenstrain_names = 'thermal_eigenstrain_product'
     use_automatic_differentiation = true
   []
@@ -156,7 +138,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     rank_two_tensor = stress
     execute_on = timestep_end
     scalar_type = VonMisesStress
-    block = '2 3 4'
+    block = '2 3'
   []
   [power]
     type = ConstantAux
@@ -178,21 +160,21 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #   scalar_type = EffectiveStrain
   #   block = '2 3'
   # [../]
-  # [x_coord]
-  #   type = FunctionAux
-  #   function = x_coord
-  #   variable = x_coord
-  # []
-  # [y_coord]
-  #   type = FunctionAux
-  #   function = y_coord
-  #   variable = y_coord
-  # []
-  # [z_coord]
-  #   type = FunctionAux
-  #   function = z_coord
-  #   variable = z_coord
-  # []
+  [x_coord]
+    type = FunctionAux
+    function = x_coord
+    variable = x_coord
+  []
+  [y_coord]
+    type = FunctionAux
+    function = y_coord
+    variable = y_coord
+  []
+  [z_coord]
+    type = FunctionAux
+    function = z_coord
+    variable = z_coord
+  []
 []
 
 [Functions]
@@ -208,42 +190,42 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #   type = ConstantFunction
   #   value = 0.5
   # []
-  # [scan_length_y]
-  #   type = ParsedFunction
-  #   value = '${speed}*t '
-  # []
+  [scan_length_y]
+    type = ParsedFunction
+    value = '${speed}*t '
+  []
   # for monitoring the deposited material geometry
-  # [x_coord]
-  #   type = ParsedFunction
-  #   value = 'x'
-  # []
-  # [y_coord]
-  #   type = ParsedFunction
-  #   value = 'y'
-  # []
-  # [z_coord]
-  #   type = ParsedFunction
-  #   value = 'z'
-  # []
+  [x_coord]
+    type = ParsedFunction
+    value = 'x'
+  []
+  [y_coord]
+    type = ParsedFunction
+    value = 'y'
+  []
+  [z_coord]
+    type = ParsedFunction
+    value = 'z'
+  []
 []
 
 [BCs]
   [ux_bottom_fix]
     type = ADDirichletBC
     variable = disp_x
-    boundary = 'back'
+    boundary = 1
     value = 0.0
   []
   [uy_bottom_fix]
     type = ADDirichletBC
     variable = disp_y
-    boundary = 'back'
+    boundary = 1
     value = 0.0
   []
   [uz_bottom_fix]
     type = ADDirichletBC
     variable = disp_z
-    boundary = 'back'
+    boundary = 1
     value = 0.0
   []
 []
@@ -251,37 +233,37 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 [Materials]
   [E]
     type = ADPiecewiseLinearInterpolationMaterial
-    x = '0 294.994  1671.48  1721.77 1e7'
-    y = '201.232 201.232 80.0821 6.16016 6.16016' # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    x = '294.994  1671.48  1721.77'
+    y = '201.232 80.0821 6.16016' # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
     property = youngs_modulus
     variable = temp_aux
     extrapolation = false
-    block = '2 3 4'
+    block = '2 3'
   []
   [nu]
     type = ADPiecewiseLinearInterpolationMaterial
-    x = '0 294.994 1669.62 1721.77 1e7'
-    y = '0.246407 0.246407   0.36961  0.513347 0.513347'
+    x = '294.994 1669.62 1721.77'
+    y = '0.246407   0.36961  0.513347'
     property = poissons_ratio
     variable = temp_aux
     extrapolation = false
-    block = '2 3 4'
+    block = '2 3'
   []
   [elasticity_tensor]
     type = ADComputeVariableIsotropicElasticityTensor
     youngs_modulus = youngs_modulus
     poissons_ratio = poissons_ratio
-    block = '2 3 4'
+    block = '2 3'
   []
 
   [thermal_expansion_strain_product]
     type = ADComputeThermalExpansionEigenstrain
-    stress_free_temperature = ${T_melt}
+    stress_free_temperature = ${T_room}
     # thermal_expansion_coeff = 1.72e-5
     thermal_expansion_coeff = 6.72e-6 #1.72e-5 /K
     temperature = temp_aux
     eigenstrain_name = thermal_eigenstrain_product
-    block = '2 4'
+    block = '2'
   []
   [thermal_expansion_strain_substrate]
     type = ADComputeThermalExpansionEigenstrain
@@ -295,13 +277,13 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
   [stress]
     type = ADComputeFiniteStrainElasticStress
-    block = '2 3 4'
+    block = '2 3'
   []
 
   # [./radial_return_stress]
   #   type = ADComputeMultipleInelasticStress
   #   inelastic_models = 'rate_temp_plas'
-  #   block = '2 3 4'
+  #   block = '2 3'
   # [../]
 
   # [power_law_hardening]
@@ -319,23 +301,23 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #   temperature = temp_aux
   #   Y0 = 5.264 # 5.264e03 [MPa]
   #   Rd1 = 8.565e-7 #8.565e-4 [MPa]
-  #   hxi = 1.670e6
+  #   hxi = 1.670e6 # 1.670e3 # [mm/(s*MPa)]
   #   Ex = '294.994  1671.48  1721.77'
   #   Ey = '201.232 80.0821 6.16016' # GPa
   #   f1 = 9.178e-05 #[1/ms]
   #   nux = '294.994 1669.62 1721.77'
   #   nuy = '0.246407   0.36961  0.513347'
   #   # n2 = ${T_melt}
-  #   # absolute_tolerance = 1e-8
-  #   # relative_tolerance = 1e-6
-  #   block = '2 3 4'
+  #   absolute_tolerance = 1e-8
+  #   relative_tolerance = 1e-6
+  #   block = '2 3'
   #   # use_substep = true
   #   # max_inelastic_increment = 0.02
   # [../]
 []
 
 [UserObjects]
-  [activated_elem_uo_beam]
+  [activated_elem_uo]
     type = CoupledVarThresholdElementSubdomainModifier
     execute_on = 'TIMESTEP_BEGIN'
     coupled_var = temp_aux
@@ -344,17 +326,6 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     criterion_type = ABOVE
     threshold = ${T_melt}
     moving_boundary_name = 'moving_boundary'
-    apply_initial_conditions = false
-  []
-  [activated_elem_uo_melt]
-    type = CoupledVarThresholdElementSubdomainModifier
-    execute_on = 'TIMESTEP_BEGIN'
-    coupled_var = temp_aux
-    block = 3
-    subdomain_id = 4
-    criterion_type = ABOVE
-    threshold = ${T_melt}
-    # moving_boundary_name = 'moving_boundary'
     apply_initial_conditions = false
   []
   # [activated_elem_uo]
@@ -366,22 +337,6 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #   activate_value= ${T_melt}
   #   execute_on = 'TIMESTEP_BEGIN'
   # []
-[]
-
-[Adaptivity]
-  marker = marker
-  initial_marker = marker
-  max_h_level = 1
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp_aux
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0
-    refine = 0.5
-  []
 []
 
 [Preconditioning]
@@ -396,11 +351,10 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   #Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
-  automatic_scaling = true
+  # automatic_scaling = true
 
-  petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package -pc_factor_shift_type '
-                        '-pc_factor_shift_amount'
-  petsc_options_value = 'preonly lu       superlu_dist NONZERO 1e-10'
+  petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package'
+  petsc_options_value = 'preonly lu       superlu_dist'
 
   # petsc_options_iname = '-pc_type -ksp_type -pc_factor_shift_type -pc_factor_shift_amount'
   # petsc_options_value = 'lu  preonly NONZERO 1e-10'
@@ -408,12 +362,12 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   line_search = 'none'
 
   l_max_its = 100
-  nl_max_its = 15
-  nl_rel_tol = 1e-8
-  nl_abs_tol = 1e-10
+  nl_max_its = 40
+  nl_rel_tol = 1e-5
+  nl_abs_tol = 1e-6
 
   start_time = 0.0
-  end_time = '${fparse 3/speed}'
+  end_time = '${fparse 4/speed}'
   dt = ${dt} # ms
   dtmin = 1e-6
 
@@ -421,11 +375,11 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 []
 
 [Outputs]
-  file_base = 'output_multiapp/Line_sub_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_sub_speed_${speed}_power_${power}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_multiapp/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Sub'
+    file_base = 'output/Exodus_speed_${speed}_power_${power}/Line_sub'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []
@@ -444,6 +398,15 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     value_type = min
     block = '2'
   []
+  [deposition_volume]
+    type = VolumePostprocessor
+    block = '2'
+    use_displaced_mesh = true
+  []
+  [deposition_length]
+    type = FunctionValuePostprocessor
+    function = scan_length_y
+  []
   [pp_power]
     type = ElementAverageValue
     variable = power_aux
@@ -451,5 +414,41 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [pp_speed]
     type = ElementAverageValue
     variable = speed_aux
+  []
+  [x_coord_max]
+    type = NodalExtremeValue
+    variable = x_coord
+    value_type = max
+    block = '2'
+  []
+  [x_coord_min]
+    type = NodalExtremeValue
+    variable = x_coord
+    value_type = min
+    block = '2'
+  []
+  [y_coord_max]
+    type = NodalExtremeValue
+    variable = y_coord
+    value_type = max
+    block = '2'
+  []
+  [y_coord_min]
+    type = NodalExtremeValue
+    variable = y_coord
+    value_type = min
+    block = '2'
+  []
+  [z_coord_max]
+    type = NodalExtremeValue
+    variable = z_coord
+    value_type = max
+    block = '2'
+  []
+  [z_coord_min]
+    type = NodalExtremeValue
+    variable = z_coord
+    value_type = min
+    block = '2'
   []
 []
