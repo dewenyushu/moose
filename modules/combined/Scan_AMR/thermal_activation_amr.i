@@ -12,10 +12,10 @@ dt = 1
     type = GeneratedMeshGenerator
     dim = 3
     xmax = 1
-    ymax = 5
+    ymax = 1
     zmax = 1
     nx = 10
-    ny = 50
+    ny = 10
     nz = 10
   []
   [add_set1]
@@ -36,8 +36,8 @@ dt = 1
     type = SubdomainBoundingBoxGenerator
     input = add_set2
     block_id = 2
-    bottom_left = '0.5 0.5 0.5'
-    top_right = '0.6 0.6 0.6'
+    bottom_left = '0.5 0.0 0.5'
+    top_right = '0.6 0.1 0.6'
   []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
@@ -152,18 +152,6 @@ dt = 1
     format = columns
     scale_factor = 0.05e-6
   []
-  [specific_heat_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '1.008e3 1.008e3 695  695'
-    scale_factor = 1.0
-  []
-  [thermal_conductivity_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '0.025e-6 0.025e-6 28e-6 28e-6'
-    scale_factor = 1.0
-  []
 []
 
 [Materials]
@@ -172,14 +160,7 @@ dt = 1
     specific_heat_temperature_function = specific_heat_metal
     thermal_conductivity_temperature_function = thermal_conductivity_metal
     temp = temp
-    block = '2 3'
-  []
-  [heat_air]
-    type = ADHeatConductionMaterial
-    specific_heat_temperature_function = specific_heat_air
-    thermal_conductivity_temperature_function = thermal_conductivity_air
-    temp = temp
-    block = '1'
+    block = '1 2 3'
   []
   [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
@@ -197,12 +178,7 @@ dt = 1
   [density_metal]
     type = ADDensity
     density = 7609e-9 # kg/mm^3
-    block = '2 3'
-  []
-  [density_air]
-    type = ADDensity
-    density = 1.1644e-9 # kg/mm^3
-    block = '1'
+    block = '1 2 3'
   []
 []
 
@@ -230,7 +206,7 @@ dt = 1
   nl_abs_tol = 1e-6
 
   start_time = 0.0
-  end_time = '${fparse 5/speed}'
+  end_time = '${fparse 4/speed}'
   dt = ${dt}
   num_steps = 40
   dtmin = 1e-6
