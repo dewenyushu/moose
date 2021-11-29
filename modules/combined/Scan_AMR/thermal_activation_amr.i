@@ -91,15 +91,15 @@ dt = 1
     variable = temp
     use_displaced_mesh = true
     thermal_conductivity = thermal_conductivity
-    block = '2 3'
+    block = '1 2 3'
   []
-  [heat_conduct_air]
-    type = ADHeatConduction
-    variable = temp
-    use_displaced_mesh = true
-    thermal_conductivity = thermal_conductivity # 0.025 W/(m·K) 1e-6 for mm and ms
-    block = '1'
-  []
+  # [heat_conduct_air]
+  #   type = ADHeatConduction
+  #   variable = temp
+  #   use_displaced_mesh = true
+  #   thermal_conductivity = thermal_conductivity # 0.025 W/(m·K) 1e-6 for mm and ms
+  #   block = '1'
+  # []
   [heatsource]
     type = ADMatHeatSource
     material_property = volumetric_heat
@@ -152,18 +152,18 @@ dt = 1
     format = columns
     scale_factor = 0.05e-6
   []
-  [specific_heat_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '1.008e3 1.008e3 695  695'
-    scale_factor = 1.0
-  []
-  [thermal_conductivity_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '0.025e-6 0.025e-6 28e-6 28e-6'
-    scale_factor = 1.0
-  []
+  # [specific_heat_air]
+  #   type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+  #   x = '0 300 1500 1e7'
+  #   y = '1.008e3 1.008e3 695  695'
+  #   scale_factor = 1.0
+  # []
+  # [thermal_conductivity_air]
+  #   type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+  #   x = '0 300 1500 1e7'
+  #   y = '0.025e-6 0.025e-6 28e-6 28e-6'
+  #   scale_factor = 1.0
+  # []
 []
 
 [Materials]
@@ -172,15 +172,15 @@ dt = 1
     specific_heat_temperature_function = specific_heat_metal
     thermal_conductivity_temperature_function = thermal_conductivity_metal
     temp = temp
-    block = '2 3'
+    block = '1 2 3'
   []
-  [heat_air]
-    type = ADHeatConductionMaterial
-    specific_heat_temperature_function = specific_heat_air
-    thermal_conductivity_temperature_function = thermal_conductivity_air
-    temp = temp
-    block = '1'
-  []
+  # [heat_air]
+  #   type = ADHeatConductionMaterial
+  #   specific_heat_temperature_function = specific_heat_air
+  #   thermal_conductivity_temperature_function = thermal_conductivity_air
+  #   temp = temp
+  #   block = '1'
+  # []
   [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
@@ -197,13 +197,13 @@ dt = 1
   [density_metal]
     type = ADDensity
     density = 7609e-9 # kg/mm^3
-    block = '2 3'
+    block = '1 2 3'
   []
-  [density_air]
-    type = ADDensity
-    density = 1.1644e-9 # kg/mm^3
-    block = '1'
-  []
+  # [density_air]
+  #   type = ADDensity
+  #   density = 1.1644e-9 # kg/mm^3
+  #   block = '1'
+  # []
 []
 
 [Preconditioning]
@@ -250,12 +250,7 @@ dt = 1
 []
 
 [Outputs]
-  file_base = 'output/thermal_activation_amr/out'
-  [exodus]
-    type = Exodus
-    # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 1
-  []
+  exodus = true
 []
 
 [Adaptivity]
