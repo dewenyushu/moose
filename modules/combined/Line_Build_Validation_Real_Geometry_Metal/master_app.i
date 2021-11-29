@@ -10,6 +10,8 @@ power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
 dt = 2 #'${fparse 0.3*r/speed}' # ms
 
+refine = 1
+
 [Mesh]
   [mesh]
     type = GeneratedMeshGenerator
@@ -45,16 +47,16 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     bottom_left = '-0.1 -2 1.0'
     top_right = '0 -1.9 1.1'
   []
-  [add_set4]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set3
-    block_id = 4
-    bottom_left = '-0.1 -2 0.9'
-    top_right = '0 -1.9 1.0'
-  []
+  # [add_set4]
+  #   type = SubdomainBoundingBoxGenerator
+  #   input = add_set3
+  #   block_id = 4
+  #   bottom_left = '-0.1 -2 0.9'
+  #   top_right = '0 -1.9 1.0'
+  # []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
-    input = add_set4
+    input = add_set3
     block = 2
     new_boundary = 'moving_boundary'
   []
@@ -65,6 +67,8 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     new_boundary = 'middle'
     normal = '0 0 1'
   []
+
+  uniform_refine = ${refine}
 []
 
 [Problem]
@@ -74,7 +78,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
 [Variables]
   [temp]
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
 []
 
@@ -83,7 +87,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     type = ConstantIC
     variable = temp
     value = ${T_room}
-    block = '1 3 4'
+    block = '1 3'
   []
   [temp_product]
     type = ConstantIC
@@ -285,7 +289,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     specific_heat_temperature_function = specific_heat_metal
     thermal_conductivity_temperature_function = thermal_conductivity_metal
     temp = temp
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
   # [heat_air]
   #   type = ADHeatConductionMaterial
@@ -306,7 +310,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     heat_source_type = 'line'
     threshold_length = 0.1 #mm
     number_time_integration = 10
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
   # [volumetric_heat_melt]
   #   type = FunctionPathEllipsoidHeatSource
@@ -327,7 +331,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [density_metal]
     type = ADDensity
     density = 7609e-9 # kg/m^3 -> 1e-9 kg/mm^3
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
   # [density_air]
   #   type = ADDensity
@@ -347,16 +351,16 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     threshold = ${T_melt}
     moving_boundary_name = 'moving_boundary'
   []
-  [activated_elem_uo_melt]
-    type = CoupledVarThresholdElementSubdomainModifier
-    execute_on = 'TIMESTEP_BEGIN'
-    coupled_var = temp
-    block = 3
-    subdomain_id = 4
-    criterion_type = ABOVE
-    threshold = ${T_melt}
-    # moving_boundary_name = 'moving_boundary'
-  []
+  # [activated_elem_uo_melt]
+  #   type = CoupledVarThresholdElementSubdomainModifier
+  #   execute_on = 'TIMESTEP_BEGIN'
+  #   coupled_var = temp
+  #   block = 3
+  #   subdomain_id = 4
+  #   criterion_type = ABOVE
+  #   threshold = ${T_melt}
+  #   # moving_boundary_name = 'moving_boundary'
+  # []
   # [activated_elem_uo]
   #   type = ActivateElementsCoupled
   #   coupled_var = temp
@@ -368,21 +372,21 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   # []
 []
 
-[Adaptivity]
-  marker = marker
-  initial_marker = marker
-  max_h_level = 1
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0
-    refine = 0.5
-  []
-[]
+# [Adaptivity]
+#   marker = marker
+#   initial_marker = marker
+#   max_h_level = 1
+#   [Indicators/indicator]
+#     type = GradientJumpIndicator
+#     variable = temp
+#   []
+#   [Markers/marker]
+#     type = ErrorFractionMarker
+#     indicator = indicator
+#     coarsen = 0
+#     refine = 0.5
+#   []
+# []
 
 [Preconditioning]
   [smp]
@@ -453,12 +457,12 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     # use_displaced_mesh = true
     outputs = 'csv console'
   []
-  [melt_volume]
-    type = VolumePostprocessor
-    block = '4'
-    # use_displaced_mesh = true
-    outputs = 'csv console'
-  []
+  # [melt_volume]
+  #   type = VolumePostprocessor
+  #   block = '4'
+  #   # use_displaced_mesh = true
+  #   outputs = 'csv console'
+  # []
   [pp_power]
     type = ElementAverageValue
     variable = power_aux
@@ -511,48 +515,48 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     block = '2'
     outputs = 'csv'
   []
-  [melt_x_coord_max]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_x_coord_min]
-    type = NodalExtremeValue
-    variable = x_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv'
-  []
-  [melt_y_coord_max]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_y_coord_min]
-    type = NodalExtremeValue
-    variable = y_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv console'
-  []
-  [melt_z_coord_max]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = max
-    block = '4'
-    outputs = 'csv'
-  []
-  [melt_z_coord_min]
-    type = NodalExtremeValue
-    variable = z_coord
-    value_type = min
-    block = '4'
-    outputs = 'csv console'
-  []
+  # [melt_x_coord_max]
+  #   type = NodalExtremeValue
+  #   variable = x_coord
+  #   value_type = max
+  #   block = '4'
+  #   outputs = 'csv console'
+  # []
+  # [melt_x_coord_min]
+  #   type = NodalExtremeValue
+  #   variable = x_coord
+  #   value_type = min
+  #   block = '4'
+  #   outputs = 'csv'
+  # []
+  # [melt_y_coord_max]
+  #   type = NodalExtremeValue
+  #   variable = y_coord
+  #   value_type = max
+  #   block = '4'
+  #   outputs = 'csv console'
+  # []
+  # [melt_y_coord_min]
+  #   type = NodalExtremeValue
+  #   variable = y_coord
+  #   value_type = min
+  #   block = '4'
+  #   outputs = 'csv console'
+  # []
+  # [melt_z_coord_max]
+  #   type = NodalExtremeValue
+  #   variable = z_coord
+  #   value_type = max
+  #   block = '4'
+  #   outputs = 'csv'
+  # []
+  # [melt_z_coord_min]
+  #   type = NodalExtremeValue
+  #   variable = z_coord
+  #   value_type = min
+  #   block = '4'
+  #   outputs = 'csv console'
+  # []
 []
 
 [MultiApps]
@@ -566,7 +570,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     # max_failures = 10
     keep_solution_during_restore = true
     execute_on = 'TIMESTEP_END'
-    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
+    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt};refine=${refine}'
   []
 []
 
