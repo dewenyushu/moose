@@ -8,6 +8,8 @@ power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
 dt = 2 #'${fparse 0.3*r/speed}' # ms
 
+refine = 1
+
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
   volumetric_locking_correction = true
@@ -53,16 +55,16 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     bottom_left = '-0.1 -2 1.0'
     top_right = '0 -1.9 1.1'
   []
-  [add_set4]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set3
-    block_id = 4
-    bottom_left = '-0.1 -2 0.9'
-    top_right = '0 -1.9 1.0'
-  []
+  # [add_set4]
+  #   type = SubdomainBoundingBoxGenerator
+  #   input = add_set3
+  #   block_id = 4
+  #   bottom_left = '-0.1 -2 0.9'
+  #   top_right = '0 -1.9 1.0'
+  # []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
-    input = add_set4
+    input = add_set3
     block = 2
     new_boundary = 'moving_boundary'
   []
@@ -74,17 +76,19 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     normal = '0 0 1'
   []
   # displacements = 'disp_x disp_y disp_z'
+
+  uniform_refine = ${refine}
 []
 
 [Variables]
   [disp_x]
-    block = '2 3 4'
+    block = '2 3'
   []
   [disp_y]
-    block = '2 3 4'
+    block = '2 3'
   []
   [disp_z]
-    block = '2 3 4'
+    block = '2 3'
   []
 []
 
@@ -92,17 +96,17 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   [temp_aux]
     order = FIRST
     family = LAGRANGE
-    block = '1 2 3 4'
+    block = '1 2 3'
   []
   [von_mises]
     order = CONSTANT
     family = MONOMIAL
-    block = '2 3 4'
+    block = '2 3'
   []
   [plastic_strain_eff]
     order = CONSTANT
     family = MONOMIAL
-    block = '2 3 4'
+    block = '2 3'
   []
   [power_aux]
     order = CONSTANT
@@ -138,7 +142,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   # block = '2 3'
   # [../]
   [product]
-    block = '2 4'
+    block = '2'
     eigenstrain_names = 'thermal_eigenstrain_product'
     use_automatic_differentiation = true
   []
@@ -156,7 +160,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     rank_two_tensor = stress
     execute_on = timestep_end
     scalar_type = VonMisesStress
-    block = '2 3 4'
+    block = '2 3'
   []
   [power]
     type = ConstantAux
@@ -256,7 +260,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     property = youngs_modulus
     variable = temp_aux
     extrapolation = false
-    block = '2 3 4'
+    block = '2 3'
   []
   [nu]
     type = ADPiecewiseLinearInterpolationMaterial
@@ -265,13 +269,13 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     property = poissons_ratio
     variable = temp_aux
     extrapolation = false
-    block = '2 3 4'
+    block = '2 3'
   []
   [elasticity_tensor]
     type = ADComputeVariableIsotropicElasticityTensor
     youngs_modulus = youngs_modulus
     poissons_ratio = poissons_ratio
-    block = '2 3 4'
+    block = '2 3'
   []
 
   [thermal_expansion_strain_product]
@@ -281,7 +285,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     thermal_expansion_coeff = 6.72e-6 #1.72e-5 /K
     temperature = temp_aux
     eigenstrain_name = thermal_eigenstrain_product
-    block = '2 4'
+    block = '2'
   []
   [thermal_expansion_strain_substrate]
     type = ADComputeThermalExpansionEigenstrain
@@ -295,7 +299,7 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
   [stress]
     type = ADComputeFiniteStrainElasticStress
-    block = '2 3 4'
+    block = '2 3'
   []
 
   # [./radial_return_stress]
@@ -346,17 +350,17 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
     moving_boundary_name = 'moving_boundary'
     apply_initial_conditions = false
   []
-  [activated_elem_uo_melt]
-    type = CoupledVarThresholdElementSubdomainModifier
-    execute_on = 'TIMESTEP_BEGIN'
-    coupled_var = temp_aux
-    block = 3
-    subdomain_id = 4
-    criterion_type = ABOVE
-    threshold = ${T_melt}
-    # moving_boundary_name = 'moving_boundary'
-    apply_initial_conditions = false
-  []
+  # [activated_elem_uo_melt]
+  #   type = CoupledVarThresholdElementSubdomainModifier
+  #   execute_on = 'TIMESTEP_BEGIN'
+  #   coupled_var = temp_aux
+  #   block = 3
+  #   subdomain_id = 4
+  #   criterion_type = ABOVE
+  #   threshold = ${T_melt}
+  #   # moving_boundary_name = 'moving_boundary'
+  #   apply_initial_conditions = false
+  # []
   # [activated_elem_uo]
   #   type = ActivateElementsCoupled
   #   coupled_var = temp_aux
@@ -368,21 +372,21 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
   # []
 []
 
-[Adaptivity]
-  marker = marker
-  initial_marker = marker
-  max_h_level = 1
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp_aux
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0
-    refine = 0.5
-  []
-[]
+# [Adaptivity]
+#   marker = marker
+#   initial_marker = marker
+#   max_h_level = 1
+#   [Indicators/indicator]
+#     type = GradientJumpIndicator
+#     variable = temp_aux
+#   []
+#   [Markers/marker]
+#     type = ErrorFractionMarker
+#     indicator = indicator
+#     coarsen = 0
+#     refine = 0.5
+#   []
+# []
 
 [Preconditioning]
   [smp]
