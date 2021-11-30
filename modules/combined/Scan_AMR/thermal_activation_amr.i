@@ -232,7 +232,7 @@ dt = 1
   start_time = 0.0
   end_time = '${fparse 5/speed}'
   dt = ${dt}
-  num_steps = 40
+  num_steps = 100
   dtmin = 1e-6
 []
 
@@ -251,6 +251,7 @@ dt = 1
 
 [Outputs]
   exodus = true
+  file_base = 'output/output'
 []
 
 [Adaptivity]
@@ -266,7 +267,7 @@ dt = 1
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0
+    coarsen = 0.1
     refine = 0.7
   []
 []
