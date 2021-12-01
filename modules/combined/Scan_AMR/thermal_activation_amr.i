@@ -269,5 +269,6 @@ dt = 1
     indicator = indicator
     coarsen = 0.1
     refine = 0.7
+    check_subdomain_consistent_for_coarsen = true
   []
 []

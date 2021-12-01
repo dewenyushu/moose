@@ -106,7 +106,7 @@ ElementSubdomainModifier::execute()
 
     // Change the parent's subdomain, if any
     // We do not save the parent info since they are inactive
-    setAncestorsSubdomainIDs(subdomain_id, elem);
+    setAncestorsSubdomainIDs(subdomain_id, elem_id);
   }
 }
 
@@ -375,22 +375,23 @@ ElementSubdomainModifier::setOldAndOlderSolutionsForMovedNodes(SystemBase & sys)
 
 void
 ElementSubdomainModifier::setAncestorsSubdomainIDs(const SubdomainID & subdomain_id,
-                                                   const Elem * current_elem)
+                                                   const dof_id_type & elem_id)
 {
-  const Elem * curr_elem = current_elem;
+  Elem * curr_elem = _mesh.elemPtr(elem_id);
 
-  // Change the parent's subdomain, if any
-  const Elem * parent_elem = curr_elem->parent();
-  if (parent_elem)
+  unsigned int lv = curr_elem->level();
+
+  for (unsigned int i = lv; i > 0; --i)
   {
-    dof_id_type parent_id = parent_elem->id();
-    Elem * parent = _mesh.elemPtr(parent_id);
-    parent->subdomain_id() = subdomain_id;
+    // Change the parent's subdomain, if any
+    curr_elem = curr_elem->parent();
+    dof_id_type id = curr_elem->id();
+    Elem * elem = _mesh.elemPtr(id);
+    elem->subdomain_id() = subdomain_id;
 
     // displaced parent element
-    Elem * displaced_parent =
-        _displaced_problem ? _displaced_problem->mesh().elemPtr(parent_id) : nullptr;
-    if (displaced_parent)
-      displaced_parent->subdomain_id() = subdomain_id;
+    Elem * displaced_elem = _displaced_problem ? _displaced_problem->mesh().elemPtr(id) : nullptr;
+    if (displaced_elem)
+      displaced_elem->subdomain_id() = subdomain_id;
   }
 }
