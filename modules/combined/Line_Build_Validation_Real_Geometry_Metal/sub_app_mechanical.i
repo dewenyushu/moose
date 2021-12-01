@@ -8,7 +8,7 @@ power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
 dt = 2 #'${fparse 0.3*r/speed}' # ms
 
-refine = 1
+refine = 0
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
@@ -256,7 +256,8 @@ refine = 1
   [E]
     type = ADPiecewiseLinearInterpolationMaterial
     x = '0 294.994  1671.48  1721.77 1e7'
-    y = '201.232 201.232 80.0821 6.16016 6.16016' # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    # y = '201.232e3 201.232e3 80.0821e3 6.16016e3 6.16016e3' #MPa # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    y = '6.16016e3 6.16016e3 6.16016e3 6.16016e3 6.16016e3'
     property = youngs_modulus
     variable = temp_aux
     extrapolation = false
@@ -265,7 +266,7 @@ refine = 1
   [nu]
     type = ADPiecewiseLinearInterpolationMaterial
     x = '0 294.994 1669.62 1721.77 1e7'
-    y = '0.246407 0.246407   0.36961  0.513347 0.513347'
+    y = '0.246407 0.246407   0.36961  0.36961 0.36961' #''0.513347 0.513347'
     property = poissons_ratio
     variable = temp_aux
     extrapolation = false
@@ -372,21 +373,21 @@ refine = 1
   # []
 []
 
-# [Adaptivity]
-#   marker = marker
-#   initial_marker = marker
-#   max_h_level = 1
-#   [Indicators/indicator]
-#     type = GradientJumpIndicator
-#     variable = temp_aux
-#   []
-#   [Markers/marker]
-#     type = ErrorFractionMarker
-#     indicator = indicator
-#     coarsen = 0
-#     refine = 0.5
-#   []
-# []
+[Adaptivity]
+  marker = marker
+  initial_marker = marker
+  max_h_level = 1
+  [Indicators/indicator]
+    type = GradientJumpIndicator
+    variable = temp_aux
+  []
+  [Markers/marker]
+    type = ErrorFractionMarker
+    indicator = indicator
+    coarsen = 0
+    refine = 0.5
+  []
+[]
 
 [Preconditioning]
   [smp]

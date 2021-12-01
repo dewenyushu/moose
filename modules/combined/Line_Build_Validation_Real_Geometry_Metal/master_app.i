@@ -10,7 +10,7 @@ power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
 dt = 2 #'${fparse 0.3*r/speed}' # ms
 
-refine = 1
+refine = 0
 
 [Mesh]
   [mesh]
@@ -89,10 +89,16 @@ refine = 1
     value = ${T_room}
     block = '1 3'
   []
+  # [temp_product]
+  #   type = ConstantIC
+  #   variable = temp
+  #   value = ${T_melt}
+  #   block = '2'
+  # []
   [temp_product]
-    type = ConstantIC
+    type = FunctionIC
     variable = temp
-    value = ${T_melt}
+    function = temp_ic
     block = '2'
   []
 []
@@ -281,6 +287,12 @@ refine = 1
     type = ParsedFunction
     value = 'z'
   []
+  [temp_ic]
+    type = ParsedFunction
+    value = 'if(t<=0, temp_room, temp_melt)'
+    vars = 'temp_room temp_melt'
+    vals = '${T_room} ${T_melt}'
+  []
 []
 
 [Materials]
@@ -372,21 +384,21 @@ refine = 1
   # []
 []
 
-# [Adaptivity]
-#   marker = marker
-#   initial_marker = marker
-#   max_h_level = 1
-#   [Indicators/indicator]
-#     type = GradientJumpIndicator
-#     variable = temp
-#   []
-#   [Markers/marker]
-#     type = ErrorFractionMarker
-#     indicator = indicator
-#     coarsen = 0
-#     refine = 0.5
-#   []
-# []
+[Adaptivity]
+  marker = marker
+  initial_marker = marker
+  max_h_level = 1
+  [Indicators/indicator]
+    type = GradientJumpIndicator
+    variable = temp
+  []
+  [Markers/marker]
+    type = ErrorFractionMarker
+    indicator = indicator
+    coarsen = 0
+    refine = 0.5
+  []
+[]
 
 [Preconditioning]
   [smp]
