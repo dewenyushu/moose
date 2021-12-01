@@ -96,6 +96,9 @@ private:
   // Set old and older solutions to be the same as the current solution
   void setOldAndOlderSolutionsForMovedNodes(SystemBase & sys);
 
+  // Change the subdomain ID of all ancestor elements
+  void setAncestorsSubdomainIDs(const SubdomainID & subdomain_id, const dof_id_type & elem_id);
+
   // Elements on the undisplaced mesh whose subdomain IDs have changed
   std::vector<const Elem *> _moved_elems;
 
@@ -139,4 +142,7 @@ private:
   /// save the added/removed ghost nodes to sync across processors
   std::unordered_map<processor_id_type, std::vector<dof_id_type>> _ghost_nodes_to_remove,
       _ghost_nodes_to_add;
+
+  /// Subdomains between that the moving boundary is
+  std::set<SubdomainID> _moving_boundary_subdomains;
 };
