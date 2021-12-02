@@ -395,8 +395,9 @@ refine = 0
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0
+    coarsen = 0.1
     refine = 0.5
+    check_subdomain_consistent_for_coarsen = true
   []
 []
 
@@ -582,7 +583,8 @@ refine = 0
     # max_failures = 10
     keep_solution_during_restore = true
     execute_on = 'TIMESTEP_END'
-    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt};refine=${refine}'
+    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt};refine=${ref'
+               'ine}'
   []
 []
 

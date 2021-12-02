@@ -384,8 +384,9 @@ refine = 0
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0
+    coarsen = 0.1
     refine = 0.5
+    check_subdomain_consistent_for_coarsen = true
   []
 []
 
