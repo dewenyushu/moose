@@ -81,6 +81,11 @@ dt = 1
     order = FIRST
     family = LAGRANGE
   []
+  [von_mises]
+    order = CONSTANT
+    family = MONOMIAL
+    block = '2 3'
+  []
 []
 
 [Modules/TensorMechanics/Master]
@@ -106,23 +111,34 @@ dt = 1
   []
 []
 
+[AuxKernels]
+  [von_mises_kernel]
+    type = ADRankTwoScalarAux
+    variable = von_mises
+    rank_two_tensor = stress
+    execute_on = timestep_end
+    scalar_type = VonMisesStress
+    block = '2 3'
+  []
+[]
+
 [BCs]
   [ux_bottom_fix]
     type = ADDirichletBC
     variable = disp_x
-    boundary = 1
+    boundary = 'back'
     value = 0.0
   []
   [uy_bottom_fix]
     type = ADDirichletBC
     variable = disp_y
-    boundary = 1
+    boundary = 'back'
     value = 0.0
   []
   [uz_bottom_fix]
     type = ADDirichletBC
     variable = disp_z
-    boundary = 1
+    boundary = 'back'
     value = 0.0
   []
 []
@@ -131,7 +147,8 @@ dt = 1
   [E]
     type = ADPiecewiseLinearInterpolationMaterial
     x = '294.994  1671.48  1721.77'
-    y = '201.232 80.0821 6.16016' # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    # y = '201.232 80.0821 6.16016' # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    y = ' 6.16016e3 6.16016e3 6.16016e3 '
     property = youngs_modulus
     variable = temp_aux
     extrapolation = false
@@ -139,8 +156,8 @@ dt = 1
   []
   [nu]
     type = ADPiecewiseLinearInterpolationMaterial
-    x = '294.994 1669.62 1721.77'
-    y = '0.246407   0.36961  0.513347'
+    x = '0 294.994 1669.62 1721.77 1e7'
+    y = '0.246407 0.246407   0.36961  0.36961 0.36961' #''0.513347 0.513347'
     property = poissons_ratio
     variable = temp_aux
     extrapolation = false
@@ -160,7 +177,7 @@ dt = 1
 
   [thermal_expansion_strain_product]
     type = ADComputeThermalExpansionEigenstrain
-    stress_free_temperature = ${T_room}
+    stress_free_temperature = ${T_melt}
     # thermal_expansion_coeff = 1.72e-5
     thermal_expansion_coeff = 6.72e-6 #1.72e-5 /K
     temperature = temp_aux
@@ -222,6 +239,11 @@ dt = 1
   []
 []
 
+[Outputs]
+  exodus = true
+  file_base = 'output/output_sub'
+[]
+
 # [Adaptivity]
 #   steps = 1
 #   marker = marker
@@ -235,16 +257,8 @@ dt = 1
 #   [Markers/marker]
 #     type = ErrorFractionMarker
 #     indicator = indicator
-#     coarsen = 0
+#     coarsen = 0.1
 #     refine = 0.7
+#     check_subdomain_consistent_for_coarsen = true
 #   []
 # []
-
-[Outputs]
-  file_base = 'output/thermal_activation_amr/sub_out'
-  [exodus]
-    type = Exodus
-    # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 1
-  []
-[]

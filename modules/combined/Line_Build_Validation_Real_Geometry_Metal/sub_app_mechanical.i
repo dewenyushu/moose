@@ -75,7 +75,7 @@ refine = 0
     new_boundary = 'middle'
     normal = '0 0 1'
   []
-  # displacements = 'disp_x disp_y disp_z'
+  displacements = 'disp_x disp_y disp_z'
 
   uniform_refine = ${refine}
 []
@@ -256,8 +256,8 @@ refine = 0
   [E]
     type = ADPiecewiseLinearInterpolationMaterial
     x = '0 294.994  1671.48  1721.77 1e7'
-    # y = '201.232e3 201.232e3 80.0821e3 6.16016e3 6.16016e3' #MPa # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
-    y = '6.16016e3 6.16016e3 6.16016e3 6.16016e3 6.16016e3'
+    y = '201.232e3 201.232e3 80.0821e3 6.16016e3 6.16016e3' #MPa # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    # y = '6.16016e3 6.16016e3 6.16016e3 6.16016e3 6.16016e3'
     property = youngs_modulus
     variable = temp_aux
     extrapolation = false
@@ -373,22 +373,22 @@ refine = 0
   # []
 []
 
-[Adaptivity]
-  marker = marker
-  initial_marker = marker
-  max_h_level = 1
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp_aux
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0.1
-    refine = 0.5
-    check_subdomain_consistent_for_coarsen = true
-  []
-[]
+# [Adaptivity]
+#   marker = marker
+#   initial_marker = marker
+#   max_h_level = 1
+#   [Indicators/indicator]
+#     type = GradientJumpIndicator
+#     variable = temp_aux
+#   []
+#   [Markers/marker]
+#     type = ErrorFractionMarker
+#     indicator = indicator
+#     coarsen = 0.0
+#     refine = 0.5
+#     check_subdomain_consistent_for_coarsen = true
+#   []
+# []
 
 [Preconditioning]
   [smp]
@@ -431,7 +431,7 @@ refine = 0
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_multiapp/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Sub'
+    file_base = 'output_multiapp/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Sub_adapt'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []

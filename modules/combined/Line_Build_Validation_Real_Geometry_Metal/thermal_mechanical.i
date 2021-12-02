@@ -12,6 +12,16 @@ dt = 2 #'${fparse 0.3*r/speed}' # ms
 
 refine = 0
 
+[GlobalParams]
+  displacements = 'disp_x disp_y disp_z'
+  volumetric_locking_correction = true
+[]
+
+[Problem]
+  kernel_coverage_check = false
+  material_coverage_check = false
+[]
+
 [Mesh]
   [mesh]
     type = GeneratedMeshGenerator
@@ -47,13 +57,6 @@ refine = 0
     bottom_left = '-0.1 -2 1.0'
     top_right = '0 -1.9 1.1'
   []
-  # [add_set4]
-  #   type = SubdomainBoundingBoxGenerator
-  #   input = add_set3
-  #   block_id = 4
-  #   bottom_left = '-0.1 -2 0.9'
-  #   top_right = '0 -1.9 1.0'
-  # []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
     input = add_set3
@@ -67,18 +70,23 @@ refine = 0
     new_boundary = 'middle'
     normal = '0 0 1'
   []
+  displacements = 'disp_x disp_y disp_z'
 
   uniform_refine = ${refine}
-[]
-
-[Problem]
-  kernel_coverage_check = false
-  material_coverage_check = false
 []
 
 [Variables]
   [temp]
     block = '1 2 3'
+  []
+  [disp_x]
+    block = '2 3'
+  []
+  [disp_y]
+    block = '2 3'
+  []
+  [disp_z]
+    block = '2 3'
   []
 []
 
@@ -89,12 +97,6 @@ refine = 0
     value = ${T_room}
     block = '1 3'
   []
-  # [temp_product]
-  #   type = ConstantIC
-  #   variable = temp
-  #   value = ${T_melt}
-  #   block = '2'
-  # []
   [temp_product]
     type = FunctionIC
     variable = temp
@@ -104,6 +106,16 @@ refine = 0
 []
 
 [AuxVariables]
+  [von_mises]
+    order = CONSTANT
+    family = MONOMIAL
+    block = '2 3'
+  []
+  [plastic_strain_eff]
+    order = CONSTANT
+    family = MONOMIAL
+    block = '2 3'
+  []
   [processor_id]
     order = CONSTANT
     family = MONOMIAL
@@ -130,15 +142,35 @@ refine = 0
   []
 []
 
+[Modules/TensorMechanics/Master]
+  strain = FINITE
+  incremental = true
+  add_variables = true
+  generate_output = 'stress_xx stress_yy stress_zz stress_xy stress_yz stress_xz strain_yy strain_xx '
+                    'strain_zz strain_xy strain_xz strain_yz'
+  use_automatic_differentiation = true
+  [product]
+    block = '2'
+    eigenstrain_names = 'thermal_eigenstrain_product'
+    use_automatic_differentiation = true
+  []
+  [substrate]
+    block = '3'
+    eigenstrain_names = 'thermal_eigenstrain_substrate'
+    use_automatic_differentiation = true
+  []
+[]
+
 [Kernels]
   [time]
     type = ADHeatConductionTimeDerivative
     variable = temp
+    use_displaced_mesh = false
   []
   [heat_conduc]
     type = ADHeatConduction
     variable = temp
-    # use_displaced_mesh = true
+    use_displaced_mesh = false
     thermal_conductivity = thermal_conductivity
   []
   [heatsource]
@@ -146,7 +178,7 @@ refine = 0
     material_property = volumetric_heat
     variable = temp
     scalar = 1
-    # use_displaced_mesh = true
+    use_displaced_mesh = false
   []
 []
 
@@ -155,6 +187,14 @@ refine = 0
     type = ProcessorIDAux
     variable = processor_id
     execute_on = timestep_begin
+  []
+  [von_mises_kernel]
+    type = ADRankTwoScalarAux
+    variable = von_mises
+    rank_two_tensor = stress
+    execute_on = timestep_end
+    scalar_type = VonMisesStress
+    block = '2 3'
   []
   [power]
     type = ConstantAux
@@ -201,24 +241,24 @@ refine = 0
     heat_transfer_coefficient = 2e-5 # W/m^2/K ->
     T_infinity = ${T_ambient}
   []
-  # [convective_air]
-  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-  #   type = ADConvectiveHeatFluxBC
-  #   variable = temp
-  #   boundary = '4'
-  #   # coefficient = 2e-5
-  #   heat_transfer_coefficient = 2e-5 # W/m^2/K ->
-  #   T_infinity = ${T_ambient}
-  # []
-  # [./convective_middle]
-  #   # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
-  #   type = ADConvectiveHeatFluxBC
-  #   variable = temp
-  #   boundary = 'middle'
-  #   # coefficient = 2e-5
-  #   heat_transfer_coefficient = 2e-5
-  #   T_infinity = ${T_ambient}
-  # [../]
+  [ux_bottom_fix]
+    type = ADDirichletBC
+    variable = disp_x
+    boundary = 'back'
+    value = 0.0
+  []
+  [uy_bottom_fix]
+    type = ADDirichletBC
+    variable = disp_y
+    boundary = 'back'
+    value = 0.0
+  []
+  [uz_bottom_fix]
+    type = ADDirichletBC
+    variable = disp_z
+    boundary = 'back'
+    value = 0.0
+  []
 []
 
 [Functions]
@@ -249,27 +289,6 @@ refine = 0
     format = columns
     scale_factor = 0.05e-6
   []
-  # [specific_heat_air]
-  #   # type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-  #   # x = '-1e-7 0 300 1701.44 1e7'
-  #   # y = '1.008e3 1.008e3 1.008e3 726.99  726.99'
-  #   # scale_factor = 1.0
-  #   type = PiecewiseLinear
-  #   data_file = AirSpecificHeat.csv
-  #   format = columns
-  #   scale_factor = 1.0
-  #
-  # []
-  # [thermal_conductivity_air]
-  #   # type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-  #   # x = '-1e7 0 300 1601.96 1e7'
-  #   # y = '0.025e-6 0.025e-6 0.025e-6 28.463e-6 28.463e-6'
-  #   # scale_factor = 1.0
-  #   type = PiecewiseLinear
-  #   data_file = AirConductivity.csv
-  #   format = columns
-  #   scale_factor = 1e-6
-  # []
   # for monitoring the deposited material geometry
   [scan_length_y]
     type = ParsedFunction
@@ -296,6 +315,55 @@ refine = 0
 []
 
 [Materials]
+  [E]
+    type = ADPiecewiseLinearInterpolationMaterial
+    x = '0 294.994  1671.48  1721.77 1e7'
+    y = '201.232e3 201.232e3 80.0821e3 6.16016e3 6.16016e3' #MPa # 10^9 Pa = 10^9 kg/m/s^2 = kg/mm/ms^2
+    # y = '6.16016e3 6.16016e3 6.16016e3 6.16016e3 6.16016e3'
+    property = youngs_modulus
+    variable = temp
+    extrapolation = false
+    block = '2 3'
+  []
+  [nu]
+    type = ADPiecewiseLinearInterpolationMaterial
+    x = '0 294.994 1669.62 1721.77 1e7'
+    y = '0.246407 0.246407   0.36961  0.36961 0.36961' #''0.513347 0.513347'
+    property = poissons_ratio
+    variable = temp
+    extrapolation = false
+    block = '2 3'
+  []
+  [elasticity_tensor]
+    type = ADComputeVariableIsotropicElasticityTensor
+    youngs_modulus = youngs_modulus
+    poissons_ratio = poissons_ratio
+    block = '2 3'
+  []
+  [thermal_expansion_strain_product]
+    type = ADComputeThermalExpansionEigenstrain
+    stress_free_temperature = ${T_melt}
+    # thermal_expansion_coeff = 1.72e-5
+    thermal_expansion_coeff = 6.72e-6 #1.72e-5 /K
+    temperature = temp
+    eigenstrain_name = thermal_eigenstrain_product
+    block = '2'
+  []
+  [thermal_expansion_strain_substrate]
+    type = ADComputeThermalExpansionEigenstrain
+    stress_free_temperature = ${T_room}
+    # thermal_expansion_coeff = 1.72e-5
+    thermal_expansion_coeff = 6.72e-6 #1.72e-5 /K
+    temperature = temp
+    eigenstrain_name = thermal_eigenstrain_substrate
+    block = '3'
+  []
+
+  [stress]
+    type = ADComputeFiniteStrainElasticStress
+    block = '2 3'
+  []
+
   [heat_metal]
     type = ADHeatConductionMaterial
     specific_heat_temperature_function = specific_heat_metal
@@ -303,13 +371,6 @@ refine = 0
     temp = temp
     block = '1 2 3'
   []
-  # [heat_air]
-  #   type = ADHeatConductionMaterial
-  #   specific_heat_temperature_function = specific_heat_air #1.008e3 #1.008KJ/Kg*K -> same for J
-  #   thermal_conductivity_temperature_function = thermal_conductivity_air # 0.025e-6
-  #   temp = temp
-  #   block = '1'
-  # []
   [volumetric_heat_metal]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
@@ -324,32 +385,17 @@ refine = 0
     number_time_integration = 10
     block = '1 2 3'
   []
-  # [volumetric_heat_melt]
-  #   type = FunctionPathEllipsoidHeatSource
-  #   rx = ${r}
-  #   ry = ${r}
-  #   rz = ${fparse 0.5*r}
-  #   power = ${power}
-  #   efficiency = 0.36
-  #   factor = 2
-  #   function_x = heat_source_x
-  #   function_y = heat_source_y
-  #   function_z = heat_source_z
-  #   heat_source_type = 'mixed'
-  #   threshold_length = 0.1 #mm
-  #   number_time_integration = 10
-  #   block = '3 4'
+  # [density_metal]
+  #   type = ADDensity
+  #   density = 7609e-9 # kg/m^3 -> 1e-9 kg/mm^3
+  #   block = '1 2 3'
   # []
   [density_metal]
-    type = ADDensity
-    density = 7609e-9 # kg/m^3 -> 1e-9 kg/mm^3
+    type = ADGenericConstantMaterial
+    prop_names = 'density'
+    prop_values = 7609e-9 # kg/m^3 -> 1e-9 kg/mm^3
     block = '1 2 3'
   []
-  # [density_air]
-  #   type = ADDensity
-  #   density = 1.1644e-9 # 1.1644 kg/m^3 -> 1.1644e-9 kg/mm^3
-  #   block = '1'
-  # []
 []
 
 [UserObjects]
@@ -363,25 +409,6 @@ refine = 0
     threshold = ${T_melt}
     moving_boundary_name = 'moving_boundary'
   []
-  # [activated_elem_uo_melt]
-  #   type = CoupledVarThresholdElementSubdomainModifier
-  #   execute_on = 'TIMESTEP_BEGIN'
-  #   coupled_var = temp
-  #   block = 3
-  #   subdomain_id = 4
-  #   criterion_type = ABOVE
-  #   threshold = ${T_melt}
-  #   # moving_boundary_name = 'moving_boundary'
-  # []
-  # [activated_elem_uo]
-  #   type = ActivateElementsCoupled
-  #   coupled_var = temp
-  #   activate_type = above
-  #   active_subdomain_id = '2'
-  #   expand_boundary_name= 'moving_boundary'
-  #   activate_value= ${T_melt}
-  #   execute_on = 'TIMESTEP_BEGIN'
-  # []
 []
 
 [Adaptivity]
@@ -418,9 +445,6 @@ refine = 0
                         '-pc_factor_shift_amount'
   petsc_options_value = 'preonly lu       superlu_dist NONZERO 1e-10'
 
-  # petsc_options_iname = '-pc_type -ksp_type -pc_factor_shift_type -pc_factor_shift_amount'
-  # petsc_options_value = 'lu  preonly NONZERO 1e-10'
-
   line_search = 'none'
 
   l_max_its = 100
@@ -439,11 +463,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output_multiapp/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output_thermal_mech/thermal_mech'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_multiapp/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Master'
+    file_base = 'output_thermal_mech/thermal_mech/thermal_mech'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []
@@ -470,12 +494,6 @@ refine = 0
     # use_displaced_mesh = true
     outputs = 'csv console'
   []
-  # [melt_volume]
-  #   type = VolumePostprocessor
-  #   block = '4'
-  #   # use_displaced_mesh = true
-  #   outputs = 'csv console'
-  # []
   [pp_power]
     type = ElementAverageValue
     variable = power_aux
@@ -528,75 +546,16 @@ refine = 0
     block = '2'
     outputs = 'csv'
   []
-  # [melt_x_coord_max]
-  #   type = NodalExtremeValue
-  #   variable = x_coord
-  #   value_type = max
-  #   block = '4'
-  #   outputs = 'csv console'
-  # []
-  # [melt_x_coord_min]
-  #   type = NodalExtremeValue
-  #   variable = x_coord
-  #   value_type = min
-  #   block = '4'
-  #   outputs = 'csv'
-  # []
-  # [melt_y_coord_max]
-  #   type = NodalExtremeValue
-  #   variable = y_coord
-  #   value_type = max
-  #   block = '4'
-  #   outputs = 'csv console'
-  # []
-  # [melt_y_coord_min]
-  #   type = NodalExtremeValue
-  #   variable = y_coord
-  #   value_type = min
-  #   block = '4'
-  #   outputs = 'csv console'
-  # []
-  # [melt_z_coord_max]
-  #   type = NodalExtremeValue
-  #   variable = z_coord
-  #   value_type = max
-  #   block = '4'
-  #   outputs = 'csv'
-  # []
-  # [melt_z_coord_min]
-  #   type = NodalExtremeValue
-  #   variable = z_coord
-  #   value_type = min
-  #   block = '4'
-  #   outputs = 'csv console'
-  # []
-[]
-
-[MultiApps]
-  [thermo_mech]
-    type = TransientMultiApp
-    positions = '0.0 0.0 0.0'
-    input_files = sub_app_mechanical.i
-
-    catch_up = true
-    max_catch_up_steps = 10
-    # max_failures = 10
-    keep_solution_during_restore = true
-    execute_on = 'TIMESTEP_END'
-    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt};refine=${ref'
-               'ine}'
+  [max_von_mises_stress]
+    type = ElementExtremeValue
+    variable = von_mises
+    value_type = max
+    block = '2'
   []
-[]
-
-[Transfers]
-  [to_mech]
-    # type = MultiAppCopyTransfer
-    type = MultiAppNearestNodeTransfer
-    # type = MultiAppProjectionTransfer
-    direction = to_multiapp
-    execute_on = 'TIMESTEP_END'
-    multi_app = thermo_mech
-    source_variable = 'temp'
-    variable = 'temp_aux'
+  [min_von_mises_stress]
+    type = ElementExtremeValue
+    variable = von_mises
+    value_type = min
+    block = '2'
   []
 []

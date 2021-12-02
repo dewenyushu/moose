@@ -91,15 +91,15 @@ dt = 1
     variable = temp
     use_displaced_mesh = true
     thermal_conductivity = thermal_conductivity
-    block = '2 3'
+    block = '1 2 3'
   []
-  [heat_conduct_air]
-    type = ADHeatConduction
-    variable = temp
-    use_displaced_mesh = true
-    thermal_conductivity = thermal_conductivity # 0.025 W/(m·K) 1e-6 for mm and ms
-    block = '1'
-  []
+  # [heat_conduct_air]
+  #   type = ADHeatConduction
+  #   variable = temp
+  #   use_displaced_mesh = true
+  #   thermal_conductivity = thermal_conductivity # 0.025 W/(m·K) 1e-6 for mm and ms
+  #   block = '1'
+  # []
   [heatsource]
     type = ADMatHeatSource
     material_property = volumetric_heat
@@ -125,43 +125,6 @@ dt = 1
   []
 []
 
-[MultiApps]
-  [thermo_mech]
-    type = TransientMultiApp
-    positions = '0.0 0.0 0.0'
-    input_files = thermal_activation_amr_sub.i
-
-    catch_up = true
-    max_catch_up_steps = 100
-    max_failures = 100
-    keep_solution_during_restore = true
-    execute_on = 'INITIAL TIMESTEP_BEGIN'
-
-    # clone_master_mesh = true
-    cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
-  []
-[]
-
-[Transfers]
-  [to_mech]
-    # type = MultiAppCopyTransfer
-    type = MultiAppNearestNodeTransfer
-    direction = to_multiapp
-    execute_on = 'INITIAL TIMESTEP_BEGIN'
-    multi_app = thermo_mech
-    source_variable = temp
-    variable = temp_aux
-  []
-  # [from_mech]
-  #   type = MultiAppCopyTransfer
-  #   direction = from_multiapp
-  #   execute_on = 'TIMESTEP_END'
-  #   multi_app = thermo_mech
-  #   source_variable = 'disp_x disp_y disp_z'
-  #   variable = 'disp_x disp_y disp_z'
-  # []
-[]
-
 [Functions]
   [heat_source_x]
     type = ConstantFunction
@@ -177,8 +140,8 @@ dt = 1
   []
   [specific_heat_metal]
     type = PiecewiseLinear
-    x='197.79 298.46 600.31 1401.01 1552.59 1701.44 '
-    y='426.69 479.77  549.54 676.94 695.14 726.99'
+    x = '197.79 298.46 600.31 1401.01 1552.59 1701.44 '
+    y = '426.69 479.77  549.54 676.94 695.14 726.99'
     format = columns
     scale_factor = 1.0
   []
@@ -189,18 +152,18 @@ dt = 1
     format = columns
     scale_factor = 0.05e-6
   []
-  [specific_heat_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '1.008e3 1.008e3 695  695'
-    scale_factor = 1.0
-  []
-  [thermal_conductivity_air]
-    type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
-    x = '0 300 1500 1e7'
-    y = '0.025e-6 0.025e-6 28e-6 28e-6'
-    scale_factor = 1.0
-  []
+  # [specific_heat_air]
+  #   type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+  #   x = '0 300 1500 1e7'
+  #   y = '1.008e3 1.008e3 695  695'
+  #   scale_factor = 1.0
+  # []
+  # [thermal_conductivity_air]
+  #   type = PiecewiseLinear # make sure we do not have big jumps in the air-metal interface
+  #   x = '0 300 1500 1e7'
+  #   y = '0.025e-6 0.025e-6 28e-6 28e-6'
+  #   scale_factor = 1.0
+  # []
 []
 
 [Materials]
@@ -209,15 +172,15 @@ dt = 1
     specific_heat_temperature_function = specific_heat_metal
     thermal_conductivity_temperature_function = thermal_conductivity_metal
     temp = temp
-    block = '2 3'
+    block = '1 2 3'
   []
-  [heat_air]
-    type = ADHeatConductionMaterial
-    specific_heat_temperature_function = specific_heat_air
-    thermal_conductivity_temperature_function = thermal_conductivity_air
-    temp = temp
-    block = '1'
-  []
+  # [heat_air]
+  #   type = ADHeatConductionMaterial
+  #   specific_heat_temperature_function = specific_heat_air
+  #   thermal_conductivity_temperature_function = thermal_conductivity_air
+  #   temp = temp
+  #   block = '1'
+  # []
   [volumetric_heat]
     type = FunctionPathEllipsoidHeatSource
     r = ${r}
@@ -234,13 +197,13 @@ dt = 1
   [density_metal]
     type = ADDensity
     density = 7609e-9 # kg/mm^3
-    block = '2 3'
+    block = '1 2 3'
   []
-  [density_air]
-    type = ADDensity
-    density = 1.1644e-9 # kg/mm^3
-    block = '1'
-  []
+  # [density_air]
+  #   type = ADDensity
+  #   density = 1.1644e-9 # kg/mm^3
+  #   block = '1'
+  # []
 []
 
 [Preconditioning]
@@ -269,7 +232,7 @@ dt = 1
   start_time = 0.0
   end_time = '${fparse 5/speed}'
   dt = ${dt}
-  num_steps = 40
+  num_steps = 100
   dtmin = 1e-6
 []
 
@@ -286,11 +249,16 @@ dt = 1
   []
 []
 
+[Outputs]
+  exodus = true
+  file_base = 'output/output_master'
+[]
+
 [Adaptivity]
   steps = 1
   marker = marker
   initial_marker = marker
-  max_h_level = 2
+  max_h_level = 1
   [Indicators/indicator]
     type = GradientJumpIndicator
     variable = temp
@@ -299,16 +267,36 @@ dt = 1
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0
+    coarsen = 0.1
     refine = 0.7
+    check_subdomain_consistent_for_coarsen = true
   []
 []
 
-[Outputs]
-  file_base = 'output/thermal_activation_amr/master_out'
-  [exodus]
-    type = Exodus
-    # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 1
-  []
-[]
+# [MultiApps]
+#   [thermo_mech]
+#     type = TransientMultiApp
+#     positions = '0.0 0.0 0.0'
+#     input_files = thermal_activation_amr_sub.i
+#
+#     catch_up = true
+#     max_catch_up_steps = 10
+#     # max_failures = 10
+#     keep_solution_during_restore = true
+#     execute_on = 'TIMESTEP_END'
+#     cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt}'
+#   []
+# []
+#
+# [Transfers]
+#   [to_mech]
+#     # type = MultiAppCopyTransfer
+#     type = MultiAppNearestNodeTransfer
+#     # type = MultiAppProjectionTransfer
+#     direction = to_multiapp
+#     execute_on = 'TIMESTEP_END'
+#     multi_app = thermo_mech
+#     source_variable = 'temp'
+#     variable = 'temp_aux'
+#   []
+# []
