@@ -32,12 +32,22 @@ dt = 1
     bottom_left = '0 0 0.5'
     top_right = '1 5 1'
   []
+  # [add_set3]
+  #   type = SubdomainBoundingBoxGenerator
+  #   input = add_set2
+  #   block_id = 2
+  #   bottom_left = '0.5 0.5 0.5'
+  #   top_right = '0.6 0.6 0.6'
+  # []
+
   [add_set3]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set2
-    block_id = 2
-    bottom_left = '0.5 0.5 0.5'
-    top_right = '0.6 0.6 0.6'
+    type = GeneratedMeshGenerator
+    dim = 3
+    xmax = 0.1
+    ymax = 0.1
+    zmin = 2
+    zmax = 2.1
+    subdomain_ids = 2
   []
   [moving_boundary]
     type = SideSetsAroundSubdomainGenerator
@@ -51,6 +61,11 @@ dt = 1
     block = 3
     new_boundary = 'middle'
     normal = '0 0 1'
+  []
+
+  [cmbn]
+    type = CombinerGenerator
+    inputs = 'add_set2 middle'
   []
   # displacements = 'disp_x disp_y disp_z'
 []
