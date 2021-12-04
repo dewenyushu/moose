@@ -402,7 +402,7 @@ refine = 0
   #Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
-  automatic_scaling = true
+  # automatic_scaling = true
 
   petsc_options_iname = '-ksp_type -pc_type -pc_factor_mat_solver_package -pc_factor_shift_type '
                         '-pc_factor_shift_amount'
