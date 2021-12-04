@@ -190,7 +190,9 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
         // Otherwise remove this side and the neighbor side from the boundary.
         else
         {
-          // Add side so that _children_on_boundary = true
+          // _children_on_boundary is default to False so we cannot remove side from a child element
+          // To set _children_on_boundary=true, we need to add side
+          // This is not ideal solution.
           // TODO: allow setting _children_on_boundary = true in libmesh
           bnd_info.add_side(elem, side, _moving_boundary_id);
           bnd_info.remove_side(elem, side);
