@@ -51,10 +51,11 @@ refine = 0
   [add_set3]
     type = GeneratedMeshGenerator
     dim = 3
-    xmax = 0.1
-    ymax = 0.1
-    zmin = 3
-    zmax = 3.1
+    xmax = 0.001
+    ymin = 3.5
+    ymax = 3.501
+    zmin = 1.0
+    zmax = 1.001
     subdomain_ids = 2
   []
   [moving_boundary]
@@ -447,11 +448,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output_multiapp_coarse/Line_master_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_multiapp_coarse/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal_adapt'
+    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []

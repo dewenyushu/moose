@@ -59,11 +59,11 @@ refine = 0
   [add_set3]
     type = GeneratedMeshGenerator
     dim = 3
-    xmax = 0.1
+    xmax = 0.001
     ymin = 3.5
-    ymax = 3.6
-    zmin = 3
-    zmax = 3.1
+    ymax = 3.501
+    zmin = 1.0
+    zmax = 1.001
     subdomain_ids = 2
   []
   [moving_boundary]
@@ -455,11 +455,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output_multiapp_coarse/Line_sub_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_mechanical_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_multiapp_coarse/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Mechanical_adapt'
+    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []
@@ -500,7 +500,7 @@ refine = 0
     keep_solution_during_restore = true
     execute_on = 'TIMESTEP_END'
     cli_args = 'power=${power};speed=${speed};dt=${dt};T_room=${T_room};T_melt=${T_melt};refine=${ref'
-               'ine}'
+               'ine};r=${r}'
   []
 []
 
