@@ -17,7 +17,7 @@
 [Samplers]
   [pc_sampler]
     type = CSVSampler
-    samples_file = 'Input_Params_Part.csv'
+    samples_file = 'Input_Params.csv'
     column_names = 'power speed r dt'
     execute_on = 'PRE_MULTIAPP_SETUP'
   []

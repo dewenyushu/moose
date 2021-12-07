@@ -18,6 +18,8 @@
 
 #include "DualRealOps.h"
 
+#include "libmesh/auto_ptr.h" // libmesh_make_unique
+
 #include <limits>
 #include <string>
 #include <cmath>
@@ -96,7 +98,7 @@ ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effecti
   // construct the stringstream here only if the debug level is set to ALL
   std::unique_ptr<std::stringstream> iter_output =
       (_internal_solve_output_on == InternalSolveOutput::ALWAYS)
-          ? std::make_unique<std::stringstream>()
+          ? libmesh_make_unique<std::stringstream>()
           : nullptr;
 
   // do the internal solve and capture iteration info during the first round
@@ -114,7 +116,7 @@ ADSingleVariableReturnMappingSolution::returnMappingSolve(const ADReal & effecti
 
     // user expects some kind of output, if necessary setup output stream now
     if (!iter_output)
-      iter_output = std::make_unique<std::stringstream>();
+      iter_output = libmesh_make_unique<std::stringstream>();
 
     // add the appropriate error message to the output
     switch (solve_state)
@@ -184,6 +186,10 @@ ADSingleVariableReturnMappingSolution::internalSolve(const ADReal effective_tria
   {
     scalar_increment = -_residual / computeDerivative(effective_trial_stress, scalar);
     scalar = scalar_old + scalar_increment;
+
+    /// Inner NR loop needs to update other internal state variables for cases when
+    /// the flow rule is a function of these variables
+    updateInternalStateVariables(effective_trial_stress, scalar, scalar_increment);
 
     if (_check_range)
       checkPermissibleRange(scalar,

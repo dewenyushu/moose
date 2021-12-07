@@ -52,10 +52,8 @@ refine = 0
     type = GeneratedMeshGenerator
     dim = 3
     xmax = 0.001
-    ymin = 3.5
-    ymax = 3.501
-    zmin = 1.0
-    zmax = 1.001
+    ymax = 0.001
+    zmin = -0.001
     subdomain_ids = 2
   []
   [moving_boundary]
@@ -496,42 +494,42 @@ refine = 0
     outputs = 'csv'
   []
   [bead_x_coord_max]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = x_coord
     value_type = max
     block = '2'
     outputs = 'csv console'
   []
   [bead_x_coord_min]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = x_coord
     value_type = min
     block = '2'
     outputs = 'csv'
   []
   [bead_y_coord_max]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = y_coord
     value_type = max
     block = '2'
     outputs = 'csv console'
   []
   [bead_y_coord_min]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = y_coord
     value_type = min
     block = '2'
     outputs = 'csv console'
   []
   [bead_z_coord_max]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = z_coord
     value_type = max
     block = '2'
     outputs = 'csv console'
   []
   [bead_z_coord_min]
-    type = NodalExtremeValue
+    type = ElementExtremeValue
     variable = z_coord
     value_type = min
     block = '2'
