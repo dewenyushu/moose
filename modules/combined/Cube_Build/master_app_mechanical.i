@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 18
 
-refine = 0
+refine = 1
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
@@ -28,9 +28,9 @@ refine = 0
     ymax = 5
     zmin = 0
     zmax = 15
-    nx = 20
-    ny = 20
-    nz = 30
+    nx = 10
+    ny = 10
+    nz = 15
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -77,6 +77,8 @@ refine = 0
   displacements = 'disp_x disp_y disp_z'
 
   uniform_refine = ${refine}
+
+  skip_partitioning = true
 []
 
 [Variables]
@@ -292,26 +294,26 @@ refine = 0
     block = '3'
   []
 
-  [stress]
-    type = ADComputeFiniteStrainElasticStress
-    block = '2 3'
-  []
-
-  # [./radial_return_stress]
-  #   type = ADComputeMultipleInelasticStress
-  #   inelastic_models = 'rate_temp_plas'
-  #   block = '2 3 4'
-  # [../]
-
-  # [power_law_hardening]
-  #   type = ADIsotropicPowerLawHardeningStressUpdate
-  #   strength_coefficient = 847 #K
-  #   strain_hardening_exponent = 0.06 #n
-  #   relative_tolerance = 1e-6
-  #   absolute_tolerance = 1e-6
-  #   temperature = temp_aux
+  # [stress]
+  #   type = ADComputeFiniteStrainElasticStress
   #   block = '2 3'
   # []
+
+  [./radial_return_stress]
+    type = ADComputeMultipleInelasticStress
+    inelastic_models = 'power_law_hardening'
+    block = '2 3'
+  [../]
+
+  [power_law_hardening]
+    type = ADIsotropicPowerLawHardeningStressUpdate
+    strength_coefficient = 847 #K
+    strain_hardening_exponent = 0.06 #n
+    relative_tolerance = 1e-8
+    absolute_tolerance = 1e-8
+    temperature = temp_aux
+    block = '2 3'
+  []
 
   # [./rate_temp_plas]
   #   type = ADRateTempDependentStressUpdate
@@ -342,7 +344,7 @@ refine = 0
     subdomain_id = 2
     criterion_type = ABOVE
     threshold = ${T_melt}
-    moving_boundary_name = 'moving_boundary'
+    # moving_boundary_name = 'moving_boundary'
     apply_initial_conditions = false
   []
 []
@@ -389,8 +391,8 @@ refine = 0
 
   l_max_its = 100
   nl_max_its = 15
-  nl_rel_tol = 1e-8
-  nl_abs_tol = 1e-10
+  nl_rel_tol = 1e-6
+  nl_abs_tol = 1e-8
 
   start_time = 0.0
   end_time = 227158

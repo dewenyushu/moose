@@ -8,9 +8,9 @@ elevate_z = 0 # 200e-3 mm
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
-dt = 2 #'${fparse 0.3*r/speed}' # ms
+dt = 6 #'${fparse 0.3*r/speed}' # ms
 
-refine = 0
+refine = 1
 
 [Mesh]
   [mesh]
@@ -76,6 +76,8 @@ refine = 0
   []
 
   uniform_refine = ${refine}
+
+  skip_partitioning = true
 []
 
 [Problem]
@@ -446,11 +448,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'out_plas/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
+    file_base = 'out_plas/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []

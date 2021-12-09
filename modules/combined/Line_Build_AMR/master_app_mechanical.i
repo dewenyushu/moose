@@ -6,9 +6,9 @@ T_melt = 1700
 speed = 10.58e-3 # 10 mm/s = 10e-3 mm/ms
 power = 300e-3 # 300W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 300e-3 # 400 um = 400e-3 mm
-dt = 2 #'${fparse 0.3*r/speed}' # ms
+dt = 6 #'${fparse 0.3*r/speed}' # ms
 
-refine = 0
+refine = 1
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
@@ -86,6 +86,8 @@ refine = 0
   displacements = 'disp_x disp_y disp_z'
 
   uniform_refine = ${refine}
+
+  skip_partitioning = true
 []
 
 [Variables]
@@ -324,42 +326,42 @@ refine = 0
     block = '3'
   []
 
-  [stress]
-    type = ADComputeFiniteStrainElasticStress
+  # [stress]
+  #   type = ADComputeFiniteStrainElasticStress
+  #   block = '2 3'
+  # []
+
+  [radial_return_stress]
+    type = ADComputeMultipleInelasticStress
+    inelastic_models = 'power_law_hardening'
     block = '2 3'
   []
 
-  # [./radial_return_stress]
-  #   type = ADComputeMultipleInelasticStress
-  #   inelastic_models = 'rate_temp_plas'
-  #   block = '2 3 4'
-  # [../]
-
-  # [power_law_hardening]
-  #   type = ADIsotropicPowerLawHardeningStressUpdate
-  #   strength_coefficient = 847 #K
-  #   strain_hardening_exponent = 0.06 #n
-  #   relative_tolerance = 1e-6
-  #   absolute_tolerance = 1e-6
-  #   temperature = temp_aux
-  #   block = '2 3'
-  # []
+  [power_law_hardening]
+    type = ADIsotropicPowerLawHardeningStressUpdate
+    strength_coefficient = 847 #K
+    strain_hardening_exponent = 0.06 #n
+    relative_tolerance = 1e-8
+    absolute_tolerance = 1e-8
+    temperature = temp_aux
+    block = '2 3'
+  []
 
   # [./rate_temp_plas]
   #   type = ADRateTempDependentStressUpdate
   #   temperature = temp_aux
-  #   Y0 = 5.264 # 5.264e03 [MPa]
-  #   Rd1 = 8.565e-7 #8.565e-4 [MPa]
-  #   hxi = 1.670e6
+  #   Y0 = 5.264e3 # 5.264e03 [MPa]
+  #   Rd1 = 8.565e-4 #8.565e-4 [MPa]
+  #   hxi = 1.670e3
   #   Ex = '294.994  1671.48  1721.77'
-  #   Ey = '201.232 80.0821 6.16016' # GPa
+  #   Ey = '201.232e3 80.0821e3 6.16016e3' # MPa
   #   f1 = 9.178e-05 #[1/ms]
   #   nux = '294.994 1669.62 1721.77'
-  #   nuy = '0.246407   0.36961  0.513347'
+  #   nuy = '0.246407   0.36961  0.36961'
   #   # n2 = ${T_melt}
   #   # absolute_tolerance = 1e-8
   #   # relative_tolerance = 1e-6
-  #   block = '2 3 4'
+  #   block = '2 3'
   #   # use_substep = true
   #   # max_inelastic_increment = 0.02
   # [../]
@@ -441,8 +443,8 @@ refine = 0
 
   l_max_its = 100
   nl_max_its = 15
-  nl_rel_tol = 1e-8
-  nl_abs_tol = 1e-10
+  nl_rel_tol = 1e-6
+  nl_abs_tol = 1e-8
 
   start_time = 0.0
   end_time = '${fparse 3/speed}'
@@ -453,11 +455,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output/Line_mechanical_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'out_plas/Line_mechanical_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Mechanical'
+    file_base = 'out_plas/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 1
   []

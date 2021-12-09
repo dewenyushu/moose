@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 18
 
-refine = 0
+refine = 1
 
 [Mesh]
   [mesh]
@@ -19,9 +19,9 @@ refine = 0
     ymax = 5
     zmin = 0
     zmax = 15
-    nx = 20
-    ny = 20
-    nz = 30
+    nx = 10
+    ny = 10
+    nz = 15
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -66,6 +66,8 @@ refine = 0
   []
 
   uniform_refine = ${refine}
+
+  skip_partitioning = true
 []
 
 [Problem]
@@ -286,7 +288,7 @@ refine = 0
     subdomain_id = 2
     criterion_type = ABOVE
     threshold = ${T_melt}
-    moving_boundary_name = 'moving_boundary'
+    # moving_boundary_name = 'moving_boundary'
   []
 []
 
