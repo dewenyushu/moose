@@ -1,10 +1,10 @@
 #!/bin/bash
 #PBS -M dewen.yushu@inl.gov
 #PBS -m be
-#PBS -N cube_build
-#PBS -l select=2:ncpus=48:mpiprocs=24
+#PBS -N cube_v1
+#PBS -l select=2:ncpus=48:mpiprocs=48
 #PBS -l place=scatter:excl
-#PBS -l walltime=100:00:00
+#PBS -l walltime=168:00:00
 #PBS -P ne_ldrd
 
 # A simple script to run contact problems with different preconditioners and refinement levels

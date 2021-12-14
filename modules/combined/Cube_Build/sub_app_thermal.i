@@ -347,11 +347,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output/Cube_thermal_speed_${speed}_power_${power}'
+  file_base = 'output_v1/Cube_thermal_speed_${speed}_power_${power}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_speed_${speed}_power_${power}/Thermal'
+    file_base = 'output_v1/Exodus_speed_${speed}_power_${power}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 4
   []
