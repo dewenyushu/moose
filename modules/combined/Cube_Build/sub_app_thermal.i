@@ -263,7 +263,7 @@ refine = 1
     r = ${r}
     power = ${power}
     efficiency = 0.36
-    factor = 1.6
+    factor = 1.8
     function_x = heat_source_x
     function_y = heat_source_y
     function_z = heat_source_z
@@ -337,7 +337,7 @@ refine = 1
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 227158
+  end_time = 216790.41
   dt = ${dt} # ms
   dtmin = 1e-6
 
@@ -347,13 +347,13 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_v1/Cube_thermal_speed_${speed}_power_${power}'
+  file_base = 'output_v2/Cube_thermal_speed_${speed}_power_${power}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_v1/Exodus_speed_${speed}_power_${power}/Thermal'
+    file_base = 'output_v2/Exodus_speed_${speed}_power_${power}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 4
+    # interval = 4
   []
 []
 
