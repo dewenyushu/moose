@@ -395,7 +395,7 @@ refine = 1
   nl_abs_tol = 1e-8
 
   start_time = 0.0
-  end_time = 216790.41
+  end_time = 218473.57
   dt = ${dt} # ms
   dtmin = 1e-6
 
@@ -403,11 +403,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_v2/Cube_mechanical_speed_${speed}_power_${power}'
+  file_base = 'output_outline/Cube_mechanical_speed_${speed}_power_${power}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_v2/Exodus_speed_${speed}_power_${power}/Mechanical'
+    file_base = 'output_outline/Exodus_speed_${speed}_power_${power}/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
