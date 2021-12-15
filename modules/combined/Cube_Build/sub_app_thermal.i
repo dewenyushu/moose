@@ -303,7 +303,7 @@ refine = 1
   [Markers/marker]
     type = ErrorFractionMarker
     indicator = indicator
-    coarsen = 0.1
+    # coarsen = 0.1
     refine = 0.5
     check_subdomain_consistent_for_coarsen = true
   []
@@ -347,11 +347,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_outline/Cube_thermal_speed_${speed}_power_${power}'
+  file_base = 'output_outline_no_coarse/Cube_thermal_speed_${speed}_power_${power}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_outline/Exodus_speed_${speed}_power_${power}/Thermal'
+    file_base = 'output_outline_no_coarse/Exodus_speed_${speed}_power_${power}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
