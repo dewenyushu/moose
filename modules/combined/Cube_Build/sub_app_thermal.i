@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 18
 
-refine = 1
+refine = 3
 
 [Mesh]
   [mesh]
@@ -18,10 +18,10 @@ refine = 1
     ymin = -5
     ymax = 5
     zmin = 0
-    zmax = 15
+    zmax = 12
     nx = 10
     ny = 10
-    nz = 15
+    nz = 12
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -292,22 +292,22 @@ refine = 1
   []
 []
 
-[Adaptivity]
-  marker = marker
-  initial_marker = marker
-  max_h_level = 3
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp
-  []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    # coarsen = 0.1
-    refine = 0.5
-    check_subdomain_consistent_for_coarsen = true
-  []
-[]
+# [Adaptivity]
+#   marker = marker
+#   initial_marker = marker
+#   max_h_level = 3
+#   [Indicators/indicator]
+#     type = GradientJumpIndicator
+#     variable = temp
+#   []
+#   [Markers/marker]
+#     type = ErrorFractionMarker
+#     indicator = indicator
+#     coarsen = 0.1
+#     refine = 0.5
+#     check_subdomain_consistent_for_coarsen = true
+#   []
+# []
 
 [Preconditioning]
   [smp]
@@ -347,11 +347,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_outline_no_coarse/Cube_thermal_speed_${speed}_power_${power}'
+  file_base = 'output_refine_on_adapt/Cube_thermal'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_outline_no_coarse/Exodus_speed_${speed}_power_${power}/Thermal'
+    file_base = 'output_refine_on_adapt/Exodus/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
