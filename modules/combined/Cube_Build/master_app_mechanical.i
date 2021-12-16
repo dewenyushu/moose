@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 18
 
-refine = 3
+refine = 1
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
@@ -349,22 +349,22 @@ refine = 3
   []
 []
 
-# [Adaptivity]
-#   marker = marker
-#   initial_marker = marker
-#   max_h_level = 3
-#   [Indicators/indicator]
-#     type = GradientJumpIndicator
-#     variable = temp_aux
-#   []
-#   [Markers/marker]
-#     type = ErrorFractionMarker
-#     indicator = indicator
-#     coarsen = 0.1
-#     refine = 0.5
-#     check_subdomain_consistent_for_coarsen = true
-#   []
-# []
+[Adaptivity]
+  marker = marker
+  initial_marker = marker
+  max_h_level = 3
+  [Indicators/indicator]
+    type = GradientJumpIndicator
+    variable = temp_aux
+  []
+  [Markers/marker]
+    type = ErrorFractionMarker
+    indicator = indicator
+    coarsen = 0.1
+    refine = 0.5
+    check_subdomain_consistent_for_coarsen = true
+  []
+[]
 
 [Preconditioning]
   [smp]
@@ -403,11 +403,11 @@ refine = 3
 []
 
 [Outputs]
-  file_base = 'output_refine_on_adapt/Cube_mechanical'
+  file_base = 'output_adapt/Cube_mechanical'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_refine_on_adapt/Exodus/Mechanical'
+    file_base = 'output_adapt/Exodus/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []

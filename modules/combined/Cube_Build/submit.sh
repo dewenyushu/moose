@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -M dewen.yushu@inl.gov
 #PBS -m be
-#PBS -N cube_refine_no_adapt
-#PBS -l select=2:ncpus=48:mpiprocs=48
+#PBS -N cube_adapt
+#PBS -l select=1:ncpus=48:mpiprocs=48
 #PBS -l place=scatter:excl
 #PBS -l walltime=168:00:00
 #PBS -P ne_ldrd

@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 18
 
-refine = 3
+refine = 1
 
 [Mesh]
   [mesh]
@@ -292,22 +292,22 @@ refine = 3
   []
 []
 
-# [Adaptivity]
-#   marker = marker
-#   initial_marker = marker
-#   max_h_level = 3
-#   [Indicators/indicator]
-#     type = GradientJumpIndicator
-#     variable = temp
-#   []
-#   [Markers/marker]
-#     type = ErrorFractionMarker
-#     indicator = indicator
-#     coarsen = 0.1
-#     refine = 0.5
-#     check_subdomain_consistent_for_coarsen = true
-#   []
-# []
+[Adaptivity]
+  marker = marker
+  initial_marker = marker
+  max_h_level = 3
+  [Indicators/indicator]
+    type = GradientJumpIndicator
+    variable = temp
+  []
+  [Markers/marker]
+    type = ErrorFractionMarker
+    indicator = indicator
+    coarsen = 0.1
+    refine = 0.5
+    check_subdomain_consistent_for_coarsen = true
+  []
+[]
 
 [Preconditioning]
   [smp]
@@ -347,11 +347,11 @@ refine = 3
 []
 
 [Outputs]
-  file_base = 'output_refine_on_adapt/Cube_thermal'
+  file_base = 'output_adapt/Cube_thermal'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_refine_on_adapt/Exodus/Thermal'
+    file_base = 'output_adapt/Exodus/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
