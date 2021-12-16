@@ -28,9 +28,9 @@ refine = 1
     ymax = 5
     zmin = 0
     zmax = 6
-    nx = 10
-    ny = 10
-    nz = 6
+    nx = 20
+    ny = 20
+    nz = 12
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
