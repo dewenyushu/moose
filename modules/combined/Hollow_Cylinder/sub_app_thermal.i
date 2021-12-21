@@ -210,8 +210,8 @@ refine = 1
   []
   [heat_source_z]
     type = PiecewiseConstant
-    x = '0 825 1650 2475 3300 4125 4950 5775 6600 7425 8250'
-    y = '1.0 1.3 1.6 1.9 2.2 2.5 2.8 3.1 3.4 3.7 4.0'
+    x = '0 825 1650 2475 3300 4125 4950 5775 6600 7425 8250 9075'
+    y = '1.0 1.3 1.6 1.9 2.2 2.5 2.8 3.1 3.4 3.7 4.0 20'
     direction = right
   []
   [specific_heat_metal]
@@ -337,7 +337,7 @@ refine = 1
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 8250
+  end_time = 9075
   dt = ${dt} # ms
   dtmin = 1e-6
 
@@ -358,94 +358,36 @@ refine = 1
 []
 
 [Postprocessors]
-  [bead_max_temperature]
+  [cylinder_max_temperature]
     type = ElementExtremeValue
     variable = temp
     value_type = max
     block = '2'
     outputs = 'csv'
   []
-  [bead_min_temperature]
+  [cylinder_min_temperature]
     type = ElementExtremeValue
     variable = temp
     value_type = min
     block = '2'
     outputs = 'csv'
   []
-  [bead_volume]
-    type = VolumePostprocessor
-    block = '2'
-    # use_displaced_mesh = true
-    outputs = 'csv console'
-  []
-  [pp_power]
-    type = ElementAverageValue
-    variable = power_aux
-    outputs = 'csv'
-  []
-  [pp_speed]
-    type = ElementAverageValue
-    variable = speed_aux
-    outputs = 'csv'
-  []
-  [bead_x_coord_max]
-    type = ElementExtremeValue
-    variable = x_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_x_coord_min]
-    type = ElementExtremeValue
-    variable = x_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv'
-  []
-  [bead_y_coord_max]
-    type = ElementExtremeValue
-    variable = y_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_y_coord_min]
-    type = ElementExtremeValue
-    variable = y_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_z_coord_max]
-    type = ElementExtremeValue
-    variable = z_coord
-    value_type = max
-    block = '2'
-    outputs = 'csv console'
-  []
-  [bead_z_coord_min]
-    type = ElementExtremeValue
-    variable = z_coord
-    value_type = min
-    block = '2'
-    outputs = 'csv'
-  []
-  [temperature_left]
+  [temperature_bottom]
     type = PointValue
     variable = temp
-    point = '-2 0 1'
+    point = '-1.5 0 1'
     outputs = 'csv'
   []
   [temperature_middle]
     type = PointValue
     variable = temp
-    point = '0 0 1'
+    point = '-1.5 0 2.5'
     outputs = 'csv'
   []
-  [temperature_right]
+  [temperature_top]
     type = PointValue
     variable = temp
-    point = '2 0 1'
+    point = '-1.5 0 4'
     outputs = 'csv'
   []
 []

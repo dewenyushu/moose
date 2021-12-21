@@ -299,11 +299,11 @@ refine = 1
   #   block = '2 3'
   # []
 
-  [./radial_return_stress]
+  [radial_return_stress]
     type = ADComputeMultipleInelasticStress
     inelastic_models = 'power_law_hardening'
     block = '2 3'
-  [../]
+  []
 
   [power_law_hardening]
     type = ADIsotropicPowerLawHardeningStressUpdate
@@ -395,7 +395,7 @@ refine = 1
   nl_abs_tol = 1e-8
 
   start_time = 0.0
-  end_time = 8250
+  end_time = 9075
   dt = ${dt} # ms
   dtmin = 1e-6
 
@@ -426,30 +426,20 @@ refine = 1
     value_type = min
     block = '2'
   []
-  [pp_power]
-    type = ElementAverageValue
-    variable = power_aux
-    outputs = 'csv'
-  []
-  [pp_speed]
-    type = ElementAverageValue
-    variable = speed_aux
-    outputs = 'csv'
-  []
-  [von_mises_stress_left]
+  [von_mises_stress_bottom]
     type = PointValue
     variable = von_mises
-    point = '-2 0 1'
+    point = '-1.5 0 1'
   []
   [von_mises_stress_middle]
     type = PointValue
     variable = von_mises
-    point = '0 0 1'
+    point = '-1.5 0 2.5'
   []
-  [von_mises_stress_right]
+  [von_mises_stress_top]
     type = PointValue
     variable = von_mises
-    point = '2 0 1'
+    point = '-1.5 0 4'
   []
 []
 
