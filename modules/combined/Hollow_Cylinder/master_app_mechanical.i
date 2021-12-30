@@ -94,6 +94,10 @@ refine = 1
 []
 
 [AuxVariables]
+  [processor_id]
+    order = CONSTANT
+    family = MONOMIAL
+  []
   [temp_aux]
     order = FIRST
     family = LAGRANGE
@@ -192,6 +196,11 @@ refine = 1
     variable = speed_aux
     value = ${speed}
     # execute_on = 'INITIAL TIMESTEP_BEGIN'
+  []
+  [proc_id]
+    type = ProcessorIDAux
+    variable = processor_id
+    execute_on = 'INITIAL TIMESTEP_END'
   []
 []
 
@@ -440,6 +449,22 @@ refine = 1
     type = PointValue
     variable = von_mises
     point = '-1.5 0 4'
+  []
+  [DOFs]
+    type = NumDOFs
+    execute_on = 'INITIAL TIMESTEP_END'
+    system = NL # dof from nonlinear system
+  []
+  [walltime]
+    type = PerfGraphData
+    section_name = "Root"
+    data_type = total
+  []
+  [memory]
+    type = MemoryUsage
+    mem_type = physical_memory
+    mem_units = mebibytes
+    execute_on = 'INITIAL TIMESTEP_END'
   []
 []
 

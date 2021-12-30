@@ -175,6 +175,11 @@ refine = 1
     function = z_coord
     variable = z_coord
   []
+  [proc_id]
+    type = ProcessorIDAux
+    variable = processor_id
+    execute_on = 'INITIAL TIMESTEP_END'
+  []
 []
 
 [BCs]
@@ -389,5 +394,21 @@ refine = 1
     variable = temp
     point = '-1.5 0 4'
     outputs = 'csv'
+  []
+  [DOFs]
+    type = NumDOFs
+    execute_on = 'INITIAL TIMESTEP_END'
+    system = NL # dof from nonlinear system
+  []
+  [walltime]
+    type = PerfGraphData
+    section_name = "Root"
+    data_type = total
+  []
+  [memory]
+    type = MemoryUsage
+    mem_type = physical_memory
+    mem_units = mebibytes
+    execute_on = 'INITIAL TIMESTEP_END'
   []
 []
