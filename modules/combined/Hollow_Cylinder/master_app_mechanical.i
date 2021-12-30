@@ -359,19 +359,38 @@ refine = 1
 []
 
 [Adaptivity]
-  marker = marker
-  initial_marker = marker
+  marker = combo_marker
+  initial_marker = combo_marker
   max_h_level = 3
-  [Indicators/indicator]
-    type = GradientJumpIndicator
-    variable = temp_aux
+  [Indicators]
+    [temp_indicator]
+      type = GradientJumpIndicator
+      variable = temp_aux
+    []
+    [stress_indicator]
+      type = GradientJumpIndicator
+      variable = von_mises
+    []
   []
-  [Markers/marker]
-    type = ErrorFractionMarker
-    indicator = indicator
-    coarsen = 0.1
-    refine = 0.5
-    check_subdomain_consistent_for_coarsen = true
+  [Markers]
+    [temp_marker]
+      type = ErrorFractionMarker
+      indicator = temp_indicator
+      coarsen = 0.1
+      refine = 0.5
+      check_subdomain_consistent_for_coarsen = true
+    []
+    [stress_marker]
+      type = ErrorFractionMarker
+      indicator = stress_indicator
+      coarsen = 0.1
+      refine = 0.5
+      check_subdomain_consistent_for_coarsen = true
+    []
+    [combo_marker]
+      type = ComboMarker
+      markers = 'temp_marker stress_marker'
+    []
   []
 []
 
