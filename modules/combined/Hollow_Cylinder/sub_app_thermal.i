@@ -352,11 +352,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_16proc/Cylinder_thermal'
+  file_base = 'output_32proc/Cylinder_thermal'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_16proc/Exodus/Thermal'
+    file_base = 'output_32proc/Exodus/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []

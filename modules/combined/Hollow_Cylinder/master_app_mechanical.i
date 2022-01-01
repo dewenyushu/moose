@@ -431,11 +431,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_16proc/Cylinder_mechanical'
+  file_base = 'output_32proc/Cylinder_mechanical'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_16proc/Exodus/Mechanical'
+    file_base = 'output_32proc/Exodus/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
