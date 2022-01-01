@@ -2,7 +2,7 @@
 #PBS -M dewen.yushu@inl.gov
 #PBS -m be
 #PBS -N cylinder
-#PBS -l select=1:ncpus=48:mpiprocs=8
+#PBS -l select=1:ncpus=48:mpiprocs=16
 #PBS -l place=scatter:excl
 #PBS -l walltime=168:00:00
 #PBS -P ne_ldrd
