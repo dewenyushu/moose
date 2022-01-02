@@ -359,18 +359,18 @@ refine = 1
 []
 
 [Adaptivity]
-  marker = combo_marker
-  initial_marker = combo_marker
+  marker = temp_marker
+  initial_marker = temp_marker
   max_h_level = 3
   [Indicators]
     [temp_indicator]
       type = GradientJumpIndicator
       variable = temp_aux
     []
-    [stress_indicator]
-      type = GradientJumpIndicator
-      variable = von_mises
-    []
+    # [stress_indicator]
+    #   type = GradientJumpIndicator
+    #   variable = von_mises
+    # []
   []
   [Markers]
     [temp_marker]
@@ -380,17 +380,17 @@ refine = 1
       refine = 0.5
       check_subdomain_consistent_for_coarsen = true
     []
-    [stress_marker]
-      type = ErrorFractionMarker
-      indicator = stress_indicator
-      coarsen = 0.1
-      refine = 0.5
-      check_subdomain_consistent_for_coarsen = true
-    []
-    [combo_marker]
-      type = ComboMarker
-      markers = 'temp_marker stress_marker'
-    []
+    # [stress_marker]
+    #   type = ErrorFractionMarker
+    #   indicator = stress_indicator
+    #   coarsen = 0.1
+    #   refine = 0.5
+    #   check_subdomain_consistent_for_coarsen = true
+    # []
+    # [combo_marker]
+    #   type = ComboMarker
+    #   markers = 'temp_marker stress_marker'
+    # []
   []
 []
 
@@ -431,11 +431,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_32proc/Cylinder_mechanical'
+  file_base = 'output_48proc/Cylinder_mechanical'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_32proc/Exodus/Mechanical'
+    file_base = 'output_48proc/Exodus/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
