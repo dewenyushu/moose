@@ -13,7 +13,7 @@ T_ambient = 300
 [Mesh]
   [mesh]
     type = FileMeshGenerator
-    file = ./input_mesh/solid_cylinder_17_substrate_100x100_fine_v1.e
+    file = ./input_mesh/solid_cylinder_17_substrate_100x100_fine_v0.e
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -155,31 +155,31 @@ T_ambient = 300
 [Functions]
   [heat_source_x]
     type = PiecewiseLinear
-    data_file = ./input_mat_params/path_eq_t_x_coarse.csv
+    data_file = ./path_eq_t_x_coarse.csv
     format = columns
     scale_factor = 1.0
   []
   [heat_source_y]
     type = PiecewiseLinear
-    data_file = ./input_mat_params/path_eq_t_y_coarse.csv
+    data_file = ./path_eq_t_y_coarse.csv
     format = columns
     scale_factor = 1.0
   []
   [heat_source_z]
     type = PiecewiseLinear
-    data_file = ./input_mat_params/path_eq_t_z_coarse.csv
+    data_file = ./path_eq_t_z_coarse.csv
     format = columns
     scale_factor = 1.0
   []
   [specific_heat]
     type = PiecewiseLinear
-    data_file = ./input_mat_params/Specific_Heat.csv
+    data_file = ./../input_mat_params/Specific_Heat.csv
     format = columns
     scale_factor = 1.0
   []
   [thermal_conductivity]
     type = PiecewiseLinear
-    data_file = ./input_mat_params/Thermal_Conductivity.csv
+    data_file = ./../input_mat_params/Thermal_Conductivity.csv
     format = columns
     scale_factor = 0.05e-3
   []

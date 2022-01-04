@@ -372,5 +372,6 @@
 []
 
 [Outputs]
+  file_base = ./output/hollow_cylinder_out
   exodus = true
 []

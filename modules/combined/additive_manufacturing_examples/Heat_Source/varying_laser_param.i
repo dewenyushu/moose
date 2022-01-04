@@ -66,13 +66,13 @@ r = 0.75
   [../]
   [./specific_heat]
     type = PiecewiseLinear
-    data_file = ./../AM_Brick/AM_Brick_parameters/Specific_Heat.csv
+    data_file = ./../input_mat_params/Specific_Heat.csv
     format = columns
     scale_factor = 1.0
   [../]
   [./thermal_conductivity]
     type = PiecewiseLinear
-    data_file = ./../AM_Brick/AM_Brick_parameters/Thermal_Conductivity.csv
+    data_file = ./../input_mat_params/Thermal_Conductivity.csv
     format = columns
     scale_factor = 0.05e-3
   [../]
