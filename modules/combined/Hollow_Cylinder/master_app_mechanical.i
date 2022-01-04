@@ -431,11 +431,11 @@ refine = 1
 []
 
 [Outputs]
-  file_base = 'output_48proc/Cylinder_mechanical'
+  file_base = 'output_48proc_wb/Cylinder_mechanical'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_48proc/Exodus/Mechanical'
+    file_base = 'output_48proc_wb/Exodus/Mechanical'
     # execute_on = 'INITIAL TIMESTEP_END'
     # interval = 4
   []
@@ -484,6 +484,16 @@ refine = 1
     mem_type = physical_memory
     mem_units = mebibytes
     execute_on = 'INITIAL TIMESTEP_END'
+  []
+[]
+
+[VectorPostprocessors]
+  [work_balance]
+    type = WorkBalance
+    execute_on = 'INITIAL TIMESTEP_END'
+    system = NL
+    # balances = 'num_elems num_partition_sides'
+    # outputs = none
   []
 []
 
