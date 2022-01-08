@@ -26,10 +26,11 @@
 [MultiApps]
   [pc_master]
     type = SamplerFullSolveMultiApp
-    input_files = master_app_mechanical.i
+    input_files = sub_app_thermal.i
     sampler = pc_sampler
     mode = batch-reset
     ignore_solve_not_converge = true
+    cli_args = 'factor=1.7'
   []
 []
 
