@@ -7,7 +7,7 @@ power = 350e-3
 r = 300e-3
 dt = 10
 
-refine = 1
+# refine = 1
 
 [Mesh]
   [mesh]
@@ -19,9 +19,9 @@ refine = 1
     ymax = 5
     zmin = 0
     zmax = 6
-    nx = 20
-    ny = 20
-    nz = 12
+    nx = 40
+    ny = 40
+    nz = 24
   []
   [add_set1]
     type = SubdomainBoundingBoxGenerator
@@ -65,9 +65,9 @@ refine = 1
     inputs = 'add_set2 middle'
   []
 
-  uniform_refine = ${refine}
+  # uniform_refine = ${refine}
 
-  skip_partitioning = true
+  # skip_partitioning = false
 []
 
 [Problem]
@@ -348,7 +348,7 @@ refine = 1
 
   auto_advance = true # cut time-step when subapp fails
 
-  error_on_dtmin = false
+  error_on_dtmin = true
 []
 
 [Outputs]
