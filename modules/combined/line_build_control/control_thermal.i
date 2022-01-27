@@ -108,14 +108,6 @@ factor = 1.6
     order = CONSTANT
     family = MONOMIAL
   []
-  [power_aux]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [speed_aux]
-    order = CONSTANT
-    family = MONOMIAL
-  []
   [x_coord]
     order = FIRST
     family = LAGRANGE
@@ -155,18 +147,6 @@ factor = 1.6
     type = ProcessorIDAux
     variable = processor_id
     execute_on = timestep_begin
-  []
-  [power]
-    type = ConstantAux
-    variable = power_aux
-    value = ${power}
-    # execute_on = 'INITIAL TIMESTEP_BEGIN'
-  []
-  [speed]
-    type = ConstantAux
-    variable = speed_aux
-    value = ${speed}
-    # execute_on = 'INITIAL TIMESTEP_BEGIN'
   []
   [x_coord]
     type = FunctionAux
@@ -382,16 +362,6 @@ factor = 1.6
     # use_displaced_mesh = true
     outputs = 'csv console'
   []
-  [pp_power]
-    type = ElementAverageValue
-    variable = power_aux
-    outputs = 'csv console'
-  []
-  [pp_speed]
-    type = ElementAverageValue
-    variable = speed_aux
-    outputs = 'csv console'
-  []
   [bead_x_coord_max]
     type = ElementExtremeValue
     variable = x_coord
@@ -433,5 +403,15 @@ factor = 1.6
     value_type = min
     block = '2'
     outputs = 'csv'
+  []
+[]
+
+[Controls]
+  [temp_power]
+    type = BasicNNControl
+    input_pp = 'bead_max_temperature'
+    controled_parameter = 'Materials/volumetric_heat_metal/power'
+    target = 1000
+    execute_on = 'initial timestep_end'
   []
 []

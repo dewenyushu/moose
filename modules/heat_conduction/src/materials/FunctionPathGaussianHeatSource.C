@@ -42,6 +42,8 @@ FunctionPathGaussianHeatSource::validParams()
 
   params.addClassDescription("Double ellipsoid volumetric source heat with function path.");
 
+  params.declareControllable("power efficiency factor r");
+
   return params;
 }
 
@@ -84,9 +86,9 @@ FunctionPathGaussianHeatSource::computeQpProperties()
 
 Real
 FunctionPathGaussianHeatSource::computeHeatSourceAtTime(const Real x,
-                                                         const Real y,
-                                                         const Real z,
-                                                         const Real time)
+                                                        const Real y,
+                                                        const Real z,
+                                                        const Real time)
 {
   // The functions that define the path is only time dependent
   const static Point dummy;

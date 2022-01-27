@@ -35,13 +35,13 @@ protected:
       const Real x, const Real y, const Real z, const Real time_begin, const Real time_end);
 
   /// power
-  const Real _P;
+  const Real & _P;
   /// process efficienty
-  const Real _eta;
+  const Real & _eta;
   /// effective radius
-  const Real _r;
+  const Real & _r;
   /// scaling factor
-  const Real _f;
+  const Real & _f;
   /// path of the heat source, x, y, z components
   const Function & _function_x;
   const Function & _function_y;

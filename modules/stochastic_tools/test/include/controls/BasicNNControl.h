@@ -36,32 +36,14 @@ public:
 private:
   /// The current value of the target postprocessor
   const PostprocessorValue & _current;
+  /// Name of the controlled parameter
+  const std::string & _parameter_name;
   /// The target 1D time-dependent function for the postprocessor
   const Function & _target;
-  /// The coefficient multiplying the integral of the error
-  const Real _Kint;
-  /// The coefficient multiplying the error
-  const Real _Kpro;
-  /// The coefficient multiplying the derivative of the error
-  const Real _Kder;
-  /// The time to start the PID controller on
+  /// The time to start the controller on
   const Real _start_time;
-  /// The time to stop using the PID controller on
+  /// The time to stop using the controller on
   const Real _stop_time;
-  /// Whether to reset the PID integral error when changing timestep, to limit its action to within coupling iterations
-  const bool _reset_every_timestep;
-  /// Whether to reset the PID integral error when the error crosses 0, to avoid windup
-  const bool _reset_integral_windup;
-  /// Integral of the error
-  Real _integral;
-  /// Saved value of the integral at the beginning of a timestep, to recover from a failed solve
-  Real _integral_old;
-  /// Saved value of the controlled parameter at the beginning of a timestep, to recover from a failed solve
-  Real _value_old;
-  /// the previous time step
-  int _t_step_old;
-  /// the previous value of the difference with the target, to detect changes of sign
-  Real _old_delta;
 
 #ifdef TORCH_ENABLED
   std::shared_ptr<StochasticTools::LibtorchSimpleNeuralNet> _nn_model;
