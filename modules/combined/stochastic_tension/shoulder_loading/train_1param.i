@@ -63,7 +63,7 @@
 [Transfers]
   [data]
     type = SamplerReporterTransfer
-    multi_app = sub
+    from_multi_app = sub
     stochastic_reporter = storage
     from_reporter = 'stress_xx_center/value strain_xx_center/value stress_xx_top/value '
                     'strain_xx_top/value stress_xx_bot/value strain_xx_bot/value'
