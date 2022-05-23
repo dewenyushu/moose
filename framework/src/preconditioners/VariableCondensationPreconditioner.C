@@ -248,7 +248,8 @@ VariableCondensationPreconditioner::getDofToCondense()
         std::cout << cp_di_vars.size() << std::endl;
         for (const auto & cp_di : cp_di_vars)
         {
-          _map_global_lm_primary.insert(std::make_pair(di[i], cp_di));
+          _map_global_lm_primary[di[i]].insert(
+              _map_global_lm_primary[di[i]].end(), cp_di.begin(), cp_di.end());
           for (const auto & cp_dof : cp_di)
           {
             _global_primary_dofs.push_back(cp_dof);
@@ -343,6 +344,7 @@ VariableCondensationPreconditioner::getDofColRow()
     if (_map_global_lm_primary.find(i) != _map_global_lm_primary.end())
     {
       auto primary_indices = _map_global_lm_primary[i];
+      std::cout << primary_indices.size() << std::endl;
       for (const auto & primary_idx : primary_indices)
       {
         _global_cols.push_back(primary_idx);
@@ -366,6 +368,26 @@ VariableCondensationPreconditioner::getDofColRow()
       }
     }
   }
+
+  std::cout << "_global_rows, size = " << _global_rows.size() << " :";
+  for (auto i : _global_rows)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "_rows, size = " << _rows.size() << " :";
+  for (auto i : _rows)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "_global_cols, size = " << _global_cols.size() << " :";
+  for (auto i : _global_cols)
+    std::cout << i << " ";
+  std::cout << std::endl;
+
+  std::cout << "_cols, size = " << _cols.size() << " :";
+  for (auto i : _cols)
+    std::cout << i << " ";
+  std::cout << std::endl;
 }
 
 void
@@ -398,6 +420,8 @@ VariableCondensationPreconditioner::condenseSystem()
   _matrix->create_submatrix_nosort(*_K, _global_primary_dofs, _global_cols);
 
   _matrix->create_submatrix(*_D, _primary_dofs, _lm_dofs);
+
+  _D->print_personal();
 
   // clean dinv
   if (_dinv)
@@ -815,6 +839,66 @@ VariableCondensationPreconditioner::clear()
     ierr = MatDestroy(&_dinv);
     LIBMESH_CHKERR(ierr);
   }
+}
+
+void
+VariableCondensationPreconditioner::computeDPseudoInverse(Mat & dinv)
+{
+  PetscErrorCode ierr;
+  Mat F, dinv_dense, d_transpose, d_hat;
+  IS perm, iperm;
+  MatFactorInfo info;
+
+  ierr = MatCreateDense(
+      PETSC_COMM_WORLD, _D->local_n(), _D->local_m(), _D->n(), _D->m(), NULL, &dinv_dense);
+  LIBMESH_CHKERR(ierr);
+
+  // Get D^t (d_transpose) and D^t*D (d_hat)
+  ierr = MatTranspose(_D->mat(), MAT_INITIAL_MATRIX, &d_transpose);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatMatMult(d_transpose, _D->mat(), MAT_INITIAL_MATRIX, PETSC_DEFAULT, &d_hat);
+  LIBMESH_CHKERR(ierr);
+
+  // Solve for (D^t*D)^-1*D^t
+  // Factorize d_hat
+  ierr = MatGetOrdering(d_hat, MATORDERINGND, &perm, &iperm);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatFactorInfoInitialize(&info);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatGetFactor(d_hat, MATSOLVERSUPERLU_DIST, MAT_FACTOR_LU, &F);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatLUFactorSymbolic(F, d_hat, perm, iperm, &info);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatLUFactorNumeric(F, d_hat, &info);
+  LIBMESH_CHKERR(ierr);
+
+  // Solve for pseudoinverse of D: (D^t*D)^-1*D^t, save in dinv_dense
+  ierr = MatMatSolve(F, d_transpose, dinv_dense);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatAssemblyBegin(dinv_dense, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatAssemblyEnd(dinv_dense, MAT_FINAL_ASSEMBLY);
+  LIBMESH_CHKERR(ierr);
+
+  // copy value to dinv
+  ierr = MatConvert(dinv_dense, MATAIJ, MAT_INITIAL_MATRIX, &dinv);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatDestroy(&dinv_dense);
+  LIBMESH_CHKERR(ierr);
+
+  ierr = MatDestroy(&F);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&perm);
+  LIBMESH_CHKERR(ierr);
+  ierr = ISDestroy(&iperm);
+  LIBMESH_CHKERR(ierr);
 }
 
 void

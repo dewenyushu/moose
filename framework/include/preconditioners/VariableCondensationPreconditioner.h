@@ -100,6 +100,12 @@ private:
                                 PetscMatrix<Number> & original_mat,
                                 const std::vector<dof_id_type> & grows,
                                 PetscMatrix<Number> & block_mat);
+
+  /**
+   * Compute pseudo inverse of D when we have multiple-to-one coupling of the LMs.
+   */
+  void computeDPseudoInverse(Mat & mat);
+
   /**
    * Compute inverse of D using LU. This method is used when _is_lm_coupling_diagonal = false.
    */
