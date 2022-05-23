@@ -744,6 +744,7 @@ VariableCondensationPreconditioner::apply(const NumericVector<Number> & y,
           NumericVector<Number>::build(MoosePreconditioner::_communicator));
       y_hat_lsq->init(Jt.m(), Jt.local_m(), false, PARALLEL);
       Jt.vector_mult(*y_hat_lsq, *_y_hat);
+      y_hat_lsq->close();
 
       _preconditioner->apply(*y_hat_lsq, *_x_hat);
 
@@ -799,11 +800,6 @@ VariableCondensationPreconditioner::getCondensedXY(const NumericVector<Number> &
 
   ierr = MatDestroy(&mdinv);
   LIBMESH_CHKERR(ierr);
-
-  std::cout << (*_y_hat) << std::endl;
-  std::cout << (*_x_hat) << std::endl;
-
-  std::cout << "Finished getCondensedXY()" << std::endl;
 }
 
 void
@@ -813,7 +809,10 @@ VariableCondensationPreconditioner::computeCondensedVariables()
 
   PetscMatrix<Number> Dinv(_dinv, MoosePreconditioner::_communicator);
 
-  _lm_sol_vec->init(_D->m(), _D->local_m(), false, PARALLEL);
+  std::cout << "Dinv = " << std::endl;
+  Dinv.print_personal();
+
+  _lm_sol_vec->init(Dinv.m(), Dinv.local_m(), false, PARALLEL);
 
   std::unique_ptr<NumericVector<Number>> K_xhat(
       NumericVector<Number>::build(MoosePreconditioner::_communicator));
@@ -823,6 +822,10 @@ VariableCondensationPreconditioner::computeCondensedVariables()
 
   (*_primary_rhs_vec) -= (*K_xhat);
   _primary_rhs_vec->close();
+
+  std::cout << "_primary_rhs_vec= " << std::endl;
+  std::cout << (*_primary_rhs_vec) << std::endl;
+
   Dinv.vector_mult(*_lm_sol_vec, *_primary_rhs_vec);
   _lm_sol_vec->close();
 
