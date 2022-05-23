@@ -431,15 +431,22 @@ VariableCondensationPreconditioner::condenseSystem()
     _dinv = nullptr;
   }
 
-  // Compute inverse of D
-  if (_is_lm_coupling_diagonal)
-    // when _D is strictly diagonal, we only need to compute the reciprocal number of the diagonal
-    // entries
-    computeDInverseDiag(_dinv);
+  if (_D->m() != _D->n())
+  {
+    computeDPseudoInverse(_dinv);
+  }
   else
-    // for general cases when _D is not necessarily strict diagonal, we compute the inverse of _D
-    // using LU
-    computeDInverse(_dinv);
+  {
+    // Compute inverse of D
+    if (_is_lm_coupling_diagonal)
+      // when _D is strictly diagonal, we only need to compute the reciprocal number of the diagonal
+      // entries
+      computeDInverseDiag(_dinv);
+    else
+      // for general cases when _D is not necessarily strict diagonal, we compute the inverse of _D
+      // using LU
+      computeDInverse(_dinv);
+  }
 
   Mat MdinvK;
   // calculate MdinvK
@@ -845,7 +852,7 @@ void
 VariableCondensationPreconditioner::computeDPseudoInverse(Mat & dinv)
 {
   PetscErrorCode ierr;
-  Mat F, dinv_dense, d_transpose, d_hat;
+  Mat F, dinv_dense, d_transpose, d_transpose_dense, d_hat;
   IS perm, iperm;
   MatFactorInfo info;
 
@@ -853,8 +860,16 @@ VariableCondensationPreconditioner::computeDPseudoInverse(Mat & dinv)
       PETSC_COMM_WORLD, _D->local_n(), _D->local_m(), _D->n(), _D->m(), NULL, &dinv_dense);
   LIBMESH_CHKERR(ierr);
 
+  ierr = MatCreateDense(
+      PETSC_COMM_WORLD, _D->local_n(), _D->local_m(), _D->n(), _D->m(), NULL, &d_transpose_dense);
+  LIBMESH_CHKERR(ierr);
+
   // Get D^t (d_transpose) and D^t*D (d_hat)
   ierr = MatTranspose(_D->mat(), MAT_INITIAL_MATRIX, &d_transpose);
+  LIBMESH_CHKERR(ierr);
+
+  // copy value to d_transpose_dense (this is needed later in MatMatSolve())
+  ierr = MatConvert(d_transpose, MATDENSE, MAT_INITIAL_MATRIX, &d_transpose_dense);
   LIBMESH_CHKERR(ierr);
 
   ierr = MatMatMult(d_transpose, _D->mat(), MAT_INITIAL_MATRIX, PETSC_DEFAULT, &d_hat);
@@ -878,7 +893,7 @@ VariableCondensationPreconditioner::computeDPseudoInverse(Mat & dinv)
   LIBMESH_CHKERR(ierr);
 
   // Solve for pseudoinverse of D: (D^t*D)^-1*D^t, save in dinv_dense
-  ierr = MatMatSolve(F, d_transpose, dinv_dense);
+  ierr = MatMatSolve(F, d_transpose_dense, dinv_dense);
   LIBMESH_CHKERR(ierr);
 
   ierr = MatAssemblyBegin(dinv_dense, MAT_FINAL_ASSEMBLY);
