@@ -96,7 +96,6 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
     _J_condensed(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _x_hat(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _y_hat(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
-    _y_hat_lsq(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _primary_rhs_vec(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _lm_sol_vec(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _need_condense(true),
@@ -738,15 +737,21 @@ VariableCondensationPreconditioner::apply(const NumericVector<Number> & y,
   {
     getCondensedXY(y, x);
 
-    // if (_multiple_coupling)
-    // {
-    //   PetscMatrix<Number> Jt(_Jt, MoosePreconditioner::_communicator);
-    //   // Jt.vector_mult(*, *_y_hat);
-    //
-    //   // _Jt
-    //   // _y_hat
-    // }
-    _preconditioner->apply(*_y_hat, *_x_hat);
+    if (_multiple_coupling)
+    {
+      PetscMatrix<Number> Jt(_Jt, MoosePreconditioner::_communicator);
+      std::unique_ptr<NumericVector<Number>> y_hat_lsq(
+          NumericVector<Number>::build(MoosePreconditioner::_communicator));
+      y_hat_lsq->init(Jt.m(), Jt.local_m(), false, PARALLEL);
+      Jt.vector_mult(*y_hat_lsq, *_y_hat);
+
+      _preconditioner->apply(*y_hat_lsq, *_x_hat);
+
+      std::cout << (*y_hat_lsq) << std::endl;
+      std::cout << (*_x_hat) << std::endl;
+    }
+    else
+      _preconditioner->apply(*_y_hat, *_x_hat);
 
     computeCondensedVariables();
 

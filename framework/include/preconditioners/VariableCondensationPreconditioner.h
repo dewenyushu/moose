@@ -183,7 +183,7 @@ private:
   /// _x_hat, _y_hat: condensed solution and RHS vectors
   /// _primary_rhs_vec: part of the RHS vector that correspond to the primary variable DoFs
   /// _lm_sol_vec: solution vector that corresponds to the LM variable
-  std::unique_ptr<NumericVector<Number>> _x_hat, _y_hat, _y_hat_lsq, _primary_rhs_vec, _lm_sol_vec;
+  std::unique_ptr<NumericVector<Number>> _x_hat, _y_hat, _primary_rhs_vec, _lm_sol_vec;
 
   /// The row indices that correspond to the zero diagonal entries in the original Jacobian matrix
   /// This is only used when _adaptive_condensation = true
