@@ -91,9 +91,12 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
     _M(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _K(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _dinv(nullptr),
+    _Jt(nullptr),
+    _Jt_J(nullptr),
     _J_condensed(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _x_hat(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _y_hat(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
+    _y_hat_lsq(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _primary_rhs_vec(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _lm_sol_vec(NumericVector<Number>::build(MoosePreconditioner::_communicator)),
     _need_condense(true),
@@ -117,6 +120,10 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
   // get primary variable ids from the primary variable names
   _primary_var_ids.resize(_primary_var_names.size());
   for (const auto i : index_range(_primary_var_names))
+  {
+    // we set the flag to be true if we find multiple-to-one coupling from the input parameters
+    if (_primary_var_names[i].size() > 1)
+      _multiple_coupling = true;
     for (const auto & var_name : _primary_var_names[i])
     {
       if (!_nl.system().has_variable(var_name))
@@ -124,6 +131,7 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
       const unsigned int id = _nl.system().variable_number(var_name);
       _primary_var_ids[i].push_back(id);
     }
+  }
 
   // PC type
   const std::vector<std::string> & pc_type = getParam<std::vector<std::string>>("preconditioner");
@@ -431,8 +439,9 @@ VariableCondensationPreconditioner::condenseSystem()
     _dinv = nullptr;
   }
 
-  if (_D->m() != _D->n())
+  if (_multiple_coupling)
   {
+    // compute pseudo-inverse of D
     computeDPseudoInverse(_dinv);
   }
   else
@@ -465,6 +474,12 @@ VariableCondensationPreconditioner::condenseSystem()
   computeCondensedJacobian(*_J_condensed, *pc_original_mat, _global_rows, MDinv_K);
 
   _J_condensed->print_personal();
+
+  // compute J^t and J^t*J;
+  ierr = MatTranspose(_J_condensed->mat(), MAT_INITIAL_MATRIX, &_Jt);
+  LIBMESH_CHKERR(ierr);
+  ierr = MatMatMult(_Jt, _J_condensed->mat(), MAT_INITIAL_MATRIX, PETSC_DEFAULT, &_Jt_J);
+  LIBMESH_CHKERR(ierr);
 
   // Destroy MdinvK here otherwise we will have memory leak
   ierr = MatDestroy(&MdinvK);
@@ -685,12 +700,26 @@ VariableCondensationPreconditioner::setup()
 
     condenseSystem();
 
-    // make sure diagonal entries are not empty
-    for (const auto & i : make_range(_J_condensed->row_start(), _J_condensed->row_stop()))
-      _J_condensed->add(i, i, 0.0);
-    _J_condensed->close();
+    if (_multiple_coupling)
+    {
+      // convert to PetscMatrix
+      PetscMatrix<Number> Jt_J(_Jt_J, MoosePreconditioner::_communicator);
+      // make sure diagonal entries are not empty
+      for (const auto & i : make_range(Jt_J.row_start(), Jt_J.row_stop()))
+        Jt_J.add(i, i, 0.0);
+      Jt_J.close();
+      _preconditioner->set_matrix(Jt_J);
 
-    _preconditioner->set_matrix(*_J_condensed);
+      Jt_J.print_personal();
+    }
+    else
+    {
+      // make sure diagonal entries are not empty
+      for (const auto & i : make_range(_J_condensed->row_start(), _J_condensed->row_stop()))
+        _J_condensed->add(i, i, 0.0);
+      _J_condensed->close();
+      _preconditioner->set_matrix(*_J_condensed);
+    }
   }
   else
     _preconditioner->set_matrix(*_matrix);
@@ -709,6 +738,14 @@ VariableCondensationPreconditioner::apply(const NumericVector<Number> & y,
   {
     getCondensedXY(y, x);
 
+    // if (_multiple_coupling)
+    // {
+    //   PetscMatrix<Number> Jt(_Jt, MoosePreconditioner::_communicator);
+    //   // Jt.vector_mult(*, *_y_hat);
+    //
+    //   // _Jt
+    //   // _y_hat
+    // }
     _preconditioner->apply(*_y_hat, *_x_hat);
 
     computeCondensedVariables();
@@ -757,6 +794,11 @@ VariableCondensationPreconditioner::getCondensedXY(const NumericVector<Number> &
 
   ierr = MatDestroy(&mdinv);
   LIBMESH_CHKERR(ierr);
+
+  std::cout << (*_y_hat) << std::endl;
+  std::cout << (*_x_hat) << std::endl;
+
+  std::cout << "Finished getCondensedXY()" << std::endl;
 }
 
 void
@@ -778,6 +820,8 @@ VariableCondensationPreconditioner::computeCondensedVariables()
   _primary_rhs_vec->close();
   Dinv.vector_mult(*_lm_sol_vec, *_primary_rhs_vec);
   _lm_sol_vec->close();
+
+  std::cout << "Finished computeCondensedVariables()" << std::endl;
 }
 
 void

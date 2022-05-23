@@ -175,7 +175,7 @@ private:
   /// _K: the rows that correspond to the primary variable DoFs
   std::unique_ptr<PetscMatrix<Number>> _D, _M, _K;
   /// inverse of _D
-  Mat _dinv;
+  Mat _dinv, _Jt, _Jt_J;
 
   /// Condensed Jacobian
   std::unique_ptr<PetscMatrix<Number>> _J_condensed;
@@ -183,7 +183,7 @@ private:
   /// _x_hat, _y_hat: condensed solution and RHS vectors
   /// _primary_rhs_vec: part of the RHS vector that correspond to the primary variable DoFs
   /// _lm_sol_vec: solution vector that corresponds to the LM variable
-  std::unique_ptr<NumericVector<Number>> _x_hat, _y_hat, _primary_rhs_vec, _lm_sol_vec;
+  std::unique_ptr<NumericVector<Number>> _x_hat, _y_hat, _y_hat_lsq, _primary_rhs_vec, _lm_sol_vec;
 
   /// The row indices that correspond to the zero diagonal entries in the original Jacobian matrix
   /// This is only used when _adaptive_condensation = true
@@ -221,6 +221,9 @@ private:
   /// _map_global_primary_order: map between _global_primary_dofs and the corresponding row index in _D
   std::unordered_map<dof_id_type, std::vector<dof_id_type>> _map_global_lm_primary;
   std::unordered_map<dof_id_type, dof_id_type> _map_global_primary_order;
+
+  /// Whether the problem needs special treatment for multiple-to-one coupling
+  bool _multiple_coupling;
 
   /// Timers
   PerfID _init_timer;
