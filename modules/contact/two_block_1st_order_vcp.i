@@ -10,11 +10,11 @@ velocity = 0.15
   [left_block]
     type = GeneratedMeshGenerator
     dim = 2
-    xmin = -1.05
+    xmin = -0.35
     xmax = -0.05
     ymin = -1
     ymax = 0
-    nx = 3
+    nx = 1
     ny = 3
     elem_type = QUAD4
   []
@@ -39,10 +39,10 @@ velocity = 0.15
     type = GeneratedMeshGenerator
     dim = 2
     xmin = 0
-    xmax = 1
+    xmax = 0.3
     ymin = -1
     ymax = 0
-    nx = 2
+    nx = 1
     ny = 2
     elem_type = QUAD4
   []
@@ -166,7 +166,7 @@ velocity = 0.15
     full = true
     lm_variable = 'leftright_normal_lm'
     primary_variable = 'disp_x disp_y'
-    preconditioner = 'AMG'
+    preconditioner = 'LU'
     is_lm_coupling_diagonal = true
     adaptive_condensation = true
   []
@@ -184,7 +184,7 @@ velocity = 0.15
   line_search = none
 
   dt = 0.1
-  dtmin = 1e-3
+  dtmin = 0.1
   end_time = 0.4
 
   l_max_its = 100

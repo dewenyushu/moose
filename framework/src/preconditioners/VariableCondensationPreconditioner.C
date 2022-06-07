@@ -252,7 +252,7 @@ VariableCondensationPreconditioner::getDofToCondense()
 
         // Save the corresponding coupled dof indices.
         // Here, we save all possible coupled dof indices provided by the user.
-        std::cout << cp_di_vars.size() << std::endl;
+        // std::cout << cp_di_vars.size() << std::endl;
         for (const auto & cp_di : cp_di_vars)
         {
           _map_global_lm_primary[di[i]].insert(
@@ -351,7 +351,7 @@ VariableCondensationPreconditioner::getDofColRow()
     if (_map_global_lm_primary.find(i) != _map_global_lm_primary.end())
     {
       auto primary_indices = _map_global_lm_primary[i];
-      std::cout << primary_indices.size() << std::endl;
+      // std::cout << primary_indices.size() << std::endl;
       for (const auto & primary_idx : primary_indices)
       {
         _global_cols.push_back(primary_idx);
@@ -376,25 +376,25 @@ VariableCondensationPreconditioner::getDofColRow()
     }
   }
 
-  std::cout << "_global_rows, size = " << _global_rows.size() << " :";
-  for (auto i : _global_rows)
-    std::cout << i << " ";
-  std::cout << std::endl;
-
-  std::cout << "_rows, size = " << _rows.size() << " :";
-  for (auto i : _rows)
-    std::cout << i << " ";
-  std::cout << std::endl;
-
-  std::cout << "_global_cols, size = " << _global_cols.size() << " :";
-  for (auto i : _global_cols)
-    std::cout << i << " ";
-  std::cout << std::endl;
-
-  std::cout << "_cols, size = " << _cols.size() << " :";
-  for (auto i : _cols)
-    std::cout << i << " ";
-  std::cout << std::endl;
+  // std::cout << "_global_rows, size = " << _global_rows.size() << " :";
+  // for (auto i : _global_rows)
+  //   std::cout << i << " ";
+  // std::cout << std::endl;
+  //
+  // std::cout << "_rows, size = " << _rows.size() << " :";
+  // for (auto i : _rows)
+  //   std::cout << i << " ";
+  // std::cout << std::endl;
+  //
+  // std::cout << "_global_cols, size = " << _global_cols.size() << " :";
+  // for (auto i : _global_cols)
+  //   std::cout << i << " ";
+  // std::cout << std::endl;
+  //
+  // std::cout << "_cols, size = " << _cols.size() << " :";
+  // for (auto i : _cols)
+  //   std::cout << i << " ";
+  // std::cout << std::endl;
 }
 
 void
@@ -428,7 +428,7 @@ VariableCondensationPreconditioner::condenseSystem()
 
   _matrix->create_submatrix(*_D, _primary_dofs, _lm_dofs);
 
-  _D->print_personal();
+  // _D->print_personal();
 
   // clean dinv
   if (_dinv)
@@ -472,7 +472,7 @@ VariableCondensationPreconditioner::condenseSystem()
   // Extract unchanged parts from _matrix and add changed parts (MDinv_K) to _J_condensed
   computeCondensedJacobian(*_J_condensed, *pc_original_mat, _global_rows, MDinv_K);
 
-  _J_condensed->print_personal();
+  // _J_condensed->print_personal();
 
   // compute J^t and J^t*J;
   ierr = MatTranspose(_J_condensed->mat(), MAT_INITIAL_MATRIX, &_Jt);
@@ -709,7 +709,7 @@ VariableCondensationPreconditioner::setup()
       Jt_J.close();
       _preconditioner->set_matrix(Jt_J);
 
-      Jt_J.print_personal();
+      // Jt_J.print_personal();
     }
     else
     {
@@ -748,8 +748,8 @@ VariableCondensationPreconditioner::apply(const NumericVector<Number> & y,
 
       _preconditioner->apply(*y_hat_lsq, *_x_hat);
 
-      std::cout << (*y_hat_lsq) << std::endl;
-      std::cout << (*_x_hat) << std::endl;
+      // std::cout << (*y_hat_lsq) << std::endl;
+      // std::cout << (*_x_hat) << std::endl;
     }
     else
       _preconditioner->apply(*_y_hat, *_x_hat);
@@ -809,8 +809,8 @@ VariableCondensationPreconditioner::computeCondensedVariables()
 
   PetscMatrix<Number> Dinv(_dinv, MoosePreconditioner::_communicator);
 
-  std::cout << "Dinv = " << std::endl;
-  Dinv.print_personal();
+  // std::cout << "Dinv = " << std::endl;
+  // Dinv.print_personal();
 
   _lm_sol_vec->init(Dinv.m(), Dinv.local_m(), false, PARALLEL);
 
@@ -823,13 +823,13 @@ VariableCondensationPreconditioner::computeCondensedVariables()
   (*_primary_rhs_vec) -= (*K_xhat);
   _primary_rhs_vec->close();
 
-  std::cout << "_primary_rhs_vec= " << std::endl;
-  std::cout << (*_primary_rhs_vec) << std::endl;
+  // std::cout << "_primary_rhs_vec= " << std::endl;
+  // std::cout << (*_primary_rhs_vec) << std::endl;
 
   Dinv.vector_mult(*_lm_sol_vec, *_primary_rhs_vec);
   _lm_sol_vec->close();
 
-  std::cout << "Finished computeCondensedVariables()" << std::endl;
+  // std::cout << "Finished computeCondensedVariables()" << std::endl;
 }
 
 void
