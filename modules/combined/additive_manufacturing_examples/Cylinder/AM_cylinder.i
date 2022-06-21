@@ -266,25 +266,30 @@ T_ambient = 300
     block = '2 3'
   []
 
-  [radial_return_stress]
-    type = ADComputeMultipleInelasticStress
-    inelastic_models = 'rate_temp_plas'
+  # [radial_return_stress]
+  #   type = ADComputeMultipleInelasticStress
+  #   inelastic_models = 'rate_temp_plas'
+  #   block = '2 3'
+  # []
+  # [rate_temp_plas]
+  #   type = ADRateTempDependentStressUpdate
+  #   temperature = temp
+  #   Y0 = 5.264e03 # [MPa]
+  #   Rd1 = 8.565e-4 # [MPa]
+  #   hxi = 1.670e-06 # [mm/(s*MPa)]
+  #   Ex = '294.994  1671.48  1721.77'
+  #   Ey = '201.232e3 80.0821e3 6.16016e3' # [N/mm^3], i.e., MPa
+  #   nux = '294.994 1669.62 1721.77'
+  #   nuy = '0.246407   0.36961  0.513347'
+  #   # n2 = ${T_melt}
+  #   absolute_tolerance = 1e-8
+  #   block = '2 3'
+  #   use_substep = true
+  # []
+
+  [stress]
+    type = ADComputeFiniteStrainElasticStress
     block = '2 3'
-  []
-  [rate_temp_plas]
-    type = ADRateTempDependentStressUpdate
-    temperature = temp
-    Y0 = 5.264e03 # [MPa]
-    Rd1 = 8.565e-4 # [MPa]
-    hxi = 1.670e-06 # [mm/(s*MPa)]
-    Ex = '294.994  1671.48  1721.77'
-    Ey = '201.232e3 80.0821e3 6.16016e3' # [N/mm^3], i.e., MPa
-    nux = '294.994 1669.62 1721.77'
-    nuy = '0.246407   0.36961  0.513347'
-    # n2 = ${T_melt}
-    absolute_tolerance = 1e-8
-    block = '2 3'
-    use_substep = true
   []
 
   [thermal_expansion_strain_product]

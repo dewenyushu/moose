@@ -113,6 +113,15 @@ protected:
                                         const GenericReal<is_ad> & scalar) = 0;
 
   /**
+   * If the flow rule depends on variables other than the increment of inelastic strain,
+   * We need to update the internal state variables here.
+   * @param effective_trial_stress Effective trial stress
+   * @param scalar     Inelastic strain magnitude obtained in an inner NR loop
+   */
+   virtual void updateInternalStateVariables(const GenericReal<is_ad> & /*effective_trial_stress*/,
+                                             const GenericReal<is_ad> & /*scalar*/, const GenericReal<is_ad> & /*scalar_increment*/) {}
+
+  /**
    * Finalize internal state variables for a model for a given iteration.
    * @param scalar                 Inelastic strain increment magnitude being solved for
    */
