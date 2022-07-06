@@ -160,8 +160,8 @@ private:
   std::vector<unsigned int> _lm_var_ids;
 
   /// Name and ID of the corresponding coupled variable
-  const std::vector<std::string> _primary_var_names;
-  std::vector<unsigned int> _primary_var_ids;
+  const std::vector<std::vector<std::string>> _primary_var_names;
+  std::vector<std::vector<unsigned int>> _primary_var_ids;
 
   /// Submatrices that are frequently needed while computing the condensed system
   /// _D: the submatrix that couples the primary variable with the Lagrange multiplier variable

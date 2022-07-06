@@ -68,7 +68,7 @@ VariableCondensationPreconditioner::validParams()
       "lm_variable",
       "Name of the variable(s) that is to be condensed out. Usually "
       "this will be the Lagrange multiplier variable(s).");
-  params.addRequiredParam<std::vector<std::string>>(
+  params.addRequiredParam<std::vector<std::vector<std::string>>>(
       "primary_variable",
       "Name of the variable(s) that couples with the variable(s) specified in the `variable` "
       "block. Usually this is the primary variable that the Lagrange multiplier correspond to.");
@@ -86,7 +86,7 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
     _adaptive_condensation(getParam<bool>("adaptive_condensation")),
     _n_vars(_nl.nVariables()),
     _lm_var_names(getParam<std::vector<std::string>>("lm_variable")),
-    _primary_var_names(getParam<std::vector<std::string>>("primary_variable")),
+    _primary_var_names(getParam<std::vector<std::vector<std::string>>>("primary_variable")),
     _D(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _M(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
     _K(std::make_unique<PetscMatrix<Number>>(MoosePreconditioner::_communicator)),
@@ -101,25 +101,29 @@ VariableCondensationPreconditioner::VariableCondensationPreconditioner(
     _apply_timer(registerTimedSection("apply", 1))
 {
   if (_lm_var_names.size() != _primary_var_names.size())
-    paramError("coupled_variable", "coupled_variable should have the same size as the variable.");
+    paramError(
+        "primary_variable",
+        "group count of the primary_variable should be equal to the number of the lm variable.");
 
   // get variable ids from the variable names
   for (const auto & var_name : _lm_var_names)
   {
     if (!_nl.system().has_variable(var_name))
-      paramError("variable ", var_name, " does not exist in the system");
+      paramError("lm_variable", var_name, " does not exist in the system");
     const unsigned int id = _nl.system().variable_number(var_name);
     _lm_var_ids.push_back(id);
   }
 
-  // get coupled variable ids from the coupled variable names
-  for (const auto & var_name : _primary_var_names)
-  {
-    if (!_nl.system().has_variable(var_name))
-      paramError("coupled_variable ", var_name, " does not exist in the system");
-    const unsigned int id = _nl.system().variable_number(var_name);
-    _primary_var_ids.push_back(id);
-  }
+  // get primary variable ids from the primary variable names
+  _primary_var_ids.resize(_primary_var_names.size());
+  for (const auto i : index_range(_primary_var_names))
+    for (const auto & var_name : _primary_var_names[i])
+    {
+      if (!_nl.system().has_variable(var_name))
+        paramError("primary_variable", var_name, " does not exist in the system");
+      const unsigned int id = _nl.system().variable_number(var_name);
+      _primary_var_ids[i].push_back(id);
+    }
 
   // PC type
   const std::vector<std::string> & pc_type = getParam<std::vector<std::string>>("preconditioner");
@@ -200,25 +204,34 @@ VariableCondensationPreconditioner::getDofToCondense()
   NodeRange * active_nodes = _mesh.getActiveNodeRange();
 
   // loop through the variable ids
-  std::vector<dof_id_type> di, cp_di;
+  std::vector<dof_id_type> di;
+  std::vector<std::vector<dof_id_type>> cp_di_vars;
   for (const auto & vn : index_range(_lm_var_ids))
     for (const auto & node : *active_nodes)
     {
       di.clear();
-      cp_di.clear();
+      cp_di_vars.clear();
       const auto var_id = _lm_var_ids[vn];
-      // get coupled variable id
-      const auto cp_var_id = _primary_var_ids[vn];
+      // get coupled variable ids (all the potential variable ids provided by the user)
+      const auto cp_var_ids = _primary_var_ids[vn];
       // get var and cp_var dofs associated with this node
       _dofmap.dof_indices(node, di, var_id);
       // skip when di is empty
       if (di.empty())
         continue;
-      _dofmap.dof_indices(node, cp_di, cp_var_id);
-      if (cp_di.size() != di.size())
-        mooseError("variable and coupled variable do not have the same number of dof on node ",
-                   node->id(),
-                   ".");
+      // loop through all coupled variable ids
+      for (const auto & cp_var_id : cp_var_ids)
+      {
+        std::vector<dof_id_type> cp_di;
+        _dofmap.dof_indices(node, cp_di, cp_var_id);
+
+        if (cp_di.size() != di.size())
+          mooseError("variable and coupled variable do not have the same number of dof on node ",
+                     node->id(),
+                     ".");
+        cp_di_vars.push_back(cp_di);
+      }
+
       for (const auto & i : index_range(di))
       {
         // when we have adaptive condensation, skip when di does not contain any indices in
@@ -230,11 +243,31 @@ VariableCondensationPreconditioner::getDofToCondense()
         if (_dofmap.local_index(di[i]))
           _lm_dofs.push_back(di[i]);
 
-        // save the corresponding coupled dof indices
-        _global_primary_dofs.push_back(cp_di[i]);
-        if (_dofmap.local_index(cp_di[i]))
-          _primary_dofs.push_back(cp_di[i]);
-        _map_global_lm_primary.insert(std::make_pair(di[i], cp_di[i]));
+        // Save the corresponding coupled dof indices.
+        // Here, we loop through all the possible coupled dof indices provided by the user and pick
+        // the primary dof that results in the largest diagonal entry. If the diagonal entry is 0
+        // for all provided variables, we throw an error
+        dof_id_type cp_dof = cp_di_vars[0][i];
+        Real max_val = 0.0;
+        for (const auto & cp_di : cp_di_vars)
+        {
+          if (_dofmap.local_index(cp_di[i]))
+          {
+            auto val = (*_matrix)(cp_di[i], di[i]);
+            // std::cout << "lm = " << di[i] << ", cp_di = " << cp_di[i] << ", val = " << val
+            //           << std::endl;
+            if (std::abs(val) > std::abs(max_val))
+            {
+              max_val = val;
+              cp_dof = cp_di[i];
+            }
+          }
+        }
+
+        _global_primary_dofs.push_back(cp_dof);
+        if (_dofmap.local_index(cp_dof))
+          _primary_dofs.push_back(cp_dof);
+        _map_global_lm_primary.insert(std::make_pair(di[i], cp_dof));
       }
     }
 
