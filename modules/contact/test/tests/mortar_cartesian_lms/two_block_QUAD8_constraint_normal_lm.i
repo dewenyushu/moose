@@ -3,8 +3,9 @@
   volumetric_locking_correction = true
 []
 
-theta = 90
+theta = 0
 velocity = 0.1
+refine = 1
 
 [Mesh]
   [left_block]
@@ -90,10 +91,12 @@ velocity = 0.1
     transform = ROTATE
     vector_value = '0 0 ${theta}'
   []
+
+  uniform_refine = ${refine}
 []
 
 [Variables]
-  [lm]
+  [normal_lm]
     block = 'secondary_lower'
     order=SECOND
     use_dual = true
@@ -178,7 +181,7 @@ velocity = 0.1
     secondary_boundary = '11'
     primary_subdomain = 'primary_lower'
     secondary_subdomain = 'secondary_lower'
-    variable = lm
+    variable = normal_lm
     disp_x = disp_x
     disp_y = disp_y
     use_displaced_mesh = true
@@ -191,7 +194,7 @@ velocity = 0.1
     secondary_boundary = '11'
     primary_subdomain = 'primary_lower'
     secondary_subdomain = 'secondary_lower'
-    variable = lm
+    variable = normal_lm
     secondary_variable = disp_x
     component = x
     use_displaced_mesh = true
@@ -205,7 +208,7 @@ velocity = 0.1
     secondary_boundary = '11'
     primary_subdomain = 'primary_lower'
     secondary_subdomain = 'secondary_lower'
-    variable = lm
+    variable = normal_lm
     secondary_variable = disp_y
     component = y
     use_displaced_mesh = true
@@ -216,14 +219,9 @@ velocity = 0.1
 []
 
 [Preconditioning]
-  [vcp]
-    type = VCP
+  [smp]
+    type = SMP
     full = true
-    lm_variable = 'lm'
-    primary_variable = 'disp_x disp_y'
-    preconditioner = 'AMG'
-    is_lm_coupling_diagonal = false
-    adaptive_condensation = true
   []
 []
 
@@ -233,8 +231,8 @@ velocity = 0.1
 
   petsc_options = '-snes_converged_reason -ksp_converged_reason -snes_view'
 
-  petsc_options_iname = '-mat_mffd_err -pc_factor_shift_type -pc_factor_shift_amount'
-  petsc_options_value = '1e-5          NONZERO               1e-10'
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -mat_mffd_err -pc_factor_shift_type -pc_factor_shift_amount'
+  petsc_options_value = 'lu superlu_dist 1e-5          NONZERO               1e-10'
 
   # petsc_options_iname = ' -pc_hypre_type -pc_hypre_boomeramg_max_iter'
   # petsc_options_value = '  boomeramg      1'
@@ -254,12 +252,9 @@ velocity = 0.1
 
 [Outputs]
   exodus = false
-  file_base = './output/2nd_order_${theta}_degree_QUAD8_out'
-  [comp]
-    type = CSV
-    show = 'tot_lin_it tot_nonlin_it'
-    execute_on = 'FINAL'
-  []
+  file_base = './output/2nd_order_${theta}_degree_QUAD8_refine_${refine}_out'
+  csv = true
+  execute_on = 'FINAL'
 []
 
 [Postprocessors]
@@ -308,5 +303,26 @@ velocity = 0.1
   [tot_nonlin_it]
     type = CumulativeValuePostprocessor
     postprocessor = num_nonlin_it
+  []
+  [max_norma_lm]
+    type = ElementExtremeValue
+    variable = normal_lm
+    block = 'secondary_lower'
+  []
+  [min_norma_lm]
+    type = ElementExtremeValue
+    variable = normal_lm
+    value_type = min
+    block = 'secondary_lower'
+  []
+[]
+
+[VectorPostprocessors]
+  [normal_lm]
+    type = NodalValueSampler
+    block = 'secondary_lower'
+    variable = normal_lm
+    sort_by = 'id'
+    execute_on = NONLINEAR
   []
 []
