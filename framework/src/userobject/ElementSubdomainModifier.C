@@ -238,6 +238,12 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
    */
   bnd_info.sideset_name(_moving_boundary_id) = _moving_boundary_name;
   bnd_info.nodeset_name(_moving_boundary_id) = _moving_boundary_name;
+  if (_complement_moving_boundary_specified)
+  {
+    bnd_info.sideset_name(_complement_moving_boundary_id) = _complement_moving_boundary_name;
+    bnd_info.nodeset_name(_complement_moving_boundary_id) = _complement_moving_boundary_name;
+  }
+
   auto & elem_side_bnd_ids = bnd_info.get_sideset_map();
   std::set<const Elem *> boundary_elem_candidates;
   std::vector<std::pair<const Elem *, unsigned int>> to_be_cleared;
@@ -267,10 +273,16 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
     }
   }
 
-  /* Delete the old moving boundary */
+  /* Delete the old moving boundary and the corresponding complementary moving boundary */
   for (auto & elem_side : to_be_cleared)
   {
     bnd_info.remove_side(elem_side.first, elem_side.second);
+    if (_complement_moving_boundary_specified)
+    {
+      const Elem * neighbor = elem_side.first->neighbor_ptr(elem_side.second);
+      unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem_side.first);
+      bnd_info.remove_side(neighbor, neighbor_side, _complement_moving_boundary_id);
+    }
   }
 
   /* Append moved elements to the boundary element candidate list */
@@ -285,6 +297,7 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
     for (auto side : elem->side_index_range())
     {
       const Elem * neighbor = elem->neighbor_ptr(side);
+
       /* If elem's neighbor is active and has a different subdomain, we add the current side
          to the moving boundary
       */
@@ -304,16 +317,17 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
                    _moving_boundary_subdomains.end() &&
                _moving_boundary_subdomains.find(elem->subdomain_id()) !=
                    _moving_boundary_subdomains.end()))
-            bnd_info.add_side(elem, side, _moving_boundary_id);
-
-          if (_complement_moving_boundary_specified)
           {
-            unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem);
-            bnd_info.add_side(neighbor, neighbor_side, _complement_moving_boundary_id);
-            if (neighbor->processor_id() != this->processor_id())
+            bnd_info.add_side(elem, side, _moving_boundary_id);
+            if (_complement_moving_boundary_specified)
             {
-              _ghost_sides_to_add[neighbor->processor_id()].emplace_back(neighbor->id(),
-                                                                         neighbor_side);
+              unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem);
+              bnd_info.add_side(neighbor, neighbor_side, _complement_moving_boundary_id);
+              if (neighbor->processor_id() != this->processor_id())
+              {
+                _ghost_sides_to_add[neighbor->processor_id()].emplace_back(neighbor->id(),
+                                                                           neighbor_side);
+              }
             }
           }
         }
@@ -331,15 +345,18 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
         top_parent->active_family_tree_by_neighbor(active_family, elem);
         for (auto felem : active_family)
         {
-          if (felem->subdomain_id() != elem->subdomain_id() ||
-              _complement_moving_boundary_specified)
+          if (felem->subdomain_id() != elem->subdomain_id())
           {
             auto cside = felem->which_neighbor_am_i(elem);
             // Add all the sides to the boundary first and remove excessive sides later
             bnd_info.add_side(felem, cside, _moving_boundary_id);
-            if (felem->processor_id() != this->processor_id())
+            // Add the complement boundary, accordingly
+            if (_complement_moving_boundary_specified)
             {
-              _ghost_sides_to_add[felem->processor_id()].emplace_back(felem->id(), cside);
+              unsigned int side = elem->which_neighbor_am_i(felem);
+              bnd_info.add_side(elem, side, _complement_moving_boundary_id);
+              if (elem->processor_id() != this->processor_id())
+                _ghost_sides_to_add[neighbor->processor_id()].emplace_back(elem->id(), side);
             }
           }
         }
@@ -360,7 +377,6 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
   {
     if (_moving_boundary_specified)
       bnd_info.remove_node(node, _moving_boundary_id);
-
     if (_complement_moving_boundary_specified)
       bnd_info.remove_node(node, _complement_moving_boundary_id);
   }
@@ -377,6 +393,14 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
         boundary_nodes.insert(&(pr.first->node_ref(node)));
       }
     }
+  }
+
+  for (const auto node : boundary_nodes)
+  {
+    if (_moving_boundary_specified)
+      bnd_info.add_node(node, _moving_boundary_id);
+    if (_complement_moving_boundary_specified)
+      bnd_info.add_node(node, _complement_moving_boundary_specified);
   }
 
   // synchronize boundary information across processors
