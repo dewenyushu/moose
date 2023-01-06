@@ -277,11 +277,16 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
   for (auto & elem_side : to_be_cleared)
   {
     bnd_info.remove_side(elem_side.first, elem_side.second);
-    if (_complement_moving_boundary_specified)
+    if (_moving_boundary_specified || _complement_moving_boundary_specified)
     {
       const Elem * neighbor = elem_side.first->neighbor_ptr(elem_side.second);
       unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem_side.first);
-      bnd_info.remove_side(neighbor, neighbor_side, _complement_moving_boundary_id);
+      bnd_info.remove_side(neighbor, neighbor_side);
+      if (neighbor->processor_id() != this->processor_id())
+      {
+        _ghost_sides_to_remove[neighbor->processor_id()].emplace_back(neighbor->id(),
+                                                                      neighbor_side);
+      }
     }
   }
 
@@ -369,7 +374,7 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
   std::vector<const Node *> nodes_to_be_cleared;
   for (const auto & pair : nodeset_map)
   {
-    if (pair.second == _moving_boundary_id)
+    if (pair.second == _moving_boundary_id || pair.second == _complement_moving_boundary_id)
       nodes_to_be_cleared.push_back(pair.first);
   }
 
@@ -382,6 +387,7 @@ ElementSubdomainModifier::updateBoundaryInfo(MooseMesh & mesh,
   }
 
   /* Reconstruct a new nodeset from the updated sideset */
+  //// TODO: create set for the neighbor element nodes and add to the complementary boundary
   std::set<const Node *> boundary_nodes;
   for (const auto & pr : elem_side_bnd_ids)
   {
