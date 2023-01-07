@@ -1,0 +1,26 @@
+[Tests]
+  design = 'VarThresholdVolumePostprocessor.md'
+  # issues = '#7532'
+
+  [var_threshold_volume_above]
+    type = 'CSVDiff'
+    input = 'above.i'
+    csvdiff = 'above_out.csv'
+    requirement = 'The system should be able to correctly get the volume of the domain where '
+                  'variable value is above the threshold value.'
+  []
+  [var_threshold_volume_below]
+    type = 'CSVDiff'
+    input = 'below.i'
+    csvdiff = 'below_out.csv'
+    requirement = 'The system should be able to correctly get the volume of the domain where '
+                  'variable value is below the threshold value.'
+  []
+  [var_threshold_volume_equal]
+    type = 'CSVDiff'
+    input = 'equal.i'
+    csvdiff = 'equal_out.csv'
+    requirement = 'The system should be able to correctly get the volume of the domain where '
+                  'variable value is equal the threshold value.'
+  []
+[]
