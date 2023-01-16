@@ -79,13 +79,16 @@ private:
   void setComplementMovingBoundaryName(MooseMesh & mesh);
 
   // Update the moving and complement moving boundaries (both the underlying sideset and nodeset)
-  void updateBoundaryInfo(MooseMesh & mesh, const std::vector<const Elem *> & moved_elems);
+  void updateMovingBoundaryInfo(MooseMesh & mesh, const std::vector<const Elem *> & moved_elems);
 
   // Remove ghosted element sides
   void pushBoundarySideInfo(MooseMesh & mesh);
 
   // Remove ghosted boundary nodes
   void pushBoundaryNodeInfo(MooseMesh & mesh);
+
+  // synchronize boundary information across processors
+  void synchronizeBoundaryInfo(MooseMesh & mesh);
 
   // Change the subdomain ID of all ancestor elements
   void setAncestorsSubdomainIDs(const SubdomainID & subdomain_id, const dof_id_type & elem_id);
