@@ -171,6 +171,8 @@ ElementSubdomainModifier::finalize()
                                       sync);
   if (_moving_boundary_specified)
     updateMovingBoundaryInfo(_mesh, _moved_elems);
+  if (_complement_moving_boundary_specified)
+    updateComplementBoundaryInfo(_mesh, _moved_elems);
 
   // Similarly for the displaced mesh
   if (_displaced_problem)
@@ -183,9 +185,11 @@ ElementSubdomainModifier::finalize()
 
     if (_moving_boundary_specified)
       updateMovingBoundaryInfo(_displaced_problem->mesh(), _moved_displaced_elems);
+    if (_complement_moving_boundary_specified)
+      updateComplementBoundaryInfo(_displaced_problem->mesh(), _moved_displaced_elems);
   }
 
-  // Synchronize boundary information after update
+  // Synchronize boundary information after mesh update
   synchronizeBoundaryInfo(_mesh);
 
   // Reinit equation systems
@@ -239,11 +243,9 @@ ElementSubdomainModifier::updateMovingBoundaryInfo(MooseMesh & mesh,
   /*
    * Names can be deleted in the previous step if there is no side on this boundary
    */
-  if (_moving_boundary_specified)
-  {
-    bnd_info.sideset_name(_moving_boundary_id) = _moving_boundary_name;
-    bnd_info.nodeset_name(_moving_boundary_id) = _moving_boundary_name;
-  }
+  bnd_info.sideset_name(_moving_boundary_id) = _moving_boundary_name;
+  bnd_info.nodeset_name(_moving_boundary_id) = _moving_boundary_name;
+
   // if (_complement_moving_boundary_specified)
   // {
   //   bnd_info.sideset_name(_complement_moving_boundary_id) = _complement_moving_boundary_name;
@@ -284,15 +286,11 @@ ElementSubdomainModifier::updateMovingBoundaryInfo(MooseMesh & mesh,
   for (auto & [elem, side] : elem_sides_to_be_cleared)
   {
     bnd_info.remove_side(elem, side, _moving_boundary_id);
-    if (_moving_boundary_specified)
-    {
-      const Elem * neighbor = elem->neighbor_ptr(side);
-      unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem);
-      bnd_info.remove_side(neighbor, neighbor_side, _moving_boundary_id);
-      if (neighbor->processor_id() != this->processor_id())
-        _ghost_sides_to_remove[neighbor->processor_id()].emplace_back(neighbor->id(),
-                                                                      neighbor_side);
-    }
+    const Elem * neighbor = elem->neighbor_ptr(side);
+    unsigned int neighbor_side = neighbor->which_neighbor_am_i(elem);
+    bnd_info.remove_side(neighbor, neighbor_side, _moving_boundary_id);
+    if (neighbor->processor_id() != this->processor_id())
+      _ghost_sides_to_remove[neighbor->processor_id()].emplace_back(neighbor->id(), neighbor_side);
   }
 
   /* Append moved elements to the boundary element candidate list */
@@ -386,9 +384,8 @@ ElementSubdomainModifier::updateMovingBoundaryInfo(MooseMesh & mesh,
     //   nodes_elem_sides_to_be_cleared_on_complement_boundary.push_back(pair.first);
   }
 
-  if (_moving_boundary_specified)
-    for (const auto node : nodes_elem_sides_to_be_cleared_on_moving_boundary)
-      bnd_info.remove_node(node, _moving_boundary_id);
+  for (const auto node : nodes_elem_sides_to_be_cleared_on_moving_boundary)
+    bnd_info.remove_node(node, _moving_boundary_id);
 
   // if (_complement_moving_boundary_specified)
   //   for (const auto node : nodes_elem_sides_to_be_cleared_on_complement_boundary)
@@ -413,12 +410,20 @@ ElementSubdomainModifier::updateMovingBoundaryInfo(MooseMesh & mesh,
     // }
   }
 
-  if (_moving_boundary_specified)
-    for (const auto node : boundary_nodes_moving_boundary)
-      bnd_info.add_node(node, _moving_boundary_id);
+  for (const auto node : boundary_nodes_moving_boundary)
+    bnd_info.add_node(node, _moving_boundary_id);
   // if (_complement_moving_boundary_specified)
   //   for (const auto node : boundary_nodes_complement_boundary)
   //     bnd_info.add_node(node, _complement_moving_boundary_specified);
+}
+
+void
+ElementSubdomainModifier::updateComplementBoundaryInfo(
+    MooseMesh & mesh, const std::vector<const Elem *> & moved_elems)
+{
+  /*
+    This is done after the moving boundary
+  */
 }
 
 void

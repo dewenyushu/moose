@@ -78,8 +78,11 @@ private:
   // Set the name of the complement moving boundary. Create the nodeset/sideset if not exist.
   void setComplementMovingBoundaryName(MooseMesh & mesh);
 
-  // Update the moving and complement moving boundaries (both the underlying sideset and nodeset)
+  // Update the moving boundary (both the underlying sideset and nodeset)
   void updateMovingBoundaryInfo(MooseMesh & mesh, const std::vector<const Elem *> & moved_elems);
+
+  // Update the complement boundary (both the underlying sideset and nodeset)
+  void updateComplementBoundaryInfo(MooseMesh & mesh, const std::vector<const Elem *> & moved_elems);
 
   // Remove ghosted element sides
   void pushBoundarySideInfo(MooseMesh & mesh);
