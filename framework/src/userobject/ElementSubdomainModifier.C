@@ -547,8 +547,8 @@ ElementSubdomainModifier::pushBoundaryNodeInfo(MooseMesh & moose_mesh)
     {
       if (_moving_boundary_specified)
         mesh.get_boundary_info().remove_node(mesh.node_ptr(pr), _moving_boundary_id);
-      // if (_complement_moving_boundary_specified)
-      //   mesh.get_boundary_info().remove_node(mesh.node_ptr(pr), _complement_moving_boundary_id);
+      if (_complement_moving_boundary_specified)
+        mesh.get_boundary_info().remove_node(mesh.node_ptr(pr), _complement_moving_boundary_id);
     }
   };
 
