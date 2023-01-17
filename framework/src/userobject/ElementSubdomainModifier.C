@@ -514,11 +514,12 @@ ElementSubdomainModifier::pushBoundarySideInfo(MooseMesh & moose_mesh)
 {
   auto & mesh = moose_mesh.getMesh();
   auto elem_remove_functor =
-      [&mesh](processor_id_type,
-              const std::vector<std::pair<dof_id_type, unsigned short int>> & received_elem) {
+      [&mesh, this](processor_id_type,
+                    const std::vector<std::pair<dof_id_type, unsigned short int>> & received_elem) {
         // remove the side
         for (const auto & pr : received_elem)
-          mesh.get_boundary_info().remove_side(mesh.elem_ptr(pr.first), pr.second);
+          mesh.get_boundary_info().remove_side(
+              mesh.elem_ptr(pr.first), pr.second, _complement_moving_boundary_id);
       };
   auto elem_add_functor =
       [&mesh, this](processor_id_type,
