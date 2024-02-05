@@ -23,9 +23,11 @@
 #include "SymmetricRankTwoTensor.h"
 #include "SymmetricRankFourTensor.h"
 
+#include "BatchScalarProperty.h"
+
 typedef BatchMaterial<BatchMaterialUtils::TupleStd,
-                      // Outputs: stress, internal variables, dstress/dstrain
-                      std::tuple<RankTwoTensor, RankFourTensor>,
+                      // Outputs: stress, internal variables, dstress/dstrain, dstress/dparam
+                      std::tuple<RankTwoTensor, RankFourTensor, RankTwoTensor>,
                       // Inputs:
                       //   strain
                       //   temperature
@@ -46,13 +48,15 @@ public:
   CauchyStressFromNEML2UO(const InputParameters & params);
 
 #ifndef NEML2_ENABLED
-
+  virtual void preCompute() {}
   virtual void batchCompute() override {}
-
+  virtual void postCompute() {}
 #else
 
   virtual void batchCompute() override;
+  virtual void preCompute();
   virtual void timestepSetup() override;
+  virtual void postCompute();
 
 protected:
   /// Advance state and forces in time
@@ -75,6 +79,22 @@ protected:
 
   /// The derivative of the output vector w.r.t. the input vector
   neml2::LabeledMatrix _dout_din;
+
+  /// List of model parameters for which we wish to compute derivatives for
+  const std::vector<std::string> & _parameter_derivatives;
+
+  /// Flag to check whether derivative w.r.t. model parameters are requested
+  const bool _require_parameter_derivatives;
+
+  /// List of model parameters for which we wish set from MOOSE batch materials
+  const std::vector<std::string> & _reset_parameter_names;
+
+  /// Flag to check whether we wish to set model parameters from MOOSE batch materials
+  const bool _reset_parameters;
+
+  const MaterialProperty<Real> * _material_param;
+
+  const BatchScalarProperty * _material_param_uo;
 
 #endif // NEML2_ENABLED
 };

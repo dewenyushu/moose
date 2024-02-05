@@ -9,6 +9,7 @@
 
 #include "CauchyStressFromNEML2UO.h"
 #include "NEML2Utils.h"
+#include "neml2/misc/math.h"
 
 registerMooseObject("TensorMechanicsApp", CauchyStressFromNEML2UO);
 
@@ -22,7 +23,18 @@ CauchyStressFromNEML2UO::validParams()
       "from all quadrature points. The batched input vector is sent through "
       "a NEML2 material model to perform the constitutive update.");
   params.addCoupledVar("temperature", "The temperature");
+  params.addParam<std::vector<std::string>>(
+      "parameter_derivatives",
+      {},
+      "Adds a list of material parameters to get derivatives from NEML2.");
 
+  params.addParam<std::vector<std::string>>(
+      "reset_parameter_names",
+      {},
+      "Add a list of model parameters for which we wish set from MOOSE batch materials.");
+  params.addParam<std::string>("param_material_prop", {}, "Property name.");
+  params.addParam<UserObjectName>(
+      "material_param_uo", {}, "Batch material user object storing model parameter.");
   // Since we use the NEML2 model to evaluate the residual AND the Jacobian at the same time, we
   // want to execute this user object only at execute_on = LINEAR (i.e. during residual evaluation).
   ExecFlagEnum execute_options = MooseUtils::getDefaultExecFlagEnum();
@@ -45,14 +57,65 @@ CauchyStressFromNEML2UO::CauchyStressFromNEML2UO(const InputParameters & params)
 
 CauchyStressFromNEML2UO::CauchyStressFromNEML2UO(const InputParameters & params)
   : NEML2SolidMechanicsInterface<CauchyStressFromNEML2UOParent>(
-        params, "mechanical_strain", "temperature")
+        params, "mechanical_strain", "temperature"),
+    _parameter_derivatives(getParam<std::vector<std::string>>("parameter_derivatives")),
+    _require_parameter_derivatives(_parameter_derivatives.size() ? true : false),
+    _reset_parameter_names(getParam<std::vector<std::string>>("reset_parameter_names")),
+    _reset_parameters(_reset_parameter_names.size() ? true : false),
+    _material_param(_reset_parameters
+                        ? &getMaterialProperty<Real>(getParam<std::string>("param_material_prop"))
+                        : nullptr),
+    _material_param_uo(_reset_parameters ? &getUserObject<BatchScalarProperty>("material_param_uo")
+                                         : nullptr)
 {
   validateModel();
 }
 
 void
+CauchyStressFromNEML2UO::preCompute()
+{
+  // Set requires_grad_() for each parameter if we request stress derivatives w.r.t parameter
+  if (_require_parameter_derivatives)
+  {
+    for (auto param_name : _parameter_derivatives)
+    {
+      auto model_param = model().named_parameters(true)[param_name];
+      model_param.requires_grad_();
+    }
+  }
+
+  // Set the parameter value using batch material from MOOSE
+  if (_reset_parameters)
+  {
+    // TODO: extend to multiple parameters
+    if (!_material_param_uo->outputReady())
+      mooseError("Batch material parameter is not ready for output");
+
+    auto model_param = model().named_parameters(true)[_reset_parameter_names[0]];
+    auto param_values = NEML2Utils::toNEML2Batched(_material_param_uo->getOutputData());
+
+    // std::cout << "To Match: " << param_values.batch_sizes() << "\t" << param_values.base_sizes()
+    //           << std::endl;
+
+    // std::cout << "Parameter size: " << _material_param_uo->getOutputData().size() << std::endl;
+
+    // std::cout << "Before: " << model_param.batch_sizes() << "\t" << model_param.base_sizes()
+    //           << std::endl;
+
+    model_param = model_param.batch_expand_copy(param_values.batch_sizes());
+
+    model_param.clone().copy_(param_values);
+
+    std::cout << "Finish copy" << std::endl;
+  }
+}
+
+void
 CauchyStressFromNEML2UO::batchCompute()
 {
+  // Get prepared
+  preCompute();
+
   try
   {
     // Allocate the input and output
@@ -79,6 +142,9 @@ CauchyStressFromNEML2UO::batchCompute()
         std::get<1>(_output_data[i]) = RankFourTensor(NEML2Utils::toMOOSE<SymmetricRankFourTensor>(
             _dout_din(stress(), strain()).batch_index({i})));
       }
+
+      // Additional calculations after stress
+      postCompute();
     }
   }
   catch (neml2::NEMLException & e)
@@ -93,6 +159,28 @@ CauchyStressFromNEML2UO::batchCompute()
                    e.what(),
                    "\nIt is possible that this error is related to NEML2.",
                    NEML2Utils::NEML2_help_message);
+  }
+}
+
+void
+CauchyStressFromNEML2UO::postCompute()
+{
+  // Calculate stress derivative w.r.t material parameters
+  if (_require_parameter_derivatives)
+  {
+    for (auto param_name : _parameter_derivatives)
+    {
+      auto model_param = model().named_parameters(true)[param_name];
+
+      // Fill the NEML2 output back into the Blackbear output data
+      for (const neml2::TorchSize i : index_range(_output_data))
+      {
+        // auto data = neml2::math::jacrev(_out(stress()), model_param);
+        /// TODO : need to be changed to get multiple derivatives. Should we just have multiple UOs instead?
+        std::get<2>(_output_data[i]) = NEML2Utils::toMOOSE<SymmetricRankTwoTensor>(
+            neml2::math::jacrev(_out(stress()), model_param).batch_index({i}));
+      }
+    }
   }
 }
 
