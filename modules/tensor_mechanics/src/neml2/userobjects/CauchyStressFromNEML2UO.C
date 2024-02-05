@@ -74,7 +74,7 @@ CauchyStressFromNEML2UO::CauchyStressFromNEML2UO(const InputParameters & params)
 void
 CauchyStressFromNEML2UO::preCompute()
 {
-  // Set requires_grad_() for each parameter if we request stress derivatives w.r.t parameter
+  // Set requires_grad_() for each parameter if we request stress derivatives w.r.t that parameter
   if (_require_parameter_derivatives)
   {
     for (auto param_name : _parameter_derivatives)
@@ -94,28 +94,15 @@ CauchyStressFromNEML2UO::preCompute()
     auto model_param = model().named_parameters(true)[_reset_parameter_names[0]];
     auto param_values = NEML2Utils::toNEML2Batched(_material_param_uo->getOutputData());
 
-    // std::cout << "To Match: " << param_values.batch_sizes() << "\t" << param_values.base_sizes()
-    //           << std::endl;
-
-    // std::cout << "Parameter size: " << _material_param_uo->getOutputData().size() << std::endl;
-
-    // std::cout << "Before: " << model_param.batch_sizes() << "\t" << model_param.base_sizes()
-    //           << std::endl;
-
     model_param = model_param.batch_expand_copy(param_values.batch_sizes());
 
-    model_param.clone().copy_(param_values);
-
-    std::cout << "Finish copy" << std::endl;
+    model_param.copy_(param_values);
   }
 }
 
 void
 CauchyStressFromNEML2UO::batchCompute()
 {
-  // Get prepared
-  preCompute();
-
   try
   {
     // Allocate the input and output
@@ -124,6 +111,9 @@ CauchyStressFromNEML2UO::batchCompute()
       _in = neml2::LabeledVector::zeros(_input_data.size(), {&model().input()});
       _out = neml2::LabeledVector::zeros(_input_data.size(), {&model().output()});
     }
+
+    // Steps before stress update
+    preCompute();
 
     updateForces();
 
@@ -143,7 +133,7 @@ CauchyStressFromNEML2UO::batchCompute()
             _dout_din(stress(), strain()).batch_index({i})));
       }
 
-      // Additional calculations after stress
+      // Additional calculations after stress update
       postCompute();
     }
   }
