@@ -70,6 +70,10 @@ ifeq ($(SOLID_PROPERTIES),yes)
         HEAT_TRANSFER               := yes
 endif
 
+ifeq ($(TENSOR_MECHANICS),yes)
+        OPTIMIZATION                := yes
+endif
+
 ifeq ($(CONTACT),yes)
         TENSOR_MECHANICS            := yes
 endif
@@ -213,6 +217,13 @@ ifeq ($(STOCHASTIC_TOOLS),yes)
   include $(FRAMEWORK_DIR)/app.mk
 endif
 
+ifeq ($(OPTIMIZATION),yes)
+  APPLICATION_DIR    := $(MOOSE_DIR)/modules/optimization
+  APPLICATION_NAME   := optimization
+  SUFFIX             := opt
+  include $(FRAMEWORK_DIR)/app.mk
+endif
+
 # The modules that follow are purposefully ordered such that all of their
 # dependencies are defined first
 
@@ -237,6 +248,7 @@ endif
 ifeq ($(TENSOR_MECHANICS),yes)
   APPLICATION_DIR    := $(MOOSE_DIR)/modules/tensor_mechanics
   APPLICATION_NAME   := tensor_mechanics
+  DEPEND_MODULES     := optimization
   SUFFIX             := tm
   include $(FRAMEWORK_DIR)/app.mk
 endif
@@ -273,13 +285,6 @@ ifeq ($(MISC),yes)
   APPLICATION_DIR    := $(MOOSE_DIR)/modules/misc
   APPLICATION_NAME   := misc
   SUFFIX             := misc
-  include $(FRAMEWORK_DIR)/app.mk
-endif
-
-ifeq ($(OPTIMIZATION),yes)
-  APPLICATION_DIR    := $(MOOSE_DIR)/modules/optimization
-  APPLICATION_NAME   := optimization
-  SUFFIX             := opt
   include $(FRAMEWORK_DIR)/app.mk
 endif
 
