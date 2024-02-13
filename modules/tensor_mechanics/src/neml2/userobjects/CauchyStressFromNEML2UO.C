@@ -24,17 +24,19 @@ CauchyStressFromNEML2UO::validParams()
       "a NEML2 material model to perform the constitutive update.");
   params.addCoupledVar("temperature", "The temperature");
   params.addParam<std::vector<std::string>>(
-      "parameter_derivatives",
+      "scalar_material_property_names",
       {},
-      "Adds a list of material parameters to get derivatives from NEML2.");
+      "Names of the material properties (gathered from MOOSE) whose values are used to set "
+      "parameter values in the NEML2 material model.");
+  params.addParam<std::vector<UserObjectName>>(
+      "scalar_material_property_values",
+      {},
+      "The list of userobjects for scalar-valued material properties. These userobjects should be "
+      "of type BatchPropertyDerivativeRankTwoTensorReal. The property values gathered by each of "
+      "the userobject will be used as parameter values in the NEML2 material model, and the "
+      "derivatives of the Cauchy stress w.r.t. each of the parameter will be set into the "
+      "corresponding userobject.");
 
-  params.addParam<std::vector<std::string>>(
-      "reset_parameter_names",
-      {},
-      "Add a list of model parameters for which we wish set from MOOSE batch materials.");
-  params.addParam<std::string>("param_material_prop", {}, "Property name.");
-  params.addParam<UserObjectName>(
-      "material_param_uo", {}, "Batch material user object storing model parameter.");
   // Since we use the NEML2 model to evaluate the residual AND the Jacobian at the same time, we
   // want to execute this user object only at execute_on = LINEAR (i.e. during residual evaluation).
   ExecFlagEnum execute_options = MooseUtils::getDefaultExecFlagEnum();
@@ -57,46 +59,40 @@ CauchyStressFromNEML2UO::CauchyStressFromNEML2UO(const InputParameters & params)
 
 CauchyStressFromNEML2UO::CauchyStressFromNEML2UO(const InputParameters & params)
   : NEML2SolidMechanicsInterface<CauchyStressFromNEML2UOParent>(
-        params, "mechanical_strain", "temperature"),
-    _parameter_derivatives(getParam<std::vector<std::string>>("parameter_derivatives")),
-    _require_parameter_derivatives(_parameter_derivatives.size() ? true : false),
-    _reset_parameter_names(getParam<std::vector<std::string>>("reset_parameter_names")),
-    _reset_parameters(_reset_parameter_names.size() ? true : false),
-    _material_param(_reset_parameters
-                        ? &getMaterialProperty<Real>(getParam<std::string>("param_material_prop"))
-                        : nullptr),
-    _material_param_uo(_reset_parameters ? &getUserObject<BatchScalarProperty>("material_param_uo")
-                                         : nullptr)
+        params, "mechanical_strain", "temperature")
 {
   validateModel();
+
+  // Initialize scalar-valued material property UOs
+  const auto prop_names = getParam<std::vector<std::string>>("scalar_material_property_names");
+  const auto prop_values = getParam<std::vector<UserObjectName>>("scalar_material_property_values");
+  if (prop_names.size() != prop_values.size())
+    mooseError("Each of scalar_material_property_names should correspond to a value in "
+               "scalar_material_property_values. ",
+               prop_names.size(),
+               " names are present, while ",
+               prop_values.size(),
+               " values are supplied.");
+  for (auto i : index_range(prop_names))
+    _props[prop_names[i]] = const_cast<BatchPropertyDerivativeRankTwoTensorReal *>(
+        &getUserObjectByName<BatchPropertyDerivativeRankTwoTensorReal>(prop_values[i]));
 }
 
 void
 CauchyStressFromNEML2UO::preCompute()
 {
-  // Set requires_grad_() for each parameter if we request stress derivatives w.r.t that parameter
-  if (_require_parameter_derivatives)
-  {
-    for (auto param_name : _parameter_derivatives)
-    {
-      auto model_param = model().named_parameters(true)[param_name];
-      model_param.requires_grad_();
-    }
-  }
-
   // Set the parameter value using batch material from MOOSE
-  if (_reset_parameters)
+  for (auto && [name, prop] : _props)
   {
-    // TODO: extend to multiple parameters
-    if (!_material_param_uo->outputReady())
-      mooseError("Batch material parameter is not ready for output");
+    if (!model().named_parameters().has_key(name))
+      mooseError("Trying to set scalar-valued material property named ",
+                 name,
+                 ". But there is not such parameter in the NEML2 material model.");
 
-    auto model_param = model().named_parameters(true)[_reset_parameter_names[0]];
-    auto param_values = NEML2Utils::toNEML2Batched(_material_param_uo->getOutputData());
-
-    model_param = model_param.batch_expand_copy(param_values.batch_sizes());
-
-    model_param.copy_(param_values);
+    auto input = NEML2Utils::homogenizeBatchedTuple(prop->getInputData());
+    auto pval = NEML2Utils::toNEML2Batched(std::get<0>(input));
+    pval.requires_grad_(true);
+    model().named_parameters()[name].set(pval);
   }
 }
 
@@ -105,11 +101,13 @@ CauchyStressFromNEML2UO::batchCompute()
 {
   try
   {
+    initModel(_input_data.size());
+
     // Allocate the input and output
     if (_t_step == 0)
     {
-      _in = neml2::LabeledVector::zeros(_input_data.size(), {&model().input()});
-      _out = neml2::LabeledVector::zeros(_input_data.size(), {&model().output()});
+      _in = neml2::LabeledVector::zeros(_input_data.size(), {&model().input_axis()});
+      _out = neml2::LabeledVector::zeros(_input_data.size(), {&model().output_axis()});
     }
 
     // Steps before stress update
@@ -119,8 +117,7 @@ CauchyStressFromNEML2UO::batchCompute()
 
     if (_t_step > 0)
     {
-      if (model().implicit())
-        applyPredictor();
+      applyPredictor();
 
       solve();
 
@@ -155,22 +152,17 @@ CauchyStressFromNEML2UO::batchCompute()
 void
 CauchyStressFromNEML2UO::postCompute()
 {
-  // Calculate stress derivative w.r.t material parameters
-  if (_require_parameter_derivatives)
+  for (auto && [name, prop] : _props)
   {
-    for (auto param_name : _parameter_derivatives)
-    {
-      auto model_param = model().named_parameters(true)[param_name];
+    // Extract the parameter derivative from NEML2
+    auto param = neml2::BatchTensor(model().named_parameters()[name]);
+    auto dstress_dparam = neml2::math::jacrev(_out(stress()), param);
 
-      // Fill the NEML2 output back into the Blackbear output data
-      for (const neml2::TorchSize i : index_range(_output_data))
-      {
-        // auto data = neml2::math::jacrev(_out(stress()), model_param);
-        /// TODO : need to be changed to get multiple derivatives. Should we just have multiple UOs instead?
-        std::get<2>(_output_data[i]) = NEML2Utils::toMOOSE<SymmetricRankTwoTensor>(
-            neml2::math::jacrev(_out(stress()), model_param).batch_index({i}));
-      }
-    }
+    // Fill the NEML2 parameter derivative into MOOSE UO
+    auto & dstress_dprop = prop->setOutputData();
+    for (const neml2::TorchSize i : index_range(dstress_dprop))
+      dstress_dprop[i] =
+          NEML2Utils::toMOOSE<SymmetricRankTwoTensor>(dstress_dparam.batch_index({i}));
   }
 }
 
@@ -185,9 +177,9 @@ void
 CauchyStressFromNEML2UO::advanceStep()
 {
   // Set old state variables and old forces
-  if (model().input().has_subaxis("old_state") && model().output().has_subaxis("state"))
+  if (model().input_axis().has_subaxis("old_state") && model().output_axis().has_subaxis("state"))
     _in.slice("old_state").fill(_out.slice("state"));
-  if (model().input().has_subaxis("old_forces") && model().input().has_subaxis("forces"))
+  if (model().input_axis().has_subaxis("old_forces") && model().input_axis().has_subaxis("forces"))
     _in.slice("old_forces").fill(_in.slice("forces"));
 }
 
@@ -204,8 +196,8 @@ CauchyStressFromNEML2UO::updateForces()
       // NEML2 variable accessors
       {strain(), temperature()},
       // Pointer to the batched data
-      model().input().has_variable(strain()) ? &std::get<0>(input) : nullptr,
-      model().input().has_variable(temperature()) ? &std::get<1>(input) : nullptr);
+      model().input_axis().has_variable(strain()) ? &std::get<0>(input) : nullptr,
+      model().input_axis().has_variable(temperature()) ? &std::get<1>(input) : nullptr);
 
   NEML2Utils::set(
       // The input LabeledVector
@@ -213,7 +205,7 @@ CauchyStressFromNEML2UO::updateForces()
       // NEML2 variable accessors
       {time()},
       // Pointer to the unbatched data
-      model().input().has_variable(time()) ? &_t : nullptr);
+      model().input_axis().has_variable(time()) ? &_t : nullptr);
 }
 
 void
@@ -222,7 +214,8 @@ CauchyStressFromNEML2UO::applyPredictor()
   // Set trial state variables (i.e., initial guesses).
   // Right now we hard-code to use the old state as the trial state.
   // TODO: implement other predictors
-  _in.slice("state").fill(_in.slice("old_state"));
+  if (model().input_axis().has_subaxis("state") && model().input_axis().has_subaxis("old_state"))
+    _in.slice("state").fill(_in.slice("old_state"));
 }
 
 void

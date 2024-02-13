@@ -27,6 +27,8 @@ AdjointStrainStressGradNEML2InnerProduct::validParams()
       "to perform the objective stress integration");
   params.addRequiredParam<UserObjectName>(
       "neml2_uo", "The NEML2 user object that performs the batched computation");
+  params.addRequiredParam<UserObjectName>("stress_derivative",
+                                          "The user object that stores the stress derivative");
   params.addRequiredParam<MaterialPropertyName>(
       "adjoint_strain_name", "Name of the strain property in the adjoint problem");
   return params;
@@ -39,7 +41,8 @@ AdjointStrainStressGradNEML2InnerProduct::AdjointStrainStressGradNEML2InnerProdu
     _adjoint_strain(getMaterialPropertyByName<RankTwoTensor>(
         getParam<MaterialPropertyName>("adjoint_strain_name"))),
     _neml2_uo(getUserObject<CauchyStressFromNEML2UO>("neml2_uo")),
-    _output(_neml2_uo.getOutputData())
+    _derivative(getUserObject<BatchPropertyDerivativeRankTwoTensorReal>("stress_derivative")
+                    .getOutputData())
 {
   NEML2Utils::libraryNotEnabledError(parameters);
 }
@@ -48,15 +51,15 @@ Real
 AdjointStrainStressGradNEML2InnerProduct::computeQpInnerProduct()
 {
   if (!_neml2_uo.outputReady())
-    mooseError("Stress gradient batch material property is not ready to output.");
+    mooseError("The NEML2 material update has not been performed yet");
 
   const auto index = _neml2_uo.getIndex(_current_elem->id());
-  Real ans = -_adjoint_strain[_qp].doubleContraction(std::get<2>(_output[index + _qp]));
+  Real ans = -_adjoint_strain[_qp].doubleContraction(_derivative[index + _qp]);
 
   if (_current_elem->id() == 90 && _qp == 0)
   {
     std::cout << "Adjoint strain: " << _adjoint_strain[_qp] << std::endl;
-    std::cout << "Stress grad: " << std::get<2>(_output[index + _qp]) << std::endl;
+    std::cout << "Stress grad: " << _derivative[index + _qp] << std::endl;
   }
 
   return ans;

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "CauchyStressFromNEML2UO.h"
+#include "BatchPropertyDerivative.h"
 #include "ElementOptimizationFunctionInnerProduct.h"
 
 /**
@@ -39,5 +40,5 @@ protected:
   const CauchyStressFromNEML2UO & _neml2_uo;
 
   /// The output from the NEML2 userobject
-  const CauchyStressFromNEML2UO::OutputVector & _output;
+  const BatchPropertyDerivativeRankTwoTensorReal::OutputVector & _derivative;
 };

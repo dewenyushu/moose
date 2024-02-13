@@ -11,22 +11,24 @@
 
 #include "BatchMaterial.h"
 
-typedef BatchMaterial<
+template <typename OutputType, typename InputType>
+using BatchPropertyDerivativeBase = BatchMaterial<
     // tuple representation
     BatchMaterialUtils::TupleStd,
     // output data type
-    Real,
+    OutputType,
     // gathered input data types:
-    BatchMaterialUtils::GatherMatProp<Real>>
+    BatchMaterialUtils::GatherMatProp<InputType>>;
 
-    BatchScalarPropertyParent;
-
-class BatchScalarProperty : public BatchScalarPropertyParent
+template <typename OutputType, typename InputType>
+class BatchPropertyDerivative : public BatchPropertyDerivativeBase<OutputType, InputType>
 {
 public:
   static InputParameters validParams();
 
-  BatchScalarProperty(const InputParameters & params);
+  BatchPropertyDerivative(const InputParameters & params);
 
-  void batchCompute() override;
+  void batchCompute() override {}
 };
+
+typedef BatchPropertyDerivative<RankTwoTensor, Real> BatchPropertyDerivativeRankTwoTensorReal;
