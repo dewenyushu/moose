@@ -74,6 +74,7 @@
   []
   [set_state_for_adjoint]
     type = MultiAppCopyTransfer
+    # HERE we would like to copy the stress derivative from forward to adjoint
     from_multi_app = forward
     to_multi_app = adjoint
     source_variable = 'ux uy'

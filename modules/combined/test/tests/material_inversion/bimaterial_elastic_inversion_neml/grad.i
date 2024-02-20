@@ -120,24 +120,23 @@
 
 [UserObjects]
   [E_batch_material]
-    type = BatchScalarProperty
+    type = BatchPropertyDerivativeRankTwoTensorReal
     material_property = 'E_material'
   []
   [neml2_stress_UO]
     type = CauchyStressFromNEML2UO
     temperature = 'T'
     model = 'elasticity_model'
-    parameter_derivatives = 'E'
-    reset_parameter_names = 'E'
-    param_material_prop = 'E_material'
-    material_param_uo = 'E_batch_material'
+    scalar_material_property_names = 'E'
+    scalar_material_property_values = 'E_batch_material'
   []
 []
 
 [VectorPostprocessors]
   [grad_youngs_modulus]
     type = AdjointStrainStressGradNEML2InnerProduct
-    neml2_uo = neml2_stress_UO
+    neml2_uo = 'neml2_stress_UO'
+    stress_derivative = 'E_batch_material' # this should be received from the forward
     adjoint_strain_name = 'mechanical_strain'
     variable = dummy
     function = E

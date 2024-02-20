@@ -1,8 +1,5 @@
-[GlobalParams]
-  displacements = 'ux uy'
-[]
-
 [Mesh]
+  displacements = 'ux uy'
   [gmg]
     type = GeneratedMeshGenerator
     dim = 2
@@ -15,10 +12,25 @@
   []
 []
 
+[Variables]
+  # adjoint
+  [ux]
+  []
+  [uy]
+  []
+[]
+
 [AuxVariables]
   [dummy]
   []
   [T]
+  []
+  # displacement variables to be transferred from the forward app
+  # we use them to compute stress and stress derivative wrt E
+  # let them be 0 for test purpose
+  [state_x]
+  []
+  [state_y]
   []
 []
 
@@ -33,7 +45,11 @@
         incremental = true
         volumetric_locking_correction = false
         generate_output = 'cauchy_stress_xx'
+        displacements = 'ux uy'
+        # add base name to distinguish between forward and adjoint
+        base_name = 'adjoint'
       []
+      displacements = 'ux uy'
     []
   []
 []
@@ -66,19 +82,34 @@
 []
 
 [NEML2]
+  # two elasticity models are listed inside "elasticity.i" for forward and adjoint, respectively
   input = 'elasticity.i'
-  model = 'elasticity_model'
+  model = 'adjoint_elasticity_model'
+  verbose = false
   temperature = 'T'
-  verbose = true
   mode = PARSE_ONLY
   device = 'cpu'
 []
 
 [Materials]
-  [stress]
+  [adjoint_stress]
     type = CauchyStressFromNEML2Receiver
-    neml2_uo = neml2_stress_UO
+    neml2_uo = adjoint_neml2_stress_UO
+    base_name = 'adjoint'
   []
+  # forward stress is not used
+  # [forward_stress]
+  #   type = CauchyStressFromNEML2Receiver
+  #   neml2_uo = forward_neml2_stress_UO
+  #   base_name = 'forward'
+  # []
+  [forward_strain]
+    type = ComputeSmallStrain
+    displacements = 'state_x state_y'
+    base_name = 'forward'
+  []
+  # adjoint and forward use the same young's modulus value
+  # need to be separated between adjoint and forward?
   [E_material]
     type = GenericFunctionMaterial
     prop_names = 'E_material'
@@ -108,16 +139,44 @@
 []
 
 [UserObjects]
-  [E_batch_material] # the derivative should be sent to adjoint
+  # forward stress derivative,to be used in gradient calculation
+  [forward_E_batch_material]
     type = BatchPropertyDerivativeRankTwoTensorReal
     material_property = 'E_material'
   []
-  [neml2_stress_UO]
+  [forward_neml2_stress_UO]
     type = CauchyStressFromNEML2UO
     temperature = 'T'
-    model = 'elasticity_model'
+    model = 'forward_elasticity_model'
     scalar_material_property_names = 'E'
-    scalar_material_property_values = 'E_batch_material'
+    scalar_material_property_values = 'forward_E_batch_material'
+    # use forward strain calculated from state_x and state_y
+    mechanical_strain = 'forward_mechanical_strain'
+  []
+  # adjoint stress derivative, not used
+  [adjoint_E_batch_material]
+    type = BatchPropertyDerivativeRankTwoTensorReal
+    material_property = 'E_material'
+  []
+  [adjoint_neml2_stress_UO]
+    type = CauchyStressFromNEML2UO
+    temperature = 'T'
+    model = 'adjoint_elasticity_model'
+    scalar_material_property_names = 'E'
+    scalar_material_property_values = 'adjoint_E_batch_material'
+    # use adjoint strain calculated tensor mechanics module
+    mechanical_strain = 'adjoint_mechanical_strain'
+  []
+[]
+
+[VectorPostprocessors]
+  [grad_youngs_modulus]
+    type = AdjointStrainStressGradNEML2InnerProduct
+    neml2_uo = 'forward_neml2_stress_UO'
+    stress_derivative = 'forward_E_batch_material' # this should come from the forward
+    adjoint_strain_name = 'adjoint_mechanical_strain'
+    variable = dummy
+    function = E
   []
 []
 
@@ -152,6 +211,5 @@
 []
 
 [Outputs]
-  file_base = 'forward'
   console = true
 []

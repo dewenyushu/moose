@@ -37,6 +37,9 @@ CauchyStressFromNEML2UO::validParams()
       "derivatives of the Cauchy stress w.r.t. each of the parameter will be set into the "
       "corresponding userobject.");
 
+  params.addParam<MaterialPropertyName>(
+      "mechanical_strain", "mechanical_strain", "Name of the mechanical strain material property.");
+
   // Since we use the NEML2 model to evaluate the residual AND the Jacobian at the same time, we
   // want to execute this user object only at execute_on = LINEAR (i.e. during residual evaluation).
   ExecFlagEnum execute_options = MooseUtils::getDefaultExecFlagEnum();
