@@ -23,9 +23,21 @@ EulerAngleFileReader::validParams()
 }
 
 EulerAngleFileReader::EulerAngleFileReader(const InputParameters & params)
-  : EulerAngleProvider(params), _file_name(getParam<FileName>("file_name"))
+  : EulerAngleProvider(params),
+    _finish_read_file(false),
+    _file_name(getParam<FileName>("file_name"))
 {
-  readFile();
+}
+
+void
+EulerAngleFileReader::initialize()
+{
+  // only update Euler angles info from the reporter when the initial Euler angle has been read from
+  // file
+  if (!_finish_read_file)
+    readFile();
+  else
+    UpdateEulerAngle();
 }
 
 unsigned int
@@ -44,6 +56,8 @@ EulerAngleFileReader::getEulerAngles(unsigned int i) const
 void
 EulerAngleFileReader::readFile()
 {
+  std::cout << "EulerAngleFileReader::readFile()" << std::endl;
+
   // Read in Euler angles from _file_name
   std::ifstream inFile(_file_name.c_str());
   if (!inFile)
@@ -60,4 +74,6 @@ EulerAngleFileReader::readFile()
   EulerAngles a;
   while (inFile >> a.phi1 >> a.Phi >> a.phi2 >> weight)
     _angles.push_back(EulerAngles(a));
+
+  _finish_read_file = true;
 }

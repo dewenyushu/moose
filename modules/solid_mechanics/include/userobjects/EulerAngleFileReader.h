@@ -27,11 +27,14 @@ public:
   virtual const EulerAngles & getEulerAngles(unsigned int) const;
   virtual unsigned int getGrainNum() const;
 
-  virtual void initialize() {}
+  virtual void UpdateEulerAngle() {};
+
+  virtual void initialize();
   virtual void execute() {}
   virtual void finalize() {}
 
 protected:
+  bool _finish_read_file;
   void readFile();
 
   FileName _file_name;
