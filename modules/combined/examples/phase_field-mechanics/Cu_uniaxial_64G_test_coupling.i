@@ -1,42 +1,48 @@
 [GlobalParams]
-    displacements = 'disp_x disp_y disp_z'
+  displacements = 'disp_x disp_y disp_z'
 []
 
 [Mesh]
-    displacements = 'disp_x disp_y disp_z'
-    [fmg]
-      type = GeneratedMeshGenerator
-      dim = 3
-      nx = 40
-      ny = 40
-      nz = 1
-      xmax = 1000
-      ymax = 1000
-      zmax = 1.0
-    []
-    [subdomain]
-      input = fmg
-      type = SubdomainPerElementGenerator
-      element_ids   = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39'
-      subdomain_ids = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39'
-    []
-    [bot_corner]
-      type = ExtraNodesetGenerator
-      new_boundary = bot_corner
-      input = subdomain
-      coord = '0 0.0 0.0'
-    []
+  displacements = 'disp_x disp_y disp_z'
+  [fmg]
+    type = GeneratedMeshGenerator
+    dim = 3
+    nx = 40
+    ny = 40
+    nz = 1
+    xmax = 1000
+    ymax = 1000
+    zmax = 1.0
   []
+  [subdomain]
+    input = fmg
+    type = SubdomainPerElementGenerator
+    element_ids = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39'
+    subdomain_ids = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39'
+  []
+  [bot_corner]
+    type = ExtraNodesetGenerator
+    new_boundary = bot_corner
+    input = subdomain
+    coord = '0 0.0 0.0'
+  []
+[]
 
-[Modules/TensorMechanics/Master]
-    [all]
-      strain = FINITE
-      add_variables = true
-      volumetric_locking_correction = true
-      generate_output = 'stress_yy strain_yy'
-      save_in = 'resid_x resid_y resid_z'
+[Modules]
+
+  [TensorMechanics]
+
+    [Master]
+      [all]
+        strain = FINITE
+        add_variables = true
+        volumetric_locking_correction = true
+        generate_output = 'stress_yy strain_yy'
+        save_in = 'resid_x resid_y resid_z'
+      []
     []
   []
+[]
 
 [AuxVariables]
   [resid_x]
@@ -100,43 +106,43 @@
 []
 
 [UserObjects]
-     [assign_block_id]
-      type = VariableValueElementSubdomainModifier
-      coupled_var = 'unique_grains'
-      execute_on = 'TIMESTEP_BEGIN'
-    []
+  [assign_block_id]
+    type = VariableValueElementSubdomainModifier
+    coupled_var = 'unique_grains'
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
+  []
 []
 
 [BCs]
-    [x_roller]
-       type = DirichletBC
-       preset = true
-       variable = disp_y
-       boundary = bottom
-       value = 0.0
-     []
-     [y_roller]
-       type = DirichletBC
-       preset = true
-       variable = disp_x
-       boundary = left
-       value = 0.0
-     []
-     [z_roller]
-       type = DirichletBC
-       preset = true
-       variable = disp_z
-       boundary = back
-       value = 0.0
-     []
+  [x_roller]
+    type = DirichletBC
+    preset = true
+    variable = disp_y
+    boundary = bottom
+    value = 0.0
+  []
+  [y_roller]
+    type = DirichletBC
+    preset = true
+    variable = disp_x
+    boundary = left
+    value = 0.0
+  []
+  [z_roller]
+    type = DirichletBC
+    preset = true
+    variable = disp_z
+    boundary = back
+    value = 0.0
+  []
 
-     [y_pull_function]
-       type = FunctionDirichletBC
-       variable = disp_z
-       boundary = front
-       function = '1.0e-4*t'
-     []
-   []
+  [y_pull_function]
+    type = FunctionDirichletBC
+    variable = disp_z
+    boundary = front
+    function = '1.0e-4*t'
+  []
+[]
 
 [Materials]
   [elasticity_tensor_copper]
@@ -173,13 +179,19 @@
   []
 []
 
-[Preconditioning]
-  [SMP]
-    type = SMP
-    full=true
+[VectorPostprocessors]
+  [updated_grain_ea]
+    type = AverageValueEveryBlock
+    variables = "updated_euler_angle_1 updated_euler_angle_2 updated_euler_angle_3"
   []
 []
 
+[Preconditioning]
+  [SMP]
+    type = SMP
+    full = true
+  []
+[]
 
 [Executioner]
   type = Transient
@@ -199,7 +211,7 @@
 
   [TimeStepper]
     type = IterationAdaptiveDT
-    dt=1e-6
+    dt = 1e-6
     iteration_window = 2
     optimal_iterations = 10
     growth_factor = 1.2
