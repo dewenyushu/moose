@@ -40,6 +40,20 @@ EulerAngles::EulerAngles(const Eigen::Quaternion<Real> & q)
     mooseError("Euler angle out of range.");
 }
 
+EulerAngles::EulerAngles(const Real & v0, const Real & v1, const Real & v2)
+{
+  phi1 = v0;
+  Phi = v1;
+  phi2 = v2;
+}
+
+EulerAngles::EulerAngles(const RealVectorValue & vec)
+{
+  phi1 = vec(0);
+  Phi = vec(1);
+  phi2 = vec(2);
+}
+
 Eigen::Quaternion<Real>
 EulerAngles::toQuaternion()
 {
