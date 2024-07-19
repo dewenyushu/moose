@@ -32,6 +32,6 @@ private:
   const std::vector<Real> & _euler_angle_1;
   const std::vector<Real> & _euler_angle_2;
 
-  /// Corresponding grain IDs
-  const std::vector<unsigned long long> & _grain_id;
+  /// Corresponding grain IDs - it is of Real type from reporter
+  const std::vector<Real> & _grain_id;
 };

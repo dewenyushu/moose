@@ -27,13 +27,13 @@
   [euler_angle_file]
     type = EulerAngleUpdateFromReporter
     file_name = grn_36_rand_2D.tex
-    execute_on = 'initial timestep_begin'
+    execute_on = 'timestep_begin'
     execution_order_group = -1 # execute before grain tracker
 
     euler_angle_0_name = updated_ea/ea0
     euler_angle_1_name = updated_ea/ea1
     euler_angle_2_name = updated_ea/ea2
-    grain_id_name = updated_ea/grain_id
+    grain_id_name = updated_ea/subdomain_id
   []
   # [euler_angle_file]
   #   type = EulerAngleFileReader
@@ -56,7 +56,7 @@
     type = GrainTrackerElasticity
     threshold = 0.2
     compute_var_to_feature_map = true
-    execute_on = 'initial timestep_begin'
+    execute_on = 'timestep_begin'
     flood_entity_type = ELEMENTAL
 
     C_ijkl = '1.27e5 0.708e5 0.708e5 1.27e5 0.708e5 1.27e5 0.7355e5 0.7355e5 0.7355e5'
@@ -80,8 +80,8 @@
     type = TransientMultiApp
     # positions = '0 0 0'
     input_files = 'Cu_uniaxial_64G_test_coupling.i'
+    execute_on = 'TIMESTEP_END' # make sure that CP runs after PF
     # app_type = coupling_xolotlApp
-    # execute_on = TIMESTEP_END
     # library_path = 'lib'
   []
 []
@@ -139,6 +139,14 @@
     source_variable = 'unique_grains'
     variable = 'unique_grains'
     num_points = 1
+  []
+
+  [from_vpp]
+    type = MultiAppReporterTransfer
+    to_reporters = 'updated_ea/ea0 updated_ea/ea1 updated_ea/ea2 updated_ea/subdomain_id'
+    from_reporters = 'updated_grain_ea/euler_angle_1 updated_grain_ea/euler_angle_2 updated_grain_ea/euler_angle_3 updated_grain_ea/subdomain_id'
+    from_multi_app = sub_app
+    subapp_index = 0
   []
 []
 
@@ -440,11 +448,8 @@
 [Reporters]
   [updated_ea]
     type = ConstantReporter
-    real_vector_names = 'ea0 ea1 ea2'
-    real_vector_values = '0; 0; 0' # Dummy value
-
-    dof_id_type_vector_names = 'grain_id'
-    dof_id_type_vector_values = '0'
+    real_vector_names = 'ea0 ea1 ea2 subdomain_id'
+    real_vector_values = '0; 0; 0; 0' # Dummy value
   []
 []
 
