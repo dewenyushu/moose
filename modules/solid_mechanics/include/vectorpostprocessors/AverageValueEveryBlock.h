@@ -11,8 +11,15 @@
 
 #include "GeneralVectorPostprocessor.h"
 #include "libmesh/communicator.h"
+#include "Coupleable.h"
+#include "MooseVariableDependencyInterface.h"
 
-class AverageValueEveryBlock : public GeneralVectorPostprocessor
+// Forward Declarations
+class MooseMesh;
+
+class AverageValueEveryBlock : public GeneralVectorPostprocessor,
+                               public Coupleable,
+                               public MooseVariableDependencyInterface
 {
 public:
   static InputParameters validParams();
@@ -24,7 +31,8 @@ public:
   virtual void finalize() override;
 
 protected:
-  // Real computeIntegral(const FieldVariableValue & sol) const;
+  // Compute the area as well as integral of the coupled variables on the current element
+  void computeIntegral();
 
   /// Reference to the mesh
   MooseMesh & _mesh;
@@ -37,6 +45,8 @@ protected:
   /// Variables to output
   std::vector<VariableName> _variables;
 
+  std::vector<const VariableValue *> _variable_vals;
+
   /// Number of columns
   int _num_cols;
 
@@ -48,9 +58,6 @@ protected:
 
   /// Vector of outputs, where each entry is the vector of average values for single variable in each block
   std::vector<VectorPostprocessorValue *> _output_vector;
-
-  /// Block ids over which this postprocessor does the computation
-  std::set<SubdomainID> _block_ids;
 
   /// Map between the row index and subdomain ID
   std::unordered_map<SubdomainID, int> _block_id_map;
