@@ -9,8 +9,9 @@
 
 #include "AverageValueEveryBlock.h"
 #include "MooseMesh.h"
-#include "SystemBase.h"
 #include "Assembly.h"
+#include "MooseVariable.h"
+#include "SystemBase.h"
 #include "libmesh/quadrature.h"
 
 registerMooseObject("SolidMechanicsApp", AverageValueEveryBlock);
@@ -37,8 +38,7 @@ AverageValueEveryBlock::validParams()
   //                       "structural component. Used to disambiguate multiple components that
   //                       share " "the same mesh block.");
 
-  params.addRequiredParam<std::vector<VariableName>>("variables",
-                                                     "Variables for block-averaged output.");
+  params.addRequiredCoupledVar("variables", "Variables for block-averaged output.");
 
   // params.addRequiredParam<std::vector<Real>>(
   //     "lengths",
@@ -52,22 +52,18 @@ AverageValueEveryBlock::validParams()
 
 AverageValueEveryBlock::AverageValueEveryBlock(const InputParameters & parameters)
   : GeneralVectorPostprocessor(parameters),
-    // _mesh(_fe_problem.mesh()),
+    Coupleable(this, false),
+    MooseVariableDependencyInterface(this),
     _mesh(_subproblem.mesh()),
     _assembly(_subproblem.assembly(0, _sys.number())),
     _q_point(_assembly.qPoints()),
     _qrule(_assembly.qRule()),
     _JxW(_assembly.JxW()),
     _coord(_assembly.coordTransformation()),
-    _variables(getParam<std::vector<VariableName>>("variables")),
+    _variables(coupledNames("variables")),
+    _variable_vals(coupledValues("variables")),
     _num_cols(_variables.size() + 1), // add one colum for the subdomain ID
     _num_rows(_mesh.meshSubdomains().size())
-// _direction(getParam<Point>("axis_direction")),
-// _reference_point(getParam<Point>("reference_point")),
-// _lengths(getParam<std::vector<Real>>("lengths")),
-// _tolerance(getParam<Real>("tolerance")),
-// _number_of_nodes(_lengths.size()),
-// _cross_section_maximum_radius(getParam<Real>("cross_section_maximum_radius"))
 {
   _output_vector.resize(_num_cols);
   for (const auto j : make_range(_num_cols))
@@ -77,15 +73,6 @@ AverageValueEveryBlock::AverageValueEveryBlock(const InputParameters & parameter
     else
       _output_vector[j] = &declareVector(_variables[j - 1]);
   }
-
-  // for (const auto j : make_range(_variables.size()))
-  // {
-  //   const MooseVariable & variable = _sys.getFieldVariable<Real>(_tid, _variables[j]);
-  //   if (!variable.isNodal())
-  //     paramError(
-  //         "variables",
-  //         "The variables provided to this vector postprocessor must be defined at the nodes.");
-  // }
 }
 
 void
@@ -98,10 +85,12 @@ AverageValueEveryBlock::initialize()
   }
   _subdomain_areas.resize(_num_rows, 0.0);
 
-  _block_ids = _mesh.meshSubdomains();
   int idx = 0;
-  for (const auto sid : _block_ids)
+  for (const auto sid : _mesh.meshSubdomains())
+  {
+    (*_output_vector[0])[idx] = sid;
     _block_id_map[sid] = idx++;
+  }
 }
 
 void
@@ -110,61 +99,75 @@ AverageValueEveryBlock::finalize()
   for (const auto row : make_range(_num_rows))
     for (const auto col : make_range(_num_cols))
     {
+      if (col == 0) // skip the column for the subdomain ID
+        continue;
       if (!MooseUtils::absoluteFuzzyEqual(_subdomain_areas[col], 0.0))
-        (*_output_vector[col])[row] /= _subdomain_areas[col];
+        (*_output_vector[col])[row] /= _subdomain_areas[row];
     }
 }
 
 void
 AverageValueEveryBlock::execute()
 {
-  // Get the current solution vectors
-  const NumericVector<Number> & sol = *_sys.currentSolution();
-
   for (const auto & elem : *_mesh.getActiveLocalElementRange())
   {
-    auto sid = elem->subdomain_id();
-
     // Prepare the element for integration
     _fe_problem.setCurrentSubdomainID(elem, 0);
     _fe_problem.prepare(elem, 0);
     _fe_problem.reinitElem(elem, 0);
 
-    // Calculate the integral of specified variables inside the element
-    for (const auto j : make_range(_variables.size()))
-    {
-      const MooseVariable & var = _sys.getFieldVariable<Real>(_tid, _variables[j]);
-      // auto integral = computeIntegral(var.sln());
+    // compute integral of every coupled variable and add to corresponding items in _output_vector
+    // compute element area and add to the corresponding entry in _subdomain_areas
+    computeIntegral();
 
-      Real sum = 0;
+    // auto sid = _assembly.elem()->subdomain_id();
 
-      for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
-        sum += _JxW[qp] * _coord[qp] * var.sln()[qp];
+    // auto row_id = _block_id_map[sid];
 
-      // return sum;
-    }
+    // // Calculate the integral of specified variables inside the element
+    // for (const auto i : make_range(_variables.size()))
+    // {
+    //   std::cout << _variables[i] << ": ";
 
-    auto idx = _block_id_map[sid];
+    //   // const MooseVariable & var = _sys.getFieldVariable<Real>(_tid, _variables[j]);
+    //   auto integral = computeIntegral(i);
+
+    //   // Real sum = 0;
+
+    //   // for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
+    //   //   sum += _JxW[qp] * _coord[qp] * var.sln()[qp];
+
+    //   // return sum;
+    // }
+
+    // auto idx = _block_id_map[sid];
 
     // std::cout << "subdomain ID: " << sid << "; " << "element ID: " << elem_ptr->id() <<
     // std::endl;
 
     // calculate the integral of variables inside this element
 
-    std::cout << "current element ID: " << _assembly.elem()->id() << std::endl;
+    // std::cout << "current element ID: " << _assembly.elem()->id() << std::endl;
   }
 }
 
-// Real
-// AverageValueEveryBlock::computeIntegral(const FieldVariableValue & sol) const
-// {
-//   Real sum = 0;
+void
+AverageValueEveryBlock::computeIntegral()
+{
+  auto sid = _assembly.elem()->subdomain_id();
 
-//   for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
-//     sum += _JxW[qp] * _coord[qp] * sol[qp];
+  auto row_id = _block_id_map.at(sid);
 
-//   return sum;
-// }
+  for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
+  {
+    for (const auto i : make_range(_variables.size()))
+    {
+      (*_output_vector[i + 1])[row_id] += _JxW[qp] * _coord[qp] * (*_variable_vals[i])[qp];
+    }
+
+    _subdomain_areas[row_id] += _JxW[qp] * _coord[qp];
+  }
+}
 
 // Real
 // AverageValueEveryBlock::distancePointToPlane(const Node & node,

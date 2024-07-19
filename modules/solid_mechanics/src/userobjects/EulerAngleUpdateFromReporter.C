@@ -44,8 +44,7 @@ EulerAngleUpdateFromReporter::EulerAngleUpdateFromReporter(const InputParameters
         getReporterValue<std::vector<Real>>("euler_angle_1_name", REPORTER_MODE_REPLICATED)),
     _euler_angle_2(
         getReporterValue<std::vector<Real>>("euler_angle_2_name", REPORTER_MODE_REPLICATED)),
-    _grain_id(getReporterValue<std::vector<unsigned long long>>("grain_id_name",
-                                                                REPORTER_MODE_REPLICATED))
+    _grain_id(getReporterValue<std::vector<Real>>("grain_id_name", REPORTER_MODE_REPLICATED))
 
 {
 }
@@ -69,11 +68,11 @@ EulerAngleUpdateFromReporter::UpdateEulerAngle()
                "). Some existing grains will miss texture information.");
 
   // zip the grain id with the euler angles
-  std::map<unsigned long long, RealVectorValue> ea_data;
+  std::map<int, RealVectorValue> ea_data;
   for (const auto i : index_range(_grain_id))
   {
-    ea_data[_grain_id[i]] =
-        RealVectorValue(_euler_angle_0[i], _euler_angle_1[i], _euler_angle_2[i]);
+    int gid = (int)(_grain_id[i]);
+    ea_data[gid] = RealVectorValue(_euler_angle_0[i], _euler_angle_1[i], _euler_angle_2[i]);
   }
 
   // re-assign euler angles based on the new data

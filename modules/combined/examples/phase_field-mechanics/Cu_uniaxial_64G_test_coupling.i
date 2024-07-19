@@ -109,7 +109,8 @@
   [assign_block_id]
     type = VariableValueElementSubdomainModifier
     coupled_var = 'unique_grains'
-    execute_on = 'INITIAL TIMESTEP_BEGIN'
+    execute_on = 'TIMESTEP_BEGIN'
+    execution_order_group = -1
   []
 []
 
@@ -182,7 +183,9 @@
 [VectorPostprocessors]
   [updated_grain_ea]
     type = AverageValueEveryBlock
-    variables = "updated_euler_angle_1 updated_euler_angle_2 updated_euler_angle_3"
+    # variables = "updated_euler_angle_1 updated_euler_angle_2 updated_euler_angle_3"
+    variables = "euler_angle_1 euler_angle_2 euler_angle_3"
+    execute_on = 'TIMESTEP_END'
   []
 []
 
