@@ -61,36 +61,4 @@ protected:
 
   /// Map between the row index and subdomain ID
   std::unordered_map<SubdomainID, int> _block_id_map;
-
-  // /// Axis direction of the structural component
-  // const Point _direction;
-
-  // /// Starting or reference point of the structural component to locate nodes on the cross section
-  // const Point _reference_point;
-
-  // /// Locations for of the cross section
-  // const std::vector<Real> _lengths;
-
-  // /// Tolerance to identify nodes on the user-prescribed cross section
-  // const Real _tolerance;
-
-  // /// Number of nodes for computing output (local and global). We allow each section to have different
-  // /// numbers of nodes (this would allow local, regular refinement in the mesh)
-  // std::vector<unsigned int> _number_of_nodes;
-
-  // /// Tolerance to disambiguate cross section locations in different components within the same block
-  // const Real _cross_section_maximum_radius;
-
-  // private:
-  /**
-   * Determine the distance of a point from a plane at a specified axial distance from the
-   * component's reference point. If the in-plane distance is greater than the input parameter
-   * cross section maximum radius, return a large number.
-   * @param node The node whose distance from a plane is to be considered
-   * @param reference_point Reference point for the component
-   * @param length Axial position on the component to be considered
-   */
-  // Real
-  // distancePointToPlane(const Node & node, const Point & reference_point, const Real length)
-  // const;
 };

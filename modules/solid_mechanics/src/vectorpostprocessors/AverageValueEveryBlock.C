@@ -23,30 +23,7 @@ AverageValueEveryBlock::validParams()
 
   params.addClassDescription("Compute the section's variable average in three-dimensions "
                              "given a user-defined definition of the cross section.");
-  // params.addParam<std::vector<SubdomainName>>(
-  //     "block",
-  //     "The list of blocks in which to search for cross sectional nodes to compute the variable "
-  //     "average.");
-  // params.addRequiredParam<Point>("axis_direction", "Direction of the structural component's
-  // axis"); params.addRequiredParam<Point>("reference_point",
-  //                                "Structural component reference starting point from which the "
-  //                                "input parameter 'lengths' applies.");
-  // params.addParam<Real>("cross_section_maximum_radius",
-  //                       std::numeric_limits<double>::max(),
-  //                       "Radial distance with respect to the body axis within which nodes are "
-  //                       "considered to belong to this "
-  //                       "structural component. Used to disambiguate multiple components that
-  //                       share " "the same mesh block.");
-
   params.addRequiredCoupledVar("variables", "Variables for block-averaged output.");
-
-  // params.addRequiredParam<std::vector<Real>>(
-  //     "lengths",
-  //     "Distance(s) along axis of from reference_point at which to compute average values.");
-  // params.addParam<Real>("tolerance",
-  //                       1.0e-6,
-  //                       "Maximum axial distance of nodes from the specified axial lengths to "
-  //                       "consider them in the cross-section average");
   return params;
 }
 
@@ -96,14 +73,33 @@ AverageValueEveryBlock::initialize()
 void
 AverageValueEveryBlock::finalize()
 {
+  // paralle communication
   for (const auto row : make_range(_num_rows))
+    _communicator.sum(_subdomain_areas[row]);
+
+  for (const auto row : make_range(_num_rows))
+  {
+    for (const auto col : make_range(_num_cols))
+    {
+      if (col == 0)
+        _communicator.max((*_output_vector[col])[row]);
+      else
+        _communicator.sum((*_output_vector[col])[row]);
+    }
+  }
+
+  // calculate outputs
+  for (const auto row : make_range(_num_rows))
+  {
     for (const auto col : make_range(_num_cols))
     {
       if (col == 0) // skip the column for the subdomain ID
         continue;
-      if (!MooseUtils::absoluteFuzzyEqual(_subdomain_areas[col], 0.0))
+
+      if (!MooseUtils::absoluteFuzzyEqual(_subdomain_areas[row], 0.0))
         (*_output_vector[col])[row] /= _subdomain_areas[row];
     }
+  }
 }
 
 void
@@ -119,35 +115,6 @@ AverageValueEveryBlock::execute()
     // compute integral of every coupled variable and add to corresponding items in _output_vector
     // compute element area and add to the corresponding entry in _subdomain_areas
     computeIntegral();
-
-    // auto sid = _assembly.elem()->subdomain_id();
-
-    // auto row_id = _block_id_map[sid];
-
-    // // Calculate the integral of specified variables inside the element
-    // for (const auto i : make_range(_variables.size()))
-    // {
-    //   std::cout << _variables[i] << ": ";
-
-    //   // const MooseVariable & var = _sys.getFieldVariable<Real>(_tid, _variables[j]);
-    //   auto integral = computeIntegral(i);
-
-    //   // Real sum = 0;
-
-    //   // for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
-    //   //   sum += _JxW[qp] * _coord[qp] * var.sln()[qp];
-
-    //   // return sum;
-    // }
-
-    // auto idx = _block_id_map[sid];
-
-    // std::cout << "subdomain ID: " << sid << "; " << "element ID: " << elem_ptr->id() <<
-    // std::endl;
-
-    // calculate the integral of variables inside this element
-
-    // std::cout << "current element ID: " << _assembly.elem()->id() << std::endl;
   }
 }
 
@@ -168,24 +135,3 @@ AverageValueEveryBlock::computeIntegral()
     _subdomain_areas[row_id] += _JxW[qp] * _coord[qp];
   }
 }
-
-// Real
-// AverageValueEveryBlock::distancePointToPlane(const Node & node,
-//                                              const Point & reference_point,
-//                                              const Real length) const
-// {
-//   // Compute node location w.r.t. structural component length
-//   const Point relative_distance{
-//       node(0) - reference_point(0), node(1) - reference_point(1), node(2) - reference_point(2)};
-
-//   const Real axial_distance = _direction * relative_distance;
-//   const Real in_plane_distance =
-//       (relative_distance - relative_distance * _direction * _direction).norm();
-
-//   // If the in-plane distance is greater than the specified cross-section radius, the point is not
-//   // in this component
-//   if (in_plane_distance > _cross_section_maximum_radius)
-//     return std::numeric_limits<double>::max();
-
-//   return std::abs(axial_distance - length);
-// }
