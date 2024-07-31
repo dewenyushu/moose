@@ -132,75 +132,20 @@ neml2_input = 'viscoplasticity_perfect'
 [AuxVariables]
   [T]
   []
-  [stress_xx]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [stress_yy]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [stress_xy]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [strain_xx]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [strain_yy]
-    order = CONSTANT
-    family = MONOMIAL
-  []
-  [strain_xy]
-    order = CONSTANT
-    family = MONOMIAL
-  []
+  # [strain_yy]
+  #   order = CONSTANT
+  #   family = MONOMIAL
+  # []
 []
 
 [AuxKernels]
-  [stress_xx_aux]
-    type = MaterialRankTwoTensorAux
-    i = 0
-    j = 0
-    property = cauchy_stress
-    variable = stress_xx
-  []
-  [stress_yy_aux]
-    type = MaterialRankTwoTensorAux
-    i = 1
-    j = 1
-    property = cauchy_stress
-    variable = stress_yy
-  []
-  [stress_xy_aux]
-    type = MaterialRankTwoTensorAux
-    i = 0
-    j = 1
-    property = cauchy_stress
-    variable = stress_xy
-  []
-  [strain_xx_aux]
-    type = MaterialRankTwoTensorAux
-    i = 0
-    j = 0
-    property = mechanical_strain
-    variable = strain_xx
-  []
-  [strain_yy_aux]
-    type = MaterialRankTwoTensorAux
-    i = 1
-    j = 1
-    property = mechanical_strain
-    variable = strain_yy
-  []
-  [strain_xy_aux]
-    type = MaterialRankTwoTensorAux
-    i = 0
-    j = 1
-    property = mechanical_strain
-    variable = strain_xy
-  []
+  # [strain_yy_aux]
+  #   type = MaterialRankTwoTensorAux
+  #   i = 1
+  #   j = 1
+  #   property = mechanical_strain
+  #   variable = strain_yy
+  # []
 []
 
 [Physics]
@@ -212,6 +157,7 @@ neml2_input = 'viscoplasticity_perfect'
         add_variables = true
         formulation = TOTAL
         volumetric_locking_correction = true
+        generate_output = 'cauchy_stress_xx cauchy_stress_yy cauchy_stress_xy mechanical_strain_xx mechanical_strain_yy mechanical_strain_xy'
       []
     []
   []
