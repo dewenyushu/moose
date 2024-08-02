@@ -4,12 +4,20 @@ neml2_input = 'viscoplasticity_perfect'
   displacements = 'disp_x disp_y'
 []
 
+[Problem]
+  type = ReferenceResidualProblem
+  extra_tag_vectors = 'ref'
+  reference_vector = 'ref'
+[]
+
 [Mesh]
   [gmg]
     type = GeneratedMeshGenerator
     dim = 2
-    nx = 10
-    ny = 10
+    nx = 5
+    ny = 60
+    xmax = 0.005
+    ymax = 0.06
   []
 []
 
@@ -132,20 +140,20 @@ neml2_input = 'viscoplasticity_perfect'
 [AuxVariables]
   [T]
   []
-  # [strain_yy]
-  #   order = CONSTANT
-  #   family = MONOMIAL
-  # []
+  [strain_yy]
+    order = CONSTANT
+    family = MONOMIAL
+  []
 []
 
 [AuxKernels]
-  # [strain_yy_aux]
-  #   type = MaterialRankTwoTensorAux
-  #   i = 1
-  #   j = 1
-  #   property = mechanical_strain
-  #   variable = strain_yy
-  # []
+  [strain_yy_aux]
+    type = MaterialRankTwoTensorAux
+    i = 1
+    j = 1
+    property = mechanical_strain
+    variable = strain_yy
+  []
 []
 
 [Physics]
@@ -157,9 +165,17 @@ neml2_input = 'viscoplasticity_perfect'
         add_variables = true
         formulation = TOTAL
         volumetric_locking_correction = true
+        extra_vector_tags = 'ref'
         generate_output = 'cauchy_stress_xx cauchy_stress_yy cauchy_stress_xy mechanical_strain_xx mechanical_strain_yy mechanical_strain_xy'
       []
     []
+  []
+[]
+
+[Functions]
+  [top_load]
+    type = ParsedFunction
+    expression = 'if(t<100.0, 0.2539e6*t , 25.39e6)'
   []
 []
 
@@ -169,19 +185,39 @@ neml2_input = 'viscoplasticity_perfect'
     variable = disp_y
     boundary = bottom
     value = 0
+    extra_vector_tags = 'ref'
   []
   [fix_left]
     type = DirichletBC
     variable = disp_x
     boundary = left
     value = 0
+    extra_vector_tags = 'ref'
   []
   [load_top]
-    type = FunctionDirichletBC
+    # type = FunctionDirichletBC
+    # variable = disp_y
+    # boundary = top
+    # function = t
+    # preset = false
+    type = ADFunctionNeumannBC
+    use_displaced_mesh = true
     variable = disp_y
-    boundary = top
-    function = t
-    preset = false
+    boundary = 'top'
+    function = top_load
+    extra_vector_tags = 'ref'
+  []
+[]
+
+[Postprocessors]
+  [strain]
+    type = ElementAverageValue
+    variable = strain_yy
+    execute_on = 'initial timestep_end'
+  []
+  [load]
+    type = FunctionValuePostprocessor
+    function = top_load
   []
 []
 
@@ -191,13 +227,26 @@ neml2_input = 'viscoplasticity_perfect'
   petsc_options_iname = '-pc_type'
   petsc_options_value = 'lu'
   automatic_scaling = true
-  dt = 1e-2
+  line_search = 'none'
+  l_max_its = 50
+  nl_max_its = 25
+  nl_rel_tol = 1e-6
+  nl_abs_tol = 5e-8
+  start_time = 0
+  end_time = 432000.0 ## 120 hours
+  # end_time = 2e5
   dtmin = 1e-2
-  num_steps = 5
+  [TimeStepper]
+    type = IterationAdaptiveDT
+    dt = 1.0e3
+    optimal_iterations = 3
+    iteration_window = 1
+  []
   residual_and_jacobian_together = true
 []
 
 [Outputs]
   file_base = '${neml2_input}'
   exodus = true
+  csv = true
 []
