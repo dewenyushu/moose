@@ -19,6 +19,7 @@ NEML2ObjectStubImplementationClose(ExecuteNEML2Model, ElementUserObject);
 #else
 
 #include "MOOSEToNEML2.h"
+#include "MOOSEToNEML2Parameter.h"
 #include "neml2/misc/math.h"
 #include <set>
 
@@ -31,6 +32,9 @@ ExecuteNEML2Model::validParams()
   // we need the user to explicitly list the UOs so we can set up a construction order independent
   // dependency chain
   params.addParam<std::vector<UserObjectName>>("gather_uos", "List of MOOSE*ToNEML2 user objects");
+
+  params.addParam<std::vector<UserObjectName>>(
+      "gather_param_uos", {}, "List of MOOSE*ToNEML2Parameter user objects");
 
   // time input
   params.addParam<std::string>("neml2_time", "forces/t", "(optional) NEML2 variable name for time");
@@ -60,9 +64,13 @@ ExecuteNEML2Model::ExecuteNEML2Model(const InputParameters & params)
     _output_ready(false)
 {
   const auto gather_uo_names = getParam<std::vector<UserObjectName>>("gather_uos");
+  const auto gather_param_uo_names = getParam<std::vector<UserObjectName>>("gather_param_uos");
 
   // add user object dependencies by name (the UOs do not need to exist yet for this)
   for (const auto & uo_name : gather_uo_names)
+    _depend_uo.insert(uo_name);
+
+  for (const auto & uo_name : gather_param_uo_names)
     _depend_uo.insert(uo_name);
 
   for (const auto & output : model().output_axis().variable_names())
@@ -111,6 +119,24 @@ ExecuteNEML2Model::initialSetup()
     _gather_uos.push_back(&uo);
 
     addUOVariable(uo_name, uo.getNEML2Variable());
+  }
+
+  // deal with user object provided parameters
+  for (const auto & uo_name : getParam<std::vector<UserObjectName>>("gather_param_uos"))
+  {
+    // gather coupled user objects late to ensure they are constructed. Do not add them as
+    // dependencies (that's already done in the constructor).
+    const auto & uo =
+        getUserObjectByName<MOOSEToNEML2Parameter>(uo_name, /*is_dependency = */ false);
+    _gather_param_uos.push_back(&uo);
+
+    // check if requested parameter exist in the model
+    if (!model().named_parameters().has_key(uo.getNEML2Parameter()))
+      mooseError("Trying to set scalar-valued material property named '",
+                 uo.getNEML2Parameter(),
+                 "' in the UserObject '",
+                 uo_name,
+                 "'. But there is not such parameter in the NEML2 material model.");
   }
 
   std::set<neml2::VariableName> required_inputs = model().input_axis().variable_names();
@@ -222,7 +248,7 @@ ExecuteNEML2Model::finalize()
     }
 
     // Steps before stress update
-    // preCompute();
+    preCompute();
 
     updateForces();
 
@@ -257,6 +283,22 @@ ExecuteNEML2Model::finalize()
                    e.what(),
                    "\nIt is possible that this error is related to NEML2.",
                    NEML2Utils::NEML2_help_message);
+  }
+}
+
+void
+ExecuteNEML2Model::preCompute()
+{
+  // set parameters from MOOSE
+  for (const auto & uo : _gather_param_uos)
+  {
+    auto batch_shape = neml2::TensorShape{neml2::Size(uo->size())};
+    if (neml2::TensorShapeRef(batch_shape) != model().batch_sizes())
+      mooseError("parameter batch shape ",
+                 batch_shape,
+                 " is inconsistent with model batch shape ",
+                 model().batch_sizes());
+    uo->insertIntoParameter(model());
   }
 }
 

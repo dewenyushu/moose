@@ -24,6 +24,7 @@ NEML2ObjectStubHeader(ExecuteNEML2Model, ElementUserObject);
 #include <map>
 
 class MOOSEToNEML2;
+class MOOSEToNEML2Parameter;
 
 /**
  * ExecuteNEML2Model executes a NEML2 model. The NEML2 input variables are gathered by UserObjects
@@ -69,6 +70,9 @@ protected:
   /// Determine whether the material model should be called
   virtual bool shouldCompute();
 
+  /// Set parameters from parameter UO and/or enable AD
+  virtual void preCompute();
+
   /// Update the forces driving the material model update
   virtual void updateForces();
 
@@ -86,6 +90,8 @@ protected:
 
   /// MOOSE data gathering user objects
   std::vector<const MOOSEToNEML2 *> _gather_uos;
+
+  std::vector<const MOOSEToNEML2Parameter *> _gather_param_uos;
 
   /// (optional) NEML2 time input
   const neml2::VariableName _neml2_time;
