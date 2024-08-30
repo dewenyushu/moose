@@ -60,8 +60,6 @@ refine = 0
   []
 
   uniform_refine = ${refine}
-
-  skip_partitioning = true
 []
 
 [Problem]
@@ -339,11 +337,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output_factor${factor}/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output_factor${factor}/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
+    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 50
   []
