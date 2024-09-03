@@ -343,7 +343,7 @@ refine = 0
     type = Exodus
     file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 50
+    interval = 60
   []
 []
 
