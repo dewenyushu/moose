@@ -143,17 +143,17 @@ refine = 0
 [Functions]
   [heat_source_x]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS18_X_coord.csv'
+    data_file = 'SCAN_TRACKS22_X_coord.csv'
     format = columns
   []
   [heat_source_y]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS18_Y_coord.csv'
+    data_file = 'SCAN_TRACKS22_Y_coord.csv'
     format = columns
   []
   [heat_source_z]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS18_Z_coord.csv'
+    data_file = 'SCAN_TRACKS22_Z_coord.csv'
     format = columns
   []
   [specific_heat_alloy]
