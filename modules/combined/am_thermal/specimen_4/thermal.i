@@ -15,12 +15,12 @@ refine = 0
     type = GeneratedMeshGenerator
     dim = 3
     xmin = 0
-    xmax = 68
+    xmax = 64
     ymin = 0
     ymax = 200
     zmin = 0
     zmax = 160
-    nx = 17
+    nx = 16
     ny = 40
     nz = 32
   []
@@ -29,14 +29,14 @@ refine = 0
     input = mesh
     block_id = 3
     bottom_left = '0 0 0'
-    top_right = '68 200 10'
+    top_right = '64 200 10'
   []
   [add_set2]
     type = SubdomainBoundingBoxGenerator
     input = add_set1
     block_id = 1
     bottom_left = '0 0 10'
-    top_right = '68 200 200'
+    top_right = '64 200 200'
   []
 
   [add_set3]
@@ -143,17 +143,17 @@ refine = 0
 [Functions]
   [heat_source_x]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS22_X_coord.csv'
+    data_file = 'SCAN_TRACKS18_X_coord.csv'
     format = columns
   []
   [heat_source_y]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS22_Y_coord.csv'
+    data_file = 'SCAN_TRACKS18_Y_coord.csv'
     format = columns
   []
   [heat_source_z]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS22_Z_coord.csv'
+    data_file = 'SCAN_TRACKS18_Z_coord.csv'
     format = columns
   []
   [specific_heat_alloy]
@@ -327,7 +327,7 @@ refine = 0
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 4829600 #1000
+  end_time = 3261600 #1000
   dt = 40 # ms
   dtmin = 1e-6
 
@@ -343,7 +343,7 @@ refine = 0
     type = Exodus
     file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 50
+    interval = 60
   []
 []
 
