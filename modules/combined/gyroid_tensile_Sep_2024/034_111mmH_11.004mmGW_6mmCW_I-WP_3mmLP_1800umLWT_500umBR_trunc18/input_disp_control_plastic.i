@@ -3,10 +3,10 @@
   volumetric_locking_correction = true
 []
 
-# specimen length = 12mm
-# maximum displacement 0.6mm (5% deformation)
+# specimen length = 18mm
+# maximum displacement 0.9mm (5% deformation)
 # total time 100s, timestep size 1s
-# displacement per step, 6e-3 mm
+# displacement per step, 9e-3 mm
 [Mesh]
   [fmg]
     type = FileMeshGenerator
@@ -121,7 +121,7 @@
 
   dt = 0.1
   dtmin = 0.001
-  end_time = 7
+  end_time = 20
 
   nl_max_its = 50
   nl_rel_tol = 1e-5
