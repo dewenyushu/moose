@@ -15,5 +15,5 @@ module purge
 source activate base
 conda activate moose
 
-mpiexec /home/yushdewe/projects/moose_light_weight_ldrd/modules/combined/combined-opt -i input_disp_control_plastic.i
+mpiexec /home/yushdewe/projects/moose_light_weight_ldrd/modules/combined/combined-opt -i input_disp_control_plastic.i --recover
 

@@ -127,7 +127,7 @@
 
   dt = 0.1
   dtmin = 0.001
-  end_time = 7
+  end_time = 20
 
   nl_max_its = 50
   nl_rel_tol = 1e-5
