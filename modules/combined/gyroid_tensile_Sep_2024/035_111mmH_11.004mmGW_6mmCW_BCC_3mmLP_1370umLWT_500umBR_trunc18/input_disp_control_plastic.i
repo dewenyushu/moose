@@ -131,7 +131,7 @@
 
   nl_max_its = 50
   nl_rel_tol = 1e-5
-  nl_abs_tol = 1e-6
+  nl_abs_tol = 1e-5
   l_abs_tol = 1e-8
 
   [Predictor]
