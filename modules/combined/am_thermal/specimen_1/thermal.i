@@ -2,7 +2,7 @@ T_room = 303
 T_ambient = 303
 T_melt = 1563
 
-speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
+#speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
 r = 2 # 2 mm, TBD
 dt = 6 #'${fparse 0.3*r/speed}' # ms
 factor = 1.6
@@ -52,6 +52,23 @@ refine = 0
     block = 2
     new_boundary = 'moving_boundary'
   []
+
+  # # add machine table
+  # [table]
+  #   type = GeneratedMeshGenerator
+  #   dim = 3
+  #   xmin = -176
+  #   xmax = 224
+  #   ymin = -100
+  #   ymax = 300
+  #   zmin = -50
+  #   zmax = 0
+  #   nx = 20
+  #   ny = 20
+  #   nz = 1
+  #   subdomain_ids = 4
+  #   boundary_name_prefix = 'table'
+  # []
 
   [cmbn]
     type = CombinerGenerator
@@ -133,8 +150,7 @@ refine = 0
     type = ADConvectiveHeatFluxBC
     variable = temp
     boundary = 'bottom front left right top'
-    # coefficient = 2e-5
-    heat_transfer_coefficient = 2e-5 # W/m^2/K ->
+    heat_transfer_coefficient = 1e-5 # W/m^2/K ->
     T_infinity = ${T_ambient}
   []
 []
@@ -188,23 +204,6 @@ refine = 0
     type = ConstantFunction
     value = 16e-6
   []
-  # for monitoring the deposited material geometry
-  [scan_length_y]
-    type = ParsedFunction
-    expression = '${speed}*t '
-  []
-  [x_coord]
-    type = ParsedFunction
-    expression = 'x'
-  []
-  [y_coord]
-    type = ParsedFunction
-    expression = 'y'
-  []
-  [z_coord]
-    type = ParsedFunction
-    expression = 'z'
-  []
   [temp_ic]
     type = ParsedFunction
     expression = 'if(t<=0, temp_room, temp_melt)'
@@ -240,21 +239,7 @@ refine = 0
     heat_source_type = 'line'
     threshold_length = 2.0 #mm
     number_time_integration = 10
-    block = '1 2'
-  []
-  [volumetric_heat_substrate] # TODO: need to separate?
-    type = FunctionPathGaussianHeatSource
-    r = ${r}
-    power = effective_power
-    efficiency = 1.0
-    factor = ${factor}
-    function_x = heat_source_x
-    function_y = heat_source_y
-    function_z = heat_source_z
-    heat_source_type = 'line'
-    threshold_length = 2.0 #mm
-    number_time_integration = 10
-    block = '3'
+    block = '1 2 3'
   []
   [density_alloy]
     type = ADCoupledValueFunctionMaterial
@@ -343,11 +328,11 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output/Line_thermal_speed_${speed}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_thermal_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_speed_${speed}_r_${r}_dt_${dt}/Thermal'
+    file_base = 'output/Exodus_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 20
   []
