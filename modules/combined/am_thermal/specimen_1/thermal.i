@@ -3,7 +3,6 @@ T_ambient = 303
 T_melt = 1563
 
 speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
-power = 3000e-3 # 3000W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
 r = 2 # 2 mm, TBD
 dt = 6 #'${fparse 0.3*r/speed}' # ms
 factor = 1.6
@@ -156,6 +155,13 @@ refine = 0
     data_file = 'SCAN_TRACKS2_Z_coord.csv'
     format = columns
   []
+  [effective_power]
+    type = PiecewiseConstant
+    data_file = 'SCAN_TRACKS2_Power.csv'
+    direction = RIGHT_INCLUSIVE
+    format = columns
+    scale_factor = 1e-3 #3000W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
+  []
   [specific_heat_alloy]
     type = PiecewiseLinear
     data_file = 'Specific_heat.txt'
@@ -225,7 +231,7 @@ refine = 0
   [volumetric_heat_alloy] # TODO: need to separate?
     type = FunctionPathGaussianHeatSource
     r = ${r}
-    power = ${power}
+    power = effective_power
     efficiency = 1.0
     factor = ${factor}
     function_x = heat_source_x
@@ -239,7 +245,7 @@ refine = 0
   [volumetric_heat_substrate] # TODO: need to separate?
     type = FunctionPathGaussianHeatSource
     r = ${r}
-    power = ${power}
+    power = effective_power
     efficiency = 1.0
     factor = ${factor}
     function_x = heat_source_x
@@ -327,7 +333,7 @@ refine = 0
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 125600 #1000
+  end_time = 60910 #125600
   dt = 40 # ms
   dtmin = 1e-6
 
@@ -337,36 +343,36 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output/Line_thermal_speed_${speed}_power_${power}_r_${r}_dt_${dt}'
+  file_base = 'output/Line_thermal_speed_${speed}_r_${r}_dt_${dt}'
   csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_speed_${speed}_power_${power}_r_${r}_dt_${dt}/Thermal'
+    file_base = 'output/Exodus_speed_${speed}_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
     interval = 20
   []
 []
 
 [Postprocessors]
-  [bead_max_temperature]
-    type = ElementExtremeValue
-    variable = temp
-    value_type = max
-    block = '2'
-    outputs = 'csv'
+  [x_coord]
+    type = FunctionValuePostprocessor
+    function = heat_source_x
+    outputs = 'console csv'
   []
-  [bead_min_temperature]
-    type = ElementExtremeValue
-    variable = temp
-    value_type = min
-    block = '2'
-    outputs = 'csv'
+  [y_coord]
+    type = FunctionValuePostprocessor
+    function = heat_source_y
+    outputs = 'console csv'
   []
-  [bead_volume]
-    type = VolumePostprocessor
-    block = '2'
-    # use_displaced_mesh = true
-    outputs = 'csv console'
+  [z_coord]
+    type = FunctionValuePostprocessor
+    function = heat_source_z
+    outputs = 'console csv'
+  []
+  [power]
+    type = FunctionValuePostprocessor
+    function = effective_power
+    outputs = 'console csv'
   []
 []
 
