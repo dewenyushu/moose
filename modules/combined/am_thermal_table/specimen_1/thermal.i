@@ -11,31 +11,8 @@ refine = 0
 
 [Mesh]
   [mesh]
-    type = GeneratedMeshGenerator
-    dim = 3
-    xmin = 0
-    xmax = 52
-    ymin = 0
-    ymax = 200
-    zmin = 0
-    zmax = 160
-    nx = 13
-    ny = 40
-    nz = 32
-  []
-  [add_set1]
-    type = SubdomainBoundingBoxGenerator
-    input = mesh
-    block_id = 3
-    bottom_left = '0 0 0'
-    top_right = '52 200 10'
-  []
-  [add_set2]
-    type = SubdomainBoundingBoxGenerator
-    input = add_set1
-    block_id = 1
-    bottom_left = '0 0 10'
-    top_right = '52 200 200'
+    type = FileMeshGenerator
+    file = SCAN_TRACKS2.e
   []
 
   [add_set3]
@@ -55,7 +32,7 @@ refine = 0
 
   [cmbn]
     type = CombinerGenerator
-    inputs = 'add_set2 moving_boundary'
+    inputs = 'mesh moving_boundary'
   []
 
   uniform_refine = ${refine}
@@ -67,7 +44,7 @@ refine = 0
 
 [Variables]
   [temp]
-    block = '1 2 3'
+    block = '1 2 3 4'
   []
 []
 
@@ -76,7 +53,7 @@ refine = 0
     type = ConstantIC
     variable = temp
     value = ${T_room}
-    block = '1 3'
+    block = '1 3 4'
   []
   [temp_product]
     type = FunctionIC
@@ -125,14 +102,14 @@ refine = 0
   [bottom_temp]
     type = ADDirichletBC
     variable = temp
-    boundary = 'back'
+    boundary = 'fix_temp_table'
     value = ${T_room}
   []
   [convective]
     # type = ConvectiveFluxFunction # Convective flux, e.g. q'' = h*(Tw - Tf)
     type = ADConvectiveHeatFluxBC
     variable = temp
-    boundary = 'bottom front left right top'
+    boundary = 'convective_table moving_boundary'
     heat_transfer_coefficient = 1e-5 # W/m^2/K ->
     T_infinity = ${T_ambient}
   []
@@ -141,22 +118,22 @@ refine = 0
 [Functions]
   [heat_source_x]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS6_X_coord.csv'
+    data_file = 'SCAN_TRACKS2_X_coord.csv'
     format = columns
   []
   [heat_source_y]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS6_Y_coord.csv'
+    data_file = 'SCAN_TRACKS2_Y_coord.csv'
     format = columns
   []
   [heat_source_z]
     type = PiecewiseLinear
-    data_file = 'SCAN_TRACKS6_Z_coord.csv'
+    data_file = 'SCAN_TRACKS2_Z_coord.csv'
     format = columns
   []
   [effective_power]
     type = PiecewiseConstant
-    data_file = 'SCAN_TRACKS6_Power.csv'
+    data_file = 'SCAN_TRACKS2_Power.csv'
     direction = RIGHT_INCLUSIVE
     format = columns
     scale_factor = 1e-3 #3000W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
@@ -208,7 +185,7 @@ refine = 0
     specific_heat_temperature_function = specific_heat_substrate
     thermal_conductivity_temperature_function = thermal_conductivity_substrate
     temp = temp
-    block = '3'
+    block = '3 4'
   []
   [volumetric_heat_alloy] # TODO: need to separate?
     type = FunctionPathGaussianHeatSource
@@ -222,7 +199,7 @@ refine = 0
     heat_source_type = 'line'
     threshold_length = 2.0 #mm
     number_time_integration = 10
-    block = '1 2 3'
+    block = '1 2 3 4'
   []
   [density_alloy]
     type = ADCoupledValueFunctionMaterial
@@ -234,7 +211,7 @@ refine = 0
   [density_substrate]
     type = ADDensity
     density = 7894e-9 # kg/m^3 -> 1e-9 kg/mm^3
-    block = '3'
+    block = '3 4'
   []
 []
 
@@ -254,7 +231,7 @@ refine = 0
 [Adaptivity]
   marker = marker
   initial_marker = marker
-  max_h_level = 3
+  max_h_level = 4
   [Indicators]
     [indicator]
       type = GradientJumpIndicator
@@ -301,7 +278,7 @@ refine = 0
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 187514 #728000 #1000
+  end_time = 60910 #125600
   dt = 40 # ms
   dtmin = 1e-6
 
@@ -394,4 +371,3 @@ refine = 0
     sort_by = id
   []
 []
-

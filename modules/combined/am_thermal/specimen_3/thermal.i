@@ -317,7 +317,7 @@ refine = 0
     type = Exodus
     file_base = 'output/Exodus_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 60
+    interval = 20
   []
 []
 
