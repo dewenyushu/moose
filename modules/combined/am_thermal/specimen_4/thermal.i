@@ -14,12 +14,12 @@ refine = 0
     type = GeneratedMeshGenerator
     dim = 3
     xmin = 0
-    xmax = 64
+    xmax = 68
     ymin = 0
     ymax = 200
     zmin = 0
     zmax = 160
-    nx = 16
+    nx = 17
     ny = 40
     nz = 32
   []
@@ -317,7 +317,7 @@ refine = 0
     type = Exodus
     file_base = 'output/Exodus_r_${r}_dt_${dt}/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 60
+    interval = 20
   []
 []
 
