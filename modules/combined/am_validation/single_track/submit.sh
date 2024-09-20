@@ -15,5 +15,5 @@ module purge
 source activate base
 conda activate moose
 
-mpiexec /home/yushdewe/projects/moose-am/modules/combined/combined-opt -i thermal.i
+mpiexec /home/yushdewe/projects/moose-am/modules/combined/combined-opt -i sample.i
 
