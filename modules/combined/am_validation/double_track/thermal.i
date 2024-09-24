@@ -150,22 +150,22 @@ refine = 0
 [Functions]
   [heat_source_x]
     type = PiecewiseLinear
-    data_file = 'inputs/${track}_SCAN_TRACKS2_X_coord.csv'
+    data_file = 'inputs/${track}_SCAN_TRACKS${MW}_X_coord.csv'
     format = columns
   []
   [heat_source_y]
     type = PiecewiseLinear
-    data_file = 'inputs/${track}_SCAN_TRACKS2_Y_coord.csv'
+    data_file = 'inputs/${track}_SCAN_TRACKS${MW}_Y_coord.csv'
     format = columns
   []
   [heat_source_z]
     type = PiecewiseLinear
-    data_file = 'inputs/${track}_SCAN_TRACKS2_Z_coord.csv'
+    data_file = 'inputs/${track}_SCAN_TRACKS${MW}_Z_coord.csv'
     format = columns
   []
   [effective_power]
     type = PiecewiseConstant
-    data_file = 'inputs/${track}_SCAN_TRACKS2_Power.csv'
+    data_file = 'inputs/${track}_SCAN_TRACKS${MW}_Power.csv'
     direction = RIGHT_INCLUSIVE
     format = columns
     scale_factor = 1e-3 #3000W = kg*m^2/s^3 = 300e-3 kg*mm^2/ms^3
