@@ -23,9 +23,12 @@ refine = 0
   [add_set3]
     type = GeneratedMeshGenerator
     dim = 3
-    xmax = 0.001
-    ymax = 0.001
-    zmin = -0.001
+    xmin = 23.0
+    ymin = 172.0
+    zmin = 12.0
+    xmax = 23.001
+    ymax = 172.001
+    zmax = 12.001
     subdomain_ids = 2
   []
   [moving_boundary]
