@@ -5,7 +5,7 @@
   [sample]
     type = CSVSampler
     samples_file = './inputs/single_track_samples.csv'
-    column_indices = '0 1 2'
+    column_indices = '0 1 2 3'
     execute_on = 'PRE_MULTIAPP_SETUP'
   []
 []
@@ -24,7 +24,7 @@
     type = MultiAppSamplerControl
     multi_app = sub
     sampler = sample
-    param_names = 'MW end_time factor'
+    param_names = 'MW end_time factor r_factor'
   []
 []
 
