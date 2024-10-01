@@ -9,6 +9,7 @@ T_melt = 1563
 
 #speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
 r = 2 # 2 mm, TBD
+r_factor = 0.3
 # dt = 6 #'${fparse 0.3*r/speed}' # ms
 factor = 1.6
 
@@ -237,7 +238,7 @@ refine = 0
   []
   [volumetric_heat_alloy] # TODO: need to separate?
     type = FunctionPathGaussianHeatSource
-    r = ${r}
+    r = '${r} ${r} ${fparse r_factor*r}'
     power = effective_power
     efficiency = 1.0
     factor = ${factor}
