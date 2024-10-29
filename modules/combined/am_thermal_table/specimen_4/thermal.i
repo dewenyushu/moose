@@ -2,10 +2,11 @@ T_room = 303
 T_ambient = 303
 T_melt = 1563
 
-# speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
+#speed = 25e-3 # 25 mm/s = 25e-3 mm/ms
 r = 2 # 2 mm, TBD
-dt = 6 #'${fparse 0.3*r/speed}' # ms
-factor = 1.6
+r_factor = 0.2 # validated parameter
+# dt = 6 #'${fparse 0.3*r/speed}' # ms
+factor = 1.1 # validated parameter
 
 refine = 0
 
@@ -188,7 +189,7 @@ refine = 0
   []
   [volumetric_heat_alloy] # TODO: need to separate?
     type = FunctionPathGaussianHeatSource
-    r = ${r}
+    r = '${r} ${r} ${fparse r_factor*r}'
     power = effective_power
     efficiency = 1.0
     factor = ${factor}
@@ -277,7 +278,7 @@ refine = 0
   nl_abs_tol = 1e-10
 
   start_time = 0.0
-  end_time = 1948620 # 3261600 #1000
+  end_time = 4895172 # 3261600 #1000
   dt = 40 # ms
   dtmin = 1e-6
 
@@ -287,13 +288,21 @@ refine = 0
 []
 
 [Outputs]
-  file_base = 'output/Line_thermal_r_${r}_dt_${dt}'
-  csv = true
   [exodus]
     type = Exodus
-    file_base = 'output/Exodus_r_${r}_dt_${dt}/Thermal'
+    file_base = 'output/Exodus/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    interval = 20
+    time_step_interval = 20
+  []
+  [csv]
+    type = CSV
+    file_base = 'output/CSV/Thermal'
+    time_step_interval = 5
+  []
+  [cpt]
+    type = Checkpoint
+    time_step_interval = 50
+    num_files = 2
   []
 []
 
