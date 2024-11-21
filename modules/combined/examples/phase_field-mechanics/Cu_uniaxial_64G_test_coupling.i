@@ -200,8 +200,11 @@
   type = Transient
 
   solve_type = 'PJFNK'
-  petsc_options_iname = '-pc_type -pc_asm_overlap -sub_pc_type -ksp_type -ksp_gmres_restart'
-  petsc_options_value = ' asm      2              lu            gmres     200'
+  # petsc_options_iname = '-pc_type -pc_asm_overlap -sub_pc_type -ksp_type -ksp_gmres_restart'
+  # petsc_options_value = ' asm      2              lu            gmres     200'
+
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
+  petsc_options_value = 'lu superlu_dist'
 
   l_tol = 1e-8
   nl_abs_tol = 1e-7
@@ -209,17 +212,17 @@
   nl_max_its = 20
   nl_forced_its = 1
   l_max_its = 100
-  start_time = 0.0
-  end_time = 100
+  num_steps = 5
+  dt = 0.1
 
-  [TimeStepper]
-    type = IterationAdaptiveDT
-    dt = 1e-6
-    iteration_window = 2
-    optimal_iterations = 10
-    growth_factor = 1.2
-    cutback_factor = 0.3
-  []
+  # [TimeStepper]
+  #   type = IterationAdaptiveDT
+  #   dt = 0.1
+  #   iteration_window = 2
+  #   optimal_iterations = 10
+  #   growth_factor = 1.2
+  #   cutback_factor = 0.8
+  # []
 []
 
 [Outputs]
