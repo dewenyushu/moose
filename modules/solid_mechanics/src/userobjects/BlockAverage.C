@@ -118,6 +118,9 @@ BlockAverage::finalize()
        ++it)
   {
     SubdomainID id = it->first;
-    _average_values[id] = _integral_values[id] / _volume_values[id];
+    if (MooseUtils::absoluteFuzzyEqual(_volume_values[id], 0.0))
+      _average_values[id] = 0.0;
+    else
+      _average_values[id] = _integral_values[id] / _volume_values[id];
   }
 }
