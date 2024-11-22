@@ -87,21 +87,21 @@
     variable = updated_euler_angle_1
     property = updated_Euler_angle
     component = 0
-    execute_on = timestep_end
+    execute_on = 'TIMESTEP_END'
   []
   [updated_euler_angle_2]
     type = MaterialRealVectorValueAux
     variable = updated_euler_angle_2
     property = updated_Euler_angle
     component = 1
-    execute_on = timestep_end
+    execute_on = 'TIMESTEP_END'
   []
   [updated_euler_angle_3]
     type = MaterialRealVectorValueAux
     variable = updated_euler_angle_3
     property = updated_Euler_angle
     component = 2
-    execute_on = timestep_end
+    execute_on = 'TIMESTEP_END'
   []
 []
 
@@ -110,6 +110,25 @@
     type = VariableValueElementSubdomainModifier
     coupled_var = 'unique_grains'
     execute_on = 'TIMESTEP_BEGIN'
+    execution_order_group = -1
+  []
+
+  [avg_ea1]
+    type = BlockAverage
+    variable = euler_angle_1
+    execute_on = 'TIMESTEP_END'
+    execution_order_group = -1
+  []
+  [avg_ea2]
+    type = BlockAverage
+    variable = euler_angle_2
+    execute_on = 'TIMESTEP_END'
+    execution_order_group = -1
+  []
+  [avg_ea3]
+    type = BlockAverage
+    variable = euler_angle_3
+    execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
 []
@@ -182,9 +201,8 @@
 
 [VectorPostprocessors]
   [updated_grain_ea]
-    type = AverageValueEveryBlock
-    # variables = "updated_euler_angle_1 updated_euler_angle_2 updated_euler_angle_3"
-    variables = "euler_angle_1 euler_angle_2 euler_angle_3"
+    type = BlockAverageFromUserObjects
+    block_average_uos = "avg_ea1 avg_ea2 avg_ea3"
     execute_on = 'TIMESTEP_END'
   []
 []

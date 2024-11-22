@@ -146,7 +146,7 @@
   [from_vpp]
     type = MultiAppReporterTransfer
     to_reporters = 'updated_ea/ea0 updated_ea/ea1 updated_ea/ea2 updated_ea/subdomain_id'
-    from_reporters = 'updated_grain_ea/euler_angle_1 updated_grain_ea/euler_angle_2 updated_grain_ea/euler_angle_3 updated_grain_ea/subdomain_id'
+    from_reporters = 'updated_grain_ea/avg_ea1 updated_grain_ea/avg_ea2 updated_grain_ea/avg_ea3 updated_grain_ea/subdomain_id'
     from_multi_app = sub_app
     subapp_index = 0
   []
