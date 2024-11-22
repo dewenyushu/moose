@@ -9,7 +9,6 @@
   zmax = 0
   elem_type = QUAD4
   uniform_refine = 2
-  use_displaced_mesh = true
 []
 
 [GlobalParams]
@@ -35,8 +34,6 @@
     euler_angle_1_name = updated_ea/ea1
     euler_angle_2_name = updated_ea/ea2
     grain_id_name = updated_ea/subdomain_id
-
-    use_displaced_mesh = true
   []
   # [euler_angle_file]
   #   type = EulerAngleFileReader
@@ -47,8 +44,6 @@
   [voronoi]
     type = PolycrystalVoronoi
     # coloring_algorithm = bt
-
-    use_displaced_mesh = true
   []
   # [elasticity_tensor_copper]
   #   type = ComputeElasticityTensorCP
@@ -67,8 +62,6 @@
     C_ijkl = '1.27e5 0.708e5 0.708e5 1.27e5 0.708e5 1.27e5 0.7355e5 0.7355e5 0.7355e5'
     fill_method = symmetric9
     euler_angle_provider = euler_angle_file
-
-    use_displaced_mesh = true
   []
   # [./str]
   #   type = TensorMechanicsHardeningConstant
@@ -232,10 +225,8 @@
 
 [Kernels]
   [PolycrystalKernel]
-    use_displaced_mesh = true
   []
   [PolycrystalElasticDrivingForce]
-    use_displaced_mesh = true
   []
   # [./TensorMechanics]
   #   use_displaced_mesh = true
@@ -258,8 +249,6 @@
     type = BndsCalcAux
     variable = bnds
     execute_on = timestep_end
-
-    use_displaced_mesh = true
   []
   [elastic_strain11]
     type = RankTwoAux
@@ -268,8 +257,6 @@
     index_i = 0
     index_j = 0
     execute_on = timestep_end
-
-    use_displaced_mesh = true
   []
   [elastic_strain22]
     type = RankTwoAux
@@ -278,8 +265,6 @@
     index_i = 1
     index_j = 1
     execute_on = timestep_end
-
-    use_displaced_mesh = true
   []
   [elastic_strain12]
     type = RankTwoAux
@@ -288,8 +273,6 @@
     index_i = 0
     index_j = 1
     execute_on = timestep_end
-
-    use_displaced_mesh = true
   []
   [unique_grains]
     type = FeatureFloodCountAux
@@ -297,8 +280,6 @@
     execute_on = timestep_end
     flood_counter = grain_tracker
     field_display = UNIQUE_REGION
-
-    use_displaced_mesh = true
   []
   [var_indices]
     type = FeatureFloodCountAux
@@ -306,8 +287,6 @@
     execute_on = timestep_end
     flood_counter = grain_tracker
     field_display = VARIABLE_COLORING
-
-    use_displaced_mesh = true
   []
   [C1111]
     type = RankFourAux
@@ -318,8 +297,6 @@
     index_k = 0
     index_i = 0
     execute_on = timestep_end
-
-    use_displaced_mesh = true
   []
   # [./vonmises_stress]
   #   type = RankTwoScalarAux
@@ -335,8 +312,6 @@
     grain_tracker = grain_tracker
     output_euler_angle = 'phi1'
     execute_on = 'initial timestep_end'
-
-    use_displaced_mesh = true
   []
   [euler_angle1]
     type = OutputEulerAngles
@@ -345,8 +320,6 @@
     grain_tracker = grain_tracker
     output_euler_angle = 'Phi'
     execute_on = 'initial timestep_end'
-
-    use_displaced_mesh = true
   []
   [euler_angle2]
     type = OutputEulerAngles
@@ -355,8 +328,6 @@
     grain_tracker = grain_tracker
     output_euler_angle = 'phi2'
     execute_on = 'initial timestep_end'
-
-    use_displaced_mesh = true
   []
   # [./f]
   #   type = MaterialStdVectorAux
@@ -413,15 +384,11 @@
     GBmob0 = 2.5e-6 # m^4/(Js) from Schoenfelder 1997
     Q = 0.23 # Migration energy in eV
     GBenergy = 0.708 # GB energy in J/m^2
-
-    use_displaced_mesh = true
   []
   [ElasticityTensor]
     type = ComputePolycrystalElasticityTensor
     grain_tracker = grain_tracker
     euler_angle_provider = euler_angle_file
-
-    use_displaced_mesh = true
   []
   [stress]
     type = ComputeMultipleCrystalPlasticityStress
@@ -432,8 +399,6 @@
     type = CrystalPlasticityKalidindiUpdate
     number_slip_systems = 12
     slip_sys_file_name = 'input_slip_sys.txt'
-
-    use_displaced_mesh = true
   []
   [strain]
     type = ComputeFiniteStrain
