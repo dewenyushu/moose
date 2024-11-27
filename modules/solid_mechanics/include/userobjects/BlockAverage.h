@@ -9,14 +9,14 @@
 
 #pragma once
 
-#include "ElementIntegralVariablePostprocessor.h"
+#include "ElementIntegralVariableUserObject.h"
 
 #include "libmesh/mesh_tools.h"
 
 /**
  * Computes the average value of a variable on each block
  */
-class BlockAverage : public ElementIntegralVariablePostprocessor
+class BlockAverage : public ElementIntegralVariableUserObject
 {
 public:
   BlockAverage(const InputParameters & parameters);

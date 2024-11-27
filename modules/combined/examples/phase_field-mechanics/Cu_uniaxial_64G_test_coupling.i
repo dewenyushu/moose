@@ -282,6 +282,7 @@
     type = BlockOrientationFromQuaternionUserObjects
     quaternion_average_uos = "avg_qx avg_qy avg_qz avg_qw"
     execute_on = 'TIMESTEP_END'
+    outputs = none
   []
 []
 
