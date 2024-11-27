@@ -63,18 +63,37 @@
     order = CONSTANT
     family = MONOMIAL
   []
-  [updated_euler_angle_1]
+  # [updated_euler_angle_1]
+  #   order = CONSTANT
+  #   family = MONOMIAL
+  # []
+  # [updated_euler_angle_2]
+  #   order = CONSTANT
+  #   family = MONOMIAL
+  # []
+  # [updated_euler_angle_3]
+  #   order = CONSTANT
+  #   family = MONOMIAL
+  # []
+
+  [updated_quaternion_x]
     order = CONSTANT
     family = MONOMIAL
   []
-  [updated_euler_angle_2]
+  [updated_quaternion_y]
     order = CONSTANT
     family = MONOMIAL
   []
-  [updated_euler_angle_3]
+  [updated_quaternion_z]
     order = CONSTANT
     family = MONOMIAL
   []
+  [updated_quaternion_w]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+
+
   [unique_grains]
     order = CONSTANT
     family = MONOMIAL
@@ -82,25 +101,54 @@
 []
 
 [AuxKernels]
-  [updated_euler_angle_1]
-    type = MaterialRealVectorValueAux
-    variable = updated_euler_angle_1
-    property = updated_Euler_angle
-    component = 0
+  # [updated_euler_angle_1]
+  #   type = MaterialRealVectorValueAux
+  #   variable = updated_euler_angle_1
+  #   property = updated_Euler_angle
+  #   component = 0
+  #   execute_on = 'TIMESTEP_END'
+  # []
+  # [updated_euler_angle_2]
+  #   type = MaterialRealVectorValueAux
+  #   variable = updated_euler_angle_2
+  #   property = updated_Euler_angle
+  #   component = 1
+  #   execute_on = 'TIMESTEP_END'
+  # []
+  # [updated_euler_angle_3]
+  #   type = MaterialRealVectorValueAux
+  #   variable = updated_euler_angle_3
+  #   property = updated_Euler_angle
+  #   component = 2
+  #   execute_on = 'TIMESTEP_END'
+  # []
+
+  [updated_quaternion_x]
+    type = MaterialStdVectorAux
+    variable = updated_quaternion_x
+    property = updated_quaternion
+    index = 0
     execute_on = 'TIMESTEP_END'
   []
-  [updated_euler_angle_2]
-    type = MaterialRealVectorValueAux
-    variable = updated_euler_angle_2
-    property = updated_Euler_angle
-    component = 1
+  [updated_quaternion_y]
+    type = MaterialStdVectorAux
+    variable = updated_quaternion_y
+    property = updated_quaternion
+    index = 1
     execute_on = 'TIMESTEP_END'
   []
-  [updated_euler_angle_3]
-    type = MaterialRealVectorValueAux
-    variable = updated_euler_angle_3
-    property = updated_Euler_angle
-    component = 2
+  [updated_quaternion_z]
+    type = MaterialStdVectorAux
+    variable = updated_quaternion_z
+    property = updated_quaternion
+    index = 2
+    execute_on = 'TIMESTEP_END'
+  []
+  [updated_quaternion_w]
+    type = MaterialStdVectorAux
+    variable = updated_quaternion_w
+    property = updated_quaternion
+    index = 3
     execute_on = 'TIMESTEP_END'
   []
 []
@@ -113,21 +161,46 @@
     execution_order_group = -1
   []
 
-  [avg_ea1]
+  # [avg_ea1]
+  #   type = BlockAverage
+  #   variable = euler_angle_1
+  #   execute_on = 'TIMESTEP_END'
+  #   execution_order_group = -1
+  # []
+  # [avg_ea2]
+  #   type = BlockAverage
+  #   variable = euler_angle_2
+  #   execute_on = 'TIMESTEP_END'
+  #   execution_order_group = -1
+  # []
+  # [avg_ea3]
+  #   type = BlockAverage
+  #   variable = euler_angle_3
+  #   execute_on = 'TIMESTEP_END'
+  #   execution_order_group = -1
+  # []
+
+  [avg_qx]
     type = BlockAverage
-    variable = euler_angle_1
+    variable = updated_quaternion_x
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
-  [avg_ea2]
+  [avg_qy]
     type = BlockAverage
-    variable = euler_angle_2
+    variable = updated_quaternion_y
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
-  [avg_ea3]
+  [avg_qz]
     type = BlockAverage
-    variable = euler_angle_3
+    variable = updated_quaternion_z
+    execute_on = 'TIMESTEP_END'
+    execution_order_group = -1
+  []
+  [avg_qw]
+    type = BlockAverage
+    variable = updated_quaternion_w
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
@@ -200,9 +273,14 @@
 []
 
 [VectorPostprocessors]
+  # [updated_grain_ea]
+  #   type = BlockAverageFromUserObjects
+  #   block_average_uos = "avg_ea1 avg_ea2 avg_ea3"
+  #   execute_on = 'TIMESTEP_END'
+  # []
   [updated_grain_ea]
-    type = BlockAverageFromUserObjects
-    block_average_uos = "avg_ea1 avg_ea2 avg_ea3"
+    type = BlockOrientationFromQuaternionUserObjects
+    quaternion_average_uos = "avg_qx avg_qy avg_qz avg_qw"
     execute_on = 'TIMESTEP_END'
   []
 []
