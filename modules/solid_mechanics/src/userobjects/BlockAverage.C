@@ -17,7 +17,7 @@ registerMooseObject("SolidMechanicsApp", BlockAverage);
 InputParameters
 BlockAverage::validParams()
 {
-  InputParameters params = ElementIntegralVariablePostprocessor::validParams();
+  InputParameters params = ElementIntegralVariableUserObject::validParams();
 
   // Since we are inheriting from a Postprocessor we override this to make sure
   // That MOOSE (and Peacock) know that this object is _actually_ a UserObject
@@ -27,7 +27,7 @@ BlockAverage::validParams()
 }
 
 BlockAverage::BlockAverage(const InputParameters & parameters)
-  : ElementIntegralVariablePostprocessor(parameters)
+  : ElementIntegralVariableUserObject(parameters)
 {
 }
 
@@ -47,7 +47,7 @@ void
 BlockAverage::initialize()
 {
   // Explicitly call the initialization routines for our base class
-  ElementIntegralVariablePostprocessor::initialize();
+  ElementIntegralVariableUserObject::initialize();
 
   // Set averages to 0 for each block
   const std::set<SubdomainID> & blocks = _subproblem.mesh().meshSubdomains();
@@ -76,7 +76,7 @@ BlockAverage::execute()
 void
 BlockAverage::threadJoin(const UserObject & y)
 {
-  ElementIntegralVariablePostprocessor::threadJoin(y);
+  ElementIntegralVariableUserObject::threadJoin(y);
 
   // We are joining with another class like this one so do a cast so we can get to it's data
   const BlockAverage & bav = dynamic_cast<const BlockAverage &>(y);
