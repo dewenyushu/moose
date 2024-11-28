@@ -204,6 +204,12 @@
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
+
+  # [q_mode]
+  #   type = BlockQuaternionMode
+  #   execute_on = 'TIMESTEP_END'
+  #   execution_order_group = -1
+  # []
 []
 
 [BCs]
@@ -257,7 +263,7 @@
   []
   [updated_euler_angle]
     type = ComputeUpdatedEulerAngle
-    radian_to_degree = false
+    degree_to_radian = false
   []
 []
 

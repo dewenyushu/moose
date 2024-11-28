@@ -24,6 +24,9 @@ BlockOrientationFromQuaternionUserObjects::validParams()
 
   params.addRequiredParam<std::vector<UserObjectName>>("quaternion_average_uos", "List of BlockAverage user objects for quaternion components.");
 
+  params.addParam<bool>(
+      "degree_to_radian", false, "Whether to convert euler angles from degree to radian.");
+
   params.addClassDescription("Output the Euler angle for each block computed from average of quaternions.");
   return params;
 }
@@ -86,7 +89,9 @@ BlockOrientationFromQuaternionUserObjects::execute()
     EulerAngles ea(q);
     // convert EulerAngles to RealVectorValue
     RealVectorValue euler_angle = (RealVectorValue)ea;
-    euler_angle *= pi / 180.0;
+
+    if (getParam<bool>("degree_to_radian"))
+      euler_angle *= pi / 180.0;
 
     for (const auto col : make_range(_num_cols))
     {

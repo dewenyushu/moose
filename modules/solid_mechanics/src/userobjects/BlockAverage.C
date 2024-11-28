@@ -19,10 +19,6 @@ BlockAverage::validParams()
 {
   InputParameters params = ElementIntegralVariableUserObject::validParams();
 
-  // Since we are inheriting from a Postprocessor we override this to make sure
-  // That MOOSE (and Peacock) know that this object is _actually_ a UserObject
-  params.set<std::string>("built_by_action") = "add_user_object";
-
   return params;
 }
 
