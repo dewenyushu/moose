@@ -293,12 +293,12 @@ refine = 0
     type = Exodus
     file_base = 'output/Exodus/Thermal'
     # execute_on = 'INITIAL TIMESTEP_END'
-    time_step_interval = 20
+    time_step_interval = 40
   []
   [csv]
     type = CSV
     file_base = 'output/CSV/Thermal'
-    time_step_interval = 5
+    time_step_interval = 20
   []
   [cpt]
     type = Checkpoint
