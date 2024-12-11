@@ -27,7 +27,8 @@ ComputeUpdatedEulerAngle::validParams()
 ComputeUpdatedEulerAngle::ComputeUpdatedEulerAngle(const InputParameters & parameters)
   : Material(parameters),
     _updated_rotation(getMaterialProperty<RankTwoTensor>("updated_rotation")),
-    _updated_euler_angle(declareProperty<RealVectorValue>("updated_Euler_angle"))
+    _updated_euler_angle(declareProperty<RealVectorValue>("updated_Euler_angle")),
+    _updated_quaternion(declareProperty<std::vector<Real>>("updated_quaternion"))
 {
 }
 
@@ -40,12 +41,12 @@ ComputeUpdatedEulerAngle::initQpStatefulProperties()
 void
 ComputeUpdatedEulerAngle::computeQpProperties()
 {
-  computeEulerAngleFromRotationMatrix(_updated_rotation[_qp], _updated_euler_angle[_qp]);
+  computePropertiesFromRotationMatrix(_updated_rotation[_qp], _updated_euler_angle[_qp], _updated_quaternion[_qp]);
 }
 
 void
-ComputeUpdatedEulerAngle::computeEulerAngleFromRotationMatrix(const RankTwoTensor & rot,
-                                                              RealVectorValue & euler_angle)
+ComputeUpdatedEulerAngle::computePropertiesFromRotationMatrix(const RankTwoTensor & rot,
+                                                              RealVectorValue & euler_angle, std::vector<Real> & quaternion)
 {
   // transform RankTwoTensor to Eigen::Matrix
   Eigen::Matrix<Real, 3, 3> rot_mat;
@@ -63,4 +64,10 @@ ComputeUpdatedEulerAngle::computeEulerAngleFromRotationMatrix(const RankTwoTenso
 
   if (!getParam<bool>("radian_to_degree"))
     euler_angle *= libMesh::pi / 180.0;
+
+  quaternion.resize(4);
+  quaternion[0]=q.x();
+  quaternion[1]=q.y();
+  quaternion[2]=q.z();
+  quaternion[3]=q.w();
 }

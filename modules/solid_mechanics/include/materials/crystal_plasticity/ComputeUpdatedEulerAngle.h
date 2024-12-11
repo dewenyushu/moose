@@ -23,11 +23,14 @@ public:
   void computeQpProperties() override;
 
 private:
-  void computeEulerAngleFromRotationMatrix(const RankTwoTensor & rot,
-                                           RealVectorValue & euler_angle);
+  void computePropertiesFromRotationMatrix(const RankTwoTensor & rot,
+                                           RealVectorValue & euler_angle,
+                                           std::vector<Real> & quaternion);
 
   // updated rotation tensor
   const MaterialProperty<RankTwoTensor> & _updated_rotation;
   // updated euler angle that is computed in thie class
   MaterialProperty<RealVectorValue> & _updated_euler_angle;
+  // updated quaternion
+  MaterialProperty<std::vector<Real>> & _updated_quaternion;
 };
