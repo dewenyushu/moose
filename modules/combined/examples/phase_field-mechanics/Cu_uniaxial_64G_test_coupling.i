@@ -153,14 +153,16 @@
   []
 []
 
-[UserObjects]
+[MeshModifiers]
   [assign_block_id]
     type = VariableValueElementSubdomainModifier
     coupled_var = 'unique_grains'
     execute_on = 'TIMESTEP_BEGIN'
     execution_order_group = -1
   []
+[]
 
+[UserObjects]
   # [avg_ea1]
   #   type = BlockAverage
   #   variable = euler_angle_1
