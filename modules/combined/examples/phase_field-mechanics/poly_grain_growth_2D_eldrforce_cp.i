@@ -452,6 +452,7 @@
     type = ConstantReporter
     real_vector_names = 'ea0 ea1 ea2 subdomain_id'
     real_vector_values = '0; 0; 0; 0' # Dummy value
+    outputs = csv
   []
 []
 
@@ -497,4 +498,5 @@
 [Outputs]
   # file_base = poly36_grtracker
   exodus = true
+  csv = true
 []

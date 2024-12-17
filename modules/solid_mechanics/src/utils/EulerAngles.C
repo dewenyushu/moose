@@ -23,8 +23,8 @@ EulerAngles::EulerAngles(const Eigen::Quaternion<Real> & q)
   phi1 = std::atan2((q.x() * q.z() + q.w() * q.y()), -(-q.w() * q.x() + q.y() * q.z())) *
          (180.0 / libMesh::pi);
   Phi = std::atan2(
-            std::sqrt(1 -
-                      std::pow(q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z(), 2.0)),
+            std::sqrt(std::abs(1 -
+                      std::pow(q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z(), 2.0))),
             q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z()) *
         (180.0 / libMesh::pi);
   phi2 = std::atan2((q.x() * q.z() - q.w() * q.y()), (q.w() * q.x() + q.y() * q.z())) *

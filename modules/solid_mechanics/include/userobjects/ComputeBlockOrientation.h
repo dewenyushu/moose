@@ -17,10 +17,10 @@
 /**
  * Computes the average value of a variable on each block
  */
-class BlockQuaternionMode : public ElementUserObject
+class ComputeBlockOrientation : public ElementUserObject
 {
 public:
-  BlockQuaternionMode(const InputParameters & parameters);
+  ComputeBlockOrientation(const InputParameters & parameters);
 
   static InputParameters validParams();
 
@@ -33,7 +33,7 @@ public:
    *
    * @return The average value of a variable on that block.
    */
-  Real getBlockValue(SubdomainID block) const;
+  EulerAngles getBlockOrientation(SubdomainID block) const;
 
   /**
    * This is called before execute so you can reset any internal data.
@@ -57,6 +57,14 @@ public:
    */
   virtual void finalize() override;
 
+  /**
+   * Compute Quaternion for each subdomain (block)
+   */
+
+EulerAngles computeSubdomainEulerAngles(const SubdomainID & sid);
+
+EulerAngles quaternionToEuler(const Eigen::Quaternion<Real> & q);
+
 protected:
   // // This map will hold the partial sums for each block
   // std::map<SubdomainID, Real> _integral_values;
@@ -64,18 +72,21 @@ protected:
   // // This map will hold the partial volume sums for each block
   // std::map<SubdomainID, Real> _volume_values;
 
-  // // This map will hold our averages for each block
-  // std::map<SubdomainID, Real> _average_values;
+  // This map will hold our averages for each block
+  std::map<SubdomainID, EulerAngles> _block_ea_values;
 
   // // This map holds the quaternion values for each block
   // // std::map<SubdomainID, std::vector>
 
   // updated quaternion
-  const MaterialProperty<std::vector<Real>> & _quaternion_prop;
+  const MaterialProperty<RankTwoTensor> & _updated_rotation;
 
   /// number of bins for each quaternion component
   unsigned int _bins;
 
+   /// L_norm value for averaging
+  Real _L_norm;
+
   // Array of vectors to store quaternions of each grain
-  std::unordered_map<SubdomainID, std::vector<std::vector<Real>>> _quat;
+  std::unordered_map<SubdomainID, std::vector<std::tuple<Real, Real, Real, Real>>> _quat;
 };

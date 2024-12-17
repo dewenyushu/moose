@@ -207,11 +207,11 @@
     execution_order_group = -1
   []
 
-  # [q_mode]
-  #   type = BlockQuaternionMode
-  #   execute_on = 'TIMESTEP_END'
-  #   execution_order_group = -1
-  # []
+  [block_orientation]
+    type = ComputeBlockOrientation
+    execute_on = 'TIMESTEP_END'
+    execution_order_group = -1
+  []
 []
 
 [BCs]
@@ -286,11 +286,17 @@
   #   block_average_uos = "avg_ea1 avg_ea2 avg_ea3"
   #   execute_on = 'TIMESTEP_END'
   # []
+  # [updated_grain_ea]
+  #   type = BlockOrientationFromQuaternionUserObjects
+  #   quaternion_average_uos = "avg_qx avg_qy avg_qz avg_qw"
+  #   execute_on = 'TIMESTEP_END'
+  #   outputs = csv
+  # []
   [updated_grain_ea]
-    type = BlockOrientationFromQuaternionUserObjects
-    quaternion_average_uos = "avg_qx avg_qy avg_qz avg_qw"
+    type = BlockOrientationFromUserObject
+    block_orientation_uo = block_orientation
     execute_on = 'TIMESTEP_END'
-    outputs = none
+    outputs = csv
   []
 []
 

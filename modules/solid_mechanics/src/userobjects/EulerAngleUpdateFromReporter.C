@@ -68,11 +68,11 @@ EulerAngleUpdateFromReporter::UpdateEulerAngle()
                "). Some existing grains will miss texture information.");
 
   // zip the grain id with the euler angles
-  std::map<int, RealVectorValue> ea_data;
+  std::map<int, EulerAngles> ea_data;
   for (const auto i : index_range(_grain_id))
   {
-    int gid = (int)(_grain_id[i]);
-    ea_data[gid] = RealVectorValue(_euler_angle_0[i], _euler_angle_1[i], _euler_angle_2[i]);
+    unsigned int gid = (unsigned int)(_grain_id[i]);
+    ea_data[gid] = EulerAngles(_euler_angle_0[i], _euler_angle_1[i], _euler_angle_2[i]);
   }
 
   // re-assign euler angles based on the new data
@@ -81,6 +81,6 @@ EulerAngleUpdateFromReporter::UpdateEulerAngle()
 
   for (const auto it : ea_data)
   {
-    _angles[it.first] = EulerAngles(it.second);
+    _angles[it.first] = it.second;
   }
 }
