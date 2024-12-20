@@ -214,7 +214,7 @@
   []
 []
 
-[BCs]
+[BCs] # TODO: need to check BCs
   [x_roller]
     type = DirichletBC
     preset = true
@@ -296,7 +296,7 @@
     type = BlockOrientationFromUserObject
     block_orientation_uo = block_orientation
     execute_on = 'TIMESTEP_END'
-    outputs = csv
+    # outputs = csv
   []
 []
 
@@ -323,7 +323,9 @@
   nl_max_its = 20
   nl_forced_its = 1
   l_max_its = 100
-  num_steps = 5
+  # start_time = 0.0
+  end_time = 100
+  # num_steps = 100
   dt = 0.1
 
   # [TimeStepper]
@@ -338,7 +340,7 @@
 
 [Outputs]
   execute_on = 'initial timestep_end'
-  file_base = 64Cu_test
+  file_base = './outputs/64Cu_test'
   csv = true
   print_linear_residuals = true
   perf_graph = true

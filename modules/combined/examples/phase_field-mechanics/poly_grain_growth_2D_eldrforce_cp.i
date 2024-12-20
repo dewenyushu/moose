@@ -452,7 +452,7 @@
     type = ConstantReporter
     real_vector_names = 'ea0 ea1 ea2 subdomain_id'
     real_vector_values = '0; 0; 0; 0' # Dummy value
-    outputs = csv
+    # outputs = csv
   []
 []
 
@@ -477,8 +477,8 @@
   nl_max_its = 25
   nl_rel_tol = 1.0e-7
   # start_time = 0.0
-  # end_time = 100
-  num_steps = 5
+  end_time = 100
+  # num_steps = 100
   dt = 0.1
   # [TimeStepper]
   #   type = IterationAdaptiveDT
@@ -496,7 +496,7 @@
 []
 
 [Outputs]
-  # file_base = poly36_grtracker
+  file_base = './outputs/poly36_grtracker'
   exodus = true
   csv = true
 []
