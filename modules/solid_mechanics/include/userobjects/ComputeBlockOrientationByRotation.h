@@ -17,10 +17,10 @@
 /**
  * Computes the average value of a variable on each block
  */
-class ComputeBlockOrientation : public ElementUserObject
+class ComputeBlockOrientationByRotation : public ElementUserObject
 {
 public:
-  ComputeBlockOrientation(const InputParameters & parameters);
+  ComputeBlockOrientationByRotation(const InputParameters & parameters);
 
   static InputParameters validParams();
 

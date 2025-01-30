@@ -98,6 +98,11 @@
     order = CONSTANT
     family = MONOMIAL
   []
+
+  [misorientation]
+    order = CONSTANT
+    family = MONOMIAL
+  []
 []
 
 [AuxKernels]
@@ -149,6 +154,13 @@
     variable = updated_quaternion_w
     property = updated_quaternion
     index = 3
+    execute_on = 'TIMESTEP_END'
+  []
+
+  [misorientation]
+    type = MaterialRealAux
+    property = misorientation
+    variable = misorientation
     execute_on = 'TIMESTEP_END'
   []
 []
@@ -208,7 +220,7 @@
   []
 
   [block_orientation]
-    type = ComputeBlockOrientation
+    type = ComputeBlockOrientationByRotation
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
@@ -324,7 +336,7 @@
   nl_forced_its = 1
   l_max_its = 100
   # start_time = 0.0
-  end_time = 100
+  end_time = 11
   # num_steps = 100
   dt = 0.1
 

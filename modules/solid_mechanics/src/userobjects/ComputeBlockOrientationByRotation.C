@@ -7,15 +7,15 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "ComputeBlockOrientation.h"
+#include "ComputeBlockOrientationByRotation.h"
 #include "MooseMesh.h"
 
 #include "libmesh/mesh_tools.h"
 
-registerMooseObject("SolidMechanicsApp", ComputeBlockOrientation);
+registerMooseObject("SolidMechanicsApp", ComputeBlockOrientationByRotation);
 
 InputParameters
-ComputeBlockOrientation::validParams()
+ComputeBlockOrientationByRotation::validParams()
 {
   InputParameters params = ElementUserObject::validParams();
   params.addParam<unsigned int>("bins", 20, "Number of bins to segregate quaternions");
@@ -23,7 +23,7 @@ ComputeBlockOrientation::validParams()
   return params;
 }
 
-ComputeBlockOrientation::ComputeBlockOrientation(const InputParameters & parameters)
+ComputeBlockOrientationByRotation::ComputeBlockOrientationByRotation(const InputParameters & parameters)
   : ElementUserObject(parameters),
 _updated_rotation(getMaterialProperty<RankTwoTensor>("updated_rotation")),
 _bins(getParam<unsigned int>("bins")),
@@ -32,7 +32,7 @@ _L_norm(getParam<Real>("L_norm"))
 }
 
 EulerAngles
-ComputeBlockOrientation::getBlockOrientation(SubdomainID block) const
+ComputeBlockOrientationByRotation::getBlockOrientation(SubdomainID block) const
 {
   // Note that we can't use operator[] for a std::map in a const function!
   if (_block_ea_values.find(block) != _block_ea_values.end())
@@ -44,14 +44,14 @@ ComputeBlockOrientation::getBlockOrientation(SubdomainID block) const
 }
 
 void
-ComputeBlockOrientation::initialize()
+ComputeBlockOrientationByRotation::initialize()
 {
   _block_ea_values.clear();
   _quat.clear();
 }
 
 void
-ComputeBlockOrientation::execute()
+ComputeBlockOrientationByRotation::execute()
 {
   // Compute the average of the rotation matrix in this element
   // Here we simply do an average among all _qp
@@ -76,19 +76,19 @@ ComputeBlockOrientation::execute()
 }
 
 void
-ComputeBlockOrientation::threadJoin(const UserObject & y)
+ComputeBlockOrientationByRotation::threadJoin(const UserObject & y)
 {
   ElementUserObject::threadJoin(y);
 
   // We are joining with another class like this one so do a cast so we can get to it's data
-  const ComputeBlockOrientation & cbo = dynamic_cast<const ComputeBlockOrientation &>(y);
+  const ComputeBlockOrientationByRotation & cbo = dynamic_cast<const ComputeBlockOrientationByRotation &>(y);
 
   for (auto it = cbo._quat.begin(); it!=cbo._quat.end(); ++it)
     _quat[it->first].insert(_quat[it->first].end(), it->second.begin(), it->second.end());
 }
 
 void
-ComputeBlockOrientation::finalize()
+ComputeBlockOrientationByRotation::finalize()
 {
   const std::set<SubdomainID> & blocks = _fe_problem.mesh().meshSubdomains();
 
@@ -103,7 +103,7 @@ ComputeBlockOrientation::finalize()
 }
 
 EulerAngles
-ComputeBlockOrientation::computeSubdomainEulerAngles(const SubdomainID & sid)
+ComputeBlockOrientationByRotation::computeSubdomainEulerAngles(const SubdomainID & sid)
 {
   // creating a map to store the quaternion count for each bin index
   std::map<std::tuple<int, int, int, int>, unsigned int> feature_weights;
@@ -172,7 +172,7 @@ ComputeBlockOrientation::computeSubdomainEulerAngles(const SubdomainID & sid)
 }
 
 EulerAngles
-ComputeBlockOrientation::quaternionToEuler(const Eigen::Quaternion<Real> & q)
+ComputeBlockOrientationByRotation::quaternionToEuler(const Eigen::Quaternion<Real> & q)
 {
   auto yaw = std::atan2(2.0*(q.w()*q.x() + q.y()*q.z()), 1.0 - 2.0*(q.x()*q.x() + q.y()*q.y()))*(180.0 / libMesh::pi);
 

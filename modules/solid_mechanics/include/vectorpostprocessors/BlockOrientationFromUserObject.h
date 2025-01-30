@@ -13,7 +13,7 @@
 #include "libmesh/communicator.h"
 #include "Coupleable.h"
 #include "MooseVariableDependencyInterface.h"
-#include "ComputeBlockOrientation.h"
+#include "ComputeBlockOrientationByRotation.h"
 
 // Forward Declarations
 class MooseMesh;
@@ -43,7 +43,7 @@ protected:
 
   /// User object to grab average value from
   const UserObjectName & _uo_name;
-  const ComputeBlockOrientation * _uo;
+  const ComputeBlockOrientationByRotation * _uo;
 
 
   // std::vector<const VariableValue *> _variable_vals;
