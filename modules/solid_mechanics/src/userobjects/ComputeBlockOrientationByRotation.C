@@ -17,30 +17,18 @@ registerMooseObject("SolidMechanicsApp", ComputeBlockOrientationByRotation);
 InputParameters
 ComputeBlockOrientationByRotation::validParams()
 {
-  InputParameters params = ElementUserObject::validParams();
+  InputParameters params = ComputeBlockOrientationBase::validParams();
   params.addParam<unsigned int>("bins", 20, "Number of bins to segregate quaternions");
   params.addParam<Real>("L_norm", 1, "Specifies the type of average the user intends to perform");
   return params;
 }
 
 ComputeBlockOrientationByRotation::ComputeBlockOrientationByRotation(const InputParameters & parameters)
-  : ElementUserObject(parameters),
+  : ComputeBlockOrientationBase(parameters),
 _updated_rotation(getMaterialProperty<RankTwoTensor>("updated_rotation")),
 _bins(getParam<unsigned int>("bins")),
 _L_norm(getParam<Real>("L_norm"))
 {
-}
-
-EulerAngles
-ComputeBlockOrientationByRotation::getBlockOrientation(SubdomainID block) const
-{
-  // Note that we can't use operator[] for a std::map in a const function!
-  if (_block_ea_values.find(block) != _block_ea_values.end())
-    return _block_ea_values.find(block)->second;
-
-  mooseError("Unknown block requested for Euler angle values!");
-
-  return EulerAngles(); // To satisfy compilers
 }
 
 void

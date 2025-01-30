@@ -11,13 +11,16 @@
 
 #include "ComputeBlockOrientationBase.h"
 
+#include "libmesh/mesh_tools.h"
+#include "EulerAngles.h"
+
 /**
  * Computes the average value of a variable on each block
  */
-class ComputeBlockOrientationByRotation : public ComputeBlockOrientationBase
+class ComputeBlockOrientationByMisorientation : public ComputeBlockOrientationBase
 {
 public:
-  ComputeBlockOrientationByRotation(const InputParameters & parameters);
+  ComputeBlockOrientationByMisorientation(const InputParameters & parameters);
 
   static InputParameters validParams();
 
@@ -43,24 +46,17 @@ public:
    */
   virtual void finalize() override;
 
-  /**
-   * Compute Quaternion for each subdomain (block)
-   */
+EulerAngles quaternionToEuler(const Eigen::Quaternion<Real> & q);
 
 EulerAngles computeSubdomainEulerAngles(const SubdomainID & sid);
-
-EulerAngles quaternionToEuler(const Eigen::Quaternion<Real> & q);
 
 protected:
   // updated quaternion
   const MaterialProperty<RankTwoTensor> & _updated_rotation;
 
-  /// number of bins for each quaternion component
-  unsigned int _bins;
+  // misorientation angle values
+  const MaterialProperty<Real> & _misorient;
 
-   /// L_norm value for averaging
-  Real _L_norm;
-
-  // Array of vectors to store quaternions of each grain
-  std::unordered_map<SubdomainID, std::vector<std::tuple<Real, Real, Real, Real>>> _quat;
+  // Array of vectors to store block ID, maximum misorientation angle and corresponding EulerAngle
+  std::unordered_map<SubdomainID, std::vector<std::tuple<Real, Real, Real, Real>>> _grain_misorientation;
 };

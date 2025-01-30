@@ -43,7 +43,7 @@ protected:
 
   /// User object to grab average value from
   const UserObjectName & _uo_name;
-  const ComputeBlockOrientationByRotation * _uo;
+  const ComputeBlockOrientationBase * _uo;
 
 
   // std::vector<const VariableValue *> _variable_vals;

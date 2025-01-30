@@ -9,17 +9,31 @@
 
 #pragma once
 
-#include "ComputeBlockOrientationBase.h"
+#include "ElementUserObject.h"
+
+#include "libmesh/mesh_tools.h"
+#include "EulerAngles.h"
 
 /**
  * Computes the average value of a variable on each block
  */
-class ComputeBlockOrientationByRotation : public ComputeBlockOrientationBase
+class ComputeBlockOrientationBase : public ElementUserObject
 {
 public:
-  ComputeBlockOrientationByRotation(const InputParameters & parameters);
+  ComputeBlockOrientationBase(const InputParameters & parameters);
 
   static InputParameters validParams();
+
+  /**
+   * Given a block ID return the average value for a variable on that block
+   *
+   * Note that accessor functions on UserObjects like this _must_ be const.
+   * That is because the UserObject system returns const references to objects
+   * trying to use UserObjects.  This is done for parallel correctness.
+   *
+   * @return The average value of a variable on that block.
+   */
+  virtual EulerAngles getBlockOrientation(SubdomainID block) const;
 
   /**
    * This is called before execute so you can reset any internal data.
@@ -30,37 +44,20 @@ public:
    * Called on every "object" (like every element or node).
    * In this case, it is called at every quadrature point on every element.
    */
-  virtual void execute() override;
+  virtual void execute() override {};
 
   /**
    * Called when using threading.  You need to combine the data from "y"
    * into _this_ object.
    */
-  virtual void threadJoin(const UserObject & y) override;
+  virtual void threadJoin(const UserObject & /*y*/) override {};
 
   /**
    * Called _once_ after execute has been called all all "objects".
    */
-  virtual void finalize() override;
-
-  /**
-   * Compute Quaternion for each subdomain (block)
-   */
-
-EulerAngles computeSubdomainEulerAngles(const SubdomainID & sid);
-
-EulerAngles quaternionToEuler(const Eigen::Quaternion<Real> & q);
+  virtual void finalize() override {};
 
 protected:
-  // updated quaternion
-  const MaterialProperty<RankTwoTensor> & _updated_rotation;
-
-  /// number of bins for each quaternion component
-  unsigned int _bins;
-
-   /// L_norm value for averaging
-  Real _L_norm;
-
-  // Array of vectors to store quaternions of each grain
-  std::unordered_map<SubdomainID, std::vector<std::tuple<Real, Real, Real, Real>>> _quat;
+  // This map will hold our averages for each block
+  std::map<SubdomainID, EulerAngles> _block_ea_values;
 };

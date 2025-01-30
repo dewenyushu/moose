@@ -22,7 +22,7 @@ BlockOrientationFromUserObject::validParams()
 {
   InputParameters params = GeneralVectorPostprocessor::validParams();
 
-  params.addRequiredParam<UserObjectName>("block_orientation_uo", "Name of ComputeBlockOrientationByRotation user object for updated block orientation.");
+  params.addRequiredParam<UserObjectName>("block_orientation_uo", "Name of ComputeBlockOrientation user object for updated block orientation.");
 
   params.addParam<bool>(
       "degree_to_radian", false, "Whether to convert euler angles from degree to radian.");
@@ -50,7 +50,7 @@ BlockOrientationFromUserObject::BlockOrientationFromUserObject(const InputParame
     }
   }
 
-  _uo = &getUserObjectByName<ComputeBlockOrientationByRotation>(_uo_name);
+  _uo = &getUserObjectByName<ComputeBlockOrientationBase>(_uo_name);
 }
 
 void
