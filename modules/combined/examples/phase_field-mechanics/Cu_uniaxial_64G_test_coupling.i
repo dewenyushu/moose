@@ -220,14 +220,14 @@
   []
 
   [block_orientation]
-    # type = ComputeBlockOrientationByRotation
-    type = ComputeBlockOrientationByMisorientation
+    type = ComputeBlockOrientationByRotation
+    # type = ComputeBlockOrientationByMisorientation
     execute_on = 'TIMESTEP_END'
     execution_order_group = -1
   []
 []
 
-[BCs] # TODO: need to check BCs
+[BCs]
   [x_roller]
     type = DirichletBC
     preset = true
@@ -252,9 +252,9 @@
 
   [y_pull_function]
     type = FunctionDirichletBC
-    variable = disp_z
-    boundary = front
-    function = '1.0e-4*t'
+    variable = disp_y
+    boundary = top
+    function = '1.0e-3*t'
   []
 []
 
@@ -337,9 +337,9 @@
   nl_forced_its = 1
   l_max_its = 100
   # start_time = 0.0
-  end_time = 11
+  end_time = 500
   # num_steps = 100
-  dt = 0.1
+  dt = 10
 
   # [TimeStepper]
   #   type = IterationAdaptiveDT

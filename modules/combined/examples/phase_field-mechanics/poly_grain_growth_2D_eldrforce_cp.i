@@ -477,9 +477,9 @@
   nl_max_its = 25
   nl_rel_tol = 1.0e-7
   # start_time = 0.0
-  end_time = 1
+  end_time = 500
   # num_steps = 100
-  dt = 0.1
+  dt = 10
   # [TimeStepper]
   #   type = IterationAdaptiveDT
   #   dt = 0.1
