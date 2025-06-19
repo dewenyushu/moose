@@ -14,7 +14,7 @@ L = 1.0
 ## File mesh generator
   [fmg]
     type = FileMeshGenerator
-    file = vp5_mesh.e
+    file = './../Mesh/vp5_mesh.e'
   []
   patch_update_strategy = iteration
   patch_size = 20
