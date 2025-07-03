@@ -25,6 +25,8 @@ pitch_ex = 0.139853912631949
   group_variables = 'disp_x disp_y disp_z'
   acceptable_multiplier = 10
   acceptable_iterations = 10
+
+	use_hash_table_matrix_assembly = true
 []
 
 [Variables]
@@ -2818,8 +2820,8 @@ pitch_ex = 0.139853912631949
 		[]
 		[tlp_force_101_2]
 			type = ParsedPostprocessor
-			expression = 'sqrt(tlp101_restraint_contact_x*tlp101_restraint_contact_x+tlp101_restraint_contact_y*tlp101_restraint_contact_y+tlp101_restraint_contact_z*tlp101_restraint_contact_z)'
-			pp_names = 'tlp101_restraint_contact_x tlp101_restraint_contact_y tlp101_restraint_contact_z'
+			expression = 'sqrt(tlp_force_101_2_x*tlp_force_101_2_x+tlp_force_101_2_y*tlp_force_101_2_y+tlp_force_101_2_z*tlp_force_101_2_z)'
+			pp_names = 'tlp_force_101_2_x tlp_force_101_2_y tlp_force_101_2_z'
 		[]
 
 
