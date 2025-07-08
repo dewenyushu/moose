@@ -26,7 +26,7 @@ pitch_ex = 0.139853912631949
   acceptable_multiplier = 10
   acceptable_iterations = 10
 
-	use_hash_table_matrix_assembly = true
+	use_hash_table_matrix_assembly = false
 []
 
 [Variables]
